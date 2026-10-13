@@ -29,11 +29,19 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
+    /* Categorical chart colors (series identity), in this order. Validated for
+       the dark chart surface (--color-dark-100) with the dataviz skill's
+       validate_palette.js: adjacent CVD ΔE ≥ 8.4, all ≥ 3:1 contrast. */
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    /* Status colors, the same steps as the status badges and run-history dots.
+       Reserved for run outcomes; never used as series colors. */
+    --status-success: oklch(76.5% 0.177 163.223);
+    --status-warning: oklch(82.8% 0.189 84.429);
+    --status-failed: oklch(70.4% 0.191 22.216);
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -137,6 +145,42 @@
         .subheading {
             @apply text-light-100 text-lg max-sm:text-sm text-center mt-5 max-w-2xl mx-auto;
         }
+
+        .data-freshness {
+            @apply text-light-200 text-xs text-center mt-4;
+        }
+    }
+
+    .skeleton-tile {
+        @apply h-[104px] animate-pulse;
+    }
+
+    .chart-card {
+        @apply bg-dark-100 border border-dark-200 card-shadow rounded-[10px] px-5 py-4 flex flex-col gap-3;
+
+        .chart-heading {
+            @apply font-schibsted-grotesk text-base font-semibold;
+        }
+
+        .chart-subtitle {
+            @apply text-light-200 text-xs;
+        }
+
+        details {
+            @apply text-sm text-light-200;
+
+            summary {
+                @apply w-fit cursor-pointer hover:text-light-100;
+            }
+
+            .table-wrap {
+                @apply mt-3;
+            }
+        }
+    }
+
+    .skeleton-card {
+        @apply bg-dark-100/80 border border-dark-200 rounded-[10px] h-64 animate-pulse;
     }
 
     #explore-btn {
@@ -405,6 +449,78 @@
 
         .btn-secondary {
             @apply border border-dark-200 bg-dark-200 hover:border-primary/60 text-light-100;
+        }
+    }
+
+    #login {
+        @apply flex flex-col items-center gap-8 pt-10;
+
+        .header {
+            @apply flex flex-col items-center gap-3 text-center;
+
+            p {
+                @apply text-light-100 max-sm:text-sm;
+            }
+        }
+    }
+
+    .login-card {
+        @apply bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] p-6 flex flex-col gap-4 w-full max-w-md min-h-48;
+
+        label {
+            @apply flex flex-col gap-1.5 text-sm text-light-200;
+        }
+
+        input {
+            @apply bg-dark-100 border border-dark-200 rounded-[6px] px-4 py-2.5 text-light-100 focus:border-primary focus:outline-none;
+        }
+
+        .btn-primary {
+            @apply w-full cursor-pointer rounded-[6px] px-4 py-2.5 font-semibold bg-primary hover:bg-primary/90 text-black disabled:cursor-wait disabled:opacity-60;
+        }
+
+        .form-error {
+            @apply text-sm text-red-300;
+        }
+
+        .demo-accounts {
+            @apply flex flex-col gap-2 border-t border-dark-200 pt-4 text-xs text-light-200;
+
+            ul {
+                @apply list-none flex flex-col gap-1.5;
+            }
+
+            li {
+                @apply flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5;
+            }
+
+            button {
+                @apply font-martian-mono text-light-100 cursor-pointer hover:text-primary;
+            }
+
+            code {
+                @apply font-martian-mono text-blue;
+            }
+        }
+    }
+
+    .user-menu {
+        @apply flex flex-row items-center gap-3;
+
+        .who {
+            @apply flex flex-col items-end leading-tight max-md:hidden;
+        }
+
+        .name {
+            @apply text-sm text-light-100;
+        }
+
+        .groups {
+            @apply text-xs text-light-200 max-w-56 truncate;
+        }
+
+        .sign-out {
+            @apply rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer hover:border-primary/60 disabled:opacity-60;
         }
     }
 }

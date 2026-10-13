@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "splunk": {
+      "type": "http",
+      "url": "${SPLUNK_MCP_URL}",
+      "oauth": {
+        "clientId": "${SPLUNK_MCP_CLIENT_ID}",
+        "callbackPort": 8787
+      }
+    }
+  }
+}

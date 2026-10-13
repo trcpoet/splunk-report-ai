@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ResultsTable from "@/components/ResultsTable";
 import ReportActions from "@/components/ReportActions";
 import ReportCard from "@/components/ReportCard";
-import { getReportBySlug, getSimilarReports, reports } from "@/lib/reports";
+import ReportChart from "@/components/ReportChart";
+import RunTrend from "@/components/RunTrend";
+import { getVisibleReport, getVisibleReports } from "@/lib/dal";
+import { getSimilarReports } from "@/lib/reports";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 
 const STATUS_LABELS = { success: 'Success', warning: 'Warning', failed: 'Failed' } as const;
 
-export function generateStaticParams() {
-    return reports.map(({ slug }) => ({ slug }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
-    const report = getReportBySlug(slug);
+    const report = await getVisibleReport(slug);
 
     return {
         title: report ? `${report.title} | SplunkEvents` : 'Report not found | SplunkEvents',
@@ -26,13 +26,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
 }
 
-const ReportPage = async ({ params }: Props) => {
-    const { slug } = await params;
-    const report = getReportBySlug(slug);
+const ReportPage = ({ params }: Props) => {
+    return (
+        <section id="report">
+            <Link href="/#reports" className="back-link">← All reports</Link>
 
+            <Suspense fallback={<div className="skeleton-card h-96" aria-busy="true" />}>
+                <ReportDetails params={params} />
+            </Suspense>
+        </section>
+    )
+}
+
+async function ReportDetails({ params }: Props) {
+    const { slug } = await params;
+    const report = await getVisibleReport(slug);
+
+    // Hidden reports get the same answer as missing ones.
     if (!report) notFound();
 
-    const similarReports = getSimilarReports(report);
+    const similarReports = getSimilarReports(report, await getVisibleReports());
     const details = [
         { label: 'Schedule', value: report.schedule, code: report.cron },
         { label: 'Time range', value: report.timeRange },
@@ -50,9 +63,7 @@ const ReportPage = async ({ params }: Props) => {
     ]);
 
     return (
-        <section id="report">
-            <Link href="/#reports" className="back-link">← All reports</Link>
-
+        <>
             <div className="header">
                 <div className="flex flex-row flex-wrap items-center gap-2">
                     <span className="pill">{report.category}</span>
@@ -68,24 +79,41 @@ const ReportPage = async ({ params }: Props) => {
                 </div>
             )}
 
-            <div className="highlights">
-                {report.highlights.map(({ label, value, note }) => (
-                    <div key={label} className="stat-tile">
-                        <span className="label">{label}</span>
-                        <span className="value">{value}</span>
-                        {note && <span className="note">{note}</span>}
-                    </div>
-                ))}
-            </div>
+            {report.highlights.length > 0 && (
+                <div className="highlights">
+                    {report.highlights.map(({ label, value, note }) => (
+                        <div key={label} className="stat-tile">
+                            <span className="label">{label}</span>
+                            <span className="value">{value}</span>
+                            {note && <span className="note">{note}</span>}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className="details">
                 <div className="content">
                     <section className="flex-col-gap-3">
                         <div className="flex flex-row flex-wrap items-baseline justify-between gap-2">
                             <h2>Latest results</h2>
-                            <span className="text-light-200 text-sm">{report.timeRange} · run {formatDateTime(report.lastRun)}</span>
+                            {report.resultsRunAt && (
+                                <span className="text-light-200 text-sm">{report.timeRange} · run {formatDateTime(report.resultsRunAt)}</span>
+                            )}
                         </div>
-                        <ResultsTable columns={report.columns} rows={report.rows} />
+                        {report.chart && report.rows.length > 0 && (
+                            <figure className="chart-card">
+                                <figcaption className="flex flex-col gap-0.5">
+                                    <span className="chart-heading">{report.chart.y} by {report.chart.x}</span>
+                                    <span className="chart-subtitle">The largest value is labeled. Every value is in the table below.</span>
+                                </figcaption>
+                                <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
+                            </figure>
+                        )}
+                        {report.columns.length > 0 ? (
+                            <ResultsTable columns={report.columns} rows={report.rows} />
+                        ) : (
+                            <p className="empty-state">No results yet. They appear after the next scheduled run is synced.</p>
+                        )}
                         {report.resultCount > report.rows.length && (
                             <p className="text-light-200 text-sm">
                                 Showing the top {report.rows.length} of {formatNumber(report.resultCount)} results.
@@ -100,6 +128,15 @@ const ReportPage = async ({ params }: Props) => {
 
                     <section className="flex-col-gap-3">
                         <h2>Run history</h2>
+                        {report.history.length > 1 && (
+                            <figure className="chart-card">
+                                <figcaption className="flex flex-col gap-0.5">
+                                    <span className="chart-heading">Results per run</span>
+                                    <span className="chart-subtitle">Skipped runs show as gaps.</span>
+                                </figcaption>
+                                <RunTrend runs={report.history} />
+                            </figure>
+                        )}
                         <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} />
                     </section>
 
@@ -140,7 +177,7 @@ const ReportPage = async ({ params }: Props) => {
                         </ul>
                         <ReportActions
                             slug={report.slug}
-                            lastRun={report.lastRun}
+                            lastRun={report.resultsRunAt ?? report.lastRun}
                             spl={report.spl}
                             columns={report.columns}
                             rows={report.rows}
@@ -159,7 +196,7 @@ const ReportPage = async ({ params }: Props) => {
                     </div>
                 </div>
             )}
-        </section>
+        </>
     )
 }
 

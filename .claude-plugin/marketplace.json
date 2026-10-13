@@ -1,0 +1,16 @@
+{
+  "name": "splunk-events-tools",
+  "owner": {
+    "name": "Tahsin Rahman Chowdhury"
+  },
+  "metadata": {
+    "description": "Claude Code tools for the SplunkEvents app."
+  },
+  "plugins": [
+    {
+      "name": "splunk-events",
+      "source": "./plugins/splunk-events",
+      "description": "Splunk Cloud MCP server (OAuth) plus the splunk-reports skill for the SplunkEvents app."
+    }
+  ]
+}

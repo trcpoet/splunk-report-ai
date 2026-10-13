@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "splunk-events@splunk-events-tools": true
+  }
+}

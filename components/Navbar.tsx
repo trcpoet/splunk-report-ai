@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
+import UserMenu from "@/components/UserMenu";
 
 const Navbar = () => {
     return (
@@ -14,6 +16,11 @@ const Navbar = () => {
                 <ul>
                     <li><Link href="/">Overview</Link></li>
                     <li><Link href="/#reports">All Reports</Link></li>
+                    <li>
+                        <Suspense fallback={null}>
+                            <UserMenu />
+                        </Suspense>
+                    </li>
                 </ul>
             </nav>
         </header>

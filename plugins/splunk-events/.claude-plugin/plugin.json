@@ -1,0 +1,6 @@
+{
+  "name": "splunk-events",
+  "version": "0.1.0",
+  "description": "Splunk Cloud MCP server (OAuth) plus the splunk-reports skill for the SplunkEvents app.",
+  "author": { "name": "Tahsin Rahman Chowdhury" }
+}
