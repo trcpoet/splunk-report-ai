@@ -1,19 +1,18 @@
 'use client';
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const SignOutButton = () => {
-    const router = useRouter();
     const [pending, setPending] = useState(false);
 
     const signOut = async () => {
         setPending(true);
         await authClient.signOut();
-        // Drop the client cache, which holds pages rendered for this session.
-        router.replace('/login');
-        router.refresh();
+        // A full page load drops the client cache, which holds pages rendered for
+        // this session, so whoever signs in next (say, another demo account)
+        // doesn't see them. router.refresh() only clears the current route.
+        window.location.replace('/login');
     }
 
     return (

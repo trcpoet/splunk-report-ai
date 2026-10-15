@@ -1,25 +1,24 @@
 'use client';
 
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 
 type Props = {
     // A same-site path, already checked by the login page.
     next: string;
-    // Listed in development only, to make the demo easy to try.
+    // Listed in development and in DEMO_MODE, to make the demo easy to try.
     demoAccounts: { email: string; access: string }[];
+    // DEMO_MODE only: the shared password, so each account signs in with one click.
+    demoPassword?: string;
 };
 
-const LoginForm = ({ next, demoAccounts }: Props) => {
-    const router = useRouter();
+const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
 
-    const signIn = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const signIn = async (email: string, password: string) => {
         setPending(true);
         setError(null);
 
@@ -31,12 +30,20 @@ const LoginForm = ({ next, demoAccounts }: Props) => {
             return;
         }
 
-        router.replace(next);
-        router.refresh();
+        // A full page load, not router.replace(): the client cache can still hold
+        // the redirect to /login that was prefetched for `next` while signed out,
+        // and reusing it bounced production builds between /login and `next`.
+        // replace() keeps /login out of the history, as router.replace() did.
+        window.location.replace(next);
+    }
+
+    const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        signIn(email, password);
     }
 
     return (
-        <form className="login-card" onSubmit={signIn}>
+        <form className="login-card" onSubmit={onSubmit}>
             <label>
                 Email
                 <input
@@ -67,14 +74,24 @@ const LoginForm = ({ next, demoAccounts }: Props) => {
 
             {demoAccounts.length > 0 && (
                 <div className="demo-accounts">
-                    <p>
-                        Demo accounts. The password is the value of <code>DEMO_PASSWORD</code> in your
-                        .env.local file (not the word itself). See it with <code>grep DEMO_PASSWORD .env.local</code>.
-                    </p>
+                    {demoPassword ? (
+                        <p>Demo accounts: pick one to sign in. They all use the password <code>{demoPassword}</code>.</p>
+                    ) : (
+                        <p>
+                            Demo accounts. The password is the value of <code>DEMO_PASSWORD</code> in your
+                            .env.local file (not the word itself). See it with <code>grep DEMO_PASSWORD .env.local</code>.
+                        </p>
+                    )}
                     <ul>
                         {demoAccounts.map((account) => (
                             <li key={account.email}>
-                                <button type="button" onClick={() => setEmail(account.email)}>{account.email}</button>
+                                <button
+                                    type="button"
+                                    disabled={pending}
+                                    onClick={() => (demoPassword ? signIn(account.email, demoPassword) : setEmail(account.email))}
+                                >
+                                    {account.email}
+                                </button>
                                 <span>{account.access}</span>
                             </li>
                         ))}

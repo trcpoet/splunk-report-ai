@@ -45,11 +45,14 @@ async function LoginGate({ searchParams }: Props) {
     const next = safeNextPath((await searchParams).next);
     if (await getViewerOrNull()) redirect(next);
 
-    const demoAccounts = process.env.NODE_ENV === 'development'
+    // DEMO_MODE is for the hosted demo, which only has dummy data: it lists the
+    // accounts and shows their shared password, so visitors sign in with one click.
+    const demoMode = process.env.DEMO_MODE === 'true';
+    const demoAccounts = demoMode || process.env.NODE_ENV === 'development'
         ? DEMO_USERS.map(({ email, role, groups }) => ({ email, access: role === 'admin' ? 'admin' : groups.join(', ') }))
         : [];
 
-    return <LoginForm next={next} demoAccounts={demoAccounts} />;
+    return <LoginForm next={next} demoAccounts={demoAccounts} demoPassword={demoMode ? process.env.DEMO_PASSWORD : undefined} />;
 }
 
 export default LoginPage;

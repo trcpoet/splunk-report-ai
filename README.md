@@ -2,6 +2,8 @@
 
 **Splunk reports without the inbox.** SplunkEvents puts every scheduled Splunk report your teams receive by email into one searchable web app. Instead of digging through email threads, people sign in and see the reports their teams used to get: the latest results as a chart and a table, run history, the SPL query, and a CSV download.
 
+**Live demo:** [splunk-report-ai.vercel.app](https://splunk-report-ai.vercel.app). Pick a demo account on the sign-in page to see what each team sees.
+
 > **Demo status:** every report is **dummy data** (see [`lib/splunk/fixtures/reports.ts`](lib/splunk/fixtures/reports.ts)). Hosts, users and results are made up, emails use `example.com`, and IPs come from documentation-only ranges. The sync worker loads it through a fixture that answers like the Splunk REST API, so the whole pipeline runs without a Splunk instance. Logins are seeded demo accounts.
 
 ## What the demo shows
@@ -49,7 +51,7 @@ Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and Mong
 
 ### Demo logins
 
-All use the value of `DEMO_PASSWORD` from `.env.local` as their password (see it with `grep DEMO_PASSWORD .env.local`). To pick your own, change it there and run `npm run seed` again. In development, the login page lists the accounts.
+All use the value of `DEMO_PASSWORD` from `.env.local` as their password (see it with `grep DEMO_PASSWORD .env.local`). To pick your own, change it there and run `npm run seed` again. In development and on the hosted demo, the login page lists the accounts.
 
 | User | Groups | Sees |
 |---|---|---|
@@ -71,6 +73,23 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run seed` | Create the demo users and their access (safe to run again) |
 | `npm test` | Unit tests, plus the full sync pipeline against the fixtures |
 | `npm run lint` | ESLint |
+
+## Hosted demo
+
+The live demo runs on Vercel with a free MongoDB Atlas cluster (M0). To host your own:
+
+1. In Atlas, create a cluster, a database user with `readWrite` on `splunkevents`, and a network access entry for `0.0.0.0/0` (Vercel functions have no fixed IP addresses).
+2. Before the first deploy, load the data from your machine with the Atlas connection string. The dummy runs have fixed dates, so set a long retention or MongoDB deletes them after 90 days:
+
+   ```bash
+   export MONGODB_URI="mongodb+srv://<user>:<password>@<cluster host>/splunkevents" RUN_RETENTION_DAYS=3650
+   DEMO_PASSWORD="<public demo password>" npm run seed
+   npm run sync
+   ```
+
+3. Import the repo in Vercel and set `MONGODB_URI`, `RUN_RETENTION_DAYS=3650`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (the site's URL), `DEMO_MODE=true`, `DEMO_PASSWORD`, `REVALIDATE_SECRET` and `APP_URL` (the site's URL).
+
+`DEMO_MODE=true` lists the demo accounts on the sign-in page with one-click sign-in and shows their password, so use it only with dummy data. Because visitors share those accounts, `/api/auth` only serves sign-in, sign-out and session lookups ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)): nobody can change a demo account's password or see who else is signed in to it.
 
 ## Connecting real Splunk
 
