@@ -67,7 +67,10 @@ const LoginForm = ({ next, demoAccounts }: Props) => {
 
             {demoAccounts.length > 0 && (
                 <div className="demo-accounts">
-                    <p>Demo accounts. The password is <code>DEMO_PASSWORD</code> in .env.local.</p>
+                    <p>
+                        Demo accounts. The password is the value of <code>DEMO_PASSWORD</code> in your
+                        .env.local file (not the word itself). See it with <code>grep DEMO_PASSWORD .env.local</code>.
+                    </p>
                     <ul>
                         {demoAccounts.map((account) => (
                             <li key={account.email}>

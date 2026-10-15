@@ -49,7 +49,7 @@ Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and Mong
 
 ### Demo logins
 
-All use the password in `DEMO_PASSWORD`. In development, the login page lists them.
+All use the value of `DEMO_PASSWORD` from `.env.local` as their password (see it with `grep DEMO_PASSWORD .env.local`). To pick your own, change it there and run `npm run seed` again. In development, the login page lists the accounts.
 
 | User | Groups | Sees |
 |---|---|---|
