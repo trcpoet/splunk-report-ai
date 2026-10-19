@@ -8,6 +8,8 @@ import ReportActions from "@/components/ReportActions";
 import ReportCard from "@/components/ReportCard";
 import ReportChart from "@/components/ReportChart";
 import RunTrend from "@/components/RunTrend";
+import Meter from "@/components/Meter";
+import Sparkline from "@/components/Sparkline";
 import { getVisibleReport, getVisibleReports } from "@/lib/dal";
 import { getSimilarReports } from "@/lib/reports";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
@@ -55,12 +57,18 @@ async function ReportDetails({ params }: Props) {
         { label: 'Last run', value: formatDateTime(report.lastRun) },
         { label: 'Next run', value: formatDateTime(report.nextRun) },
     ];
-    const historyRows = [...report.history].reverse().map((run) => [
+    const runs = [...report.history].reverse();
+    const historyRows = runs.map((run) => [
         formatDateTime(run.runAt),
         STATUS_LABELS[run.status],
         run.status === 'failed' ? 'Skipped' : formatDuration(run.durationSec),
         run.resultCount,
     ]);
+    // Formatted times and durations don't sort as text, so sort them by these.
+    const historySortValues = {
+        'Run time': runs.map((run) => run.runAt),
+        Duration: runs.map((run) => (run.status === 'failed' ? -1 : run.durationSec)),
+    };
 
     return (
         <>
@@ -81,10 +89,16 @@ async function ReportDetails({ params }: Props) {
 
             {report.highlights.length > 0 && (
                 <div className="highlights">
-                    {report.highlights.map(({ label, value, note }) => (
+                    {report.highlights.map(({ label, value, note, meter, trend }) => (
                         <div key={label} className="stat-tile">
                             <span className="label">{label}</span>
-                            <span className="value">{value}</span>
+                            <div className="value-row">
+                                <span className="value">{value}</span>
+                                {trend && (
+                                    <Sparkline values={trend} label={`${label} in the last ${trend.length} runs: ${trend.map((count) => formatNumber(count)).join(', ')}`} />
+                                )}
+                            </div>
+                            {meter !== undefined && <Meter value={meter} label={`${label}: ${value}${note ? ` ${note}` : ''}`} />}
                             {note && <span className="note">{note}</span>}
                         </div>
                     ))}
@@ -104,13 +118,17 @@ async function ReportDetails({ params }: Props) {
                             <figure className="chart-card">
                                 <figcaption className="flex flex-col gap-0.5">
                                     <span className="chart-heading">{report.chart.y} by {report.chart.x}</span>
-                                    <span className="chart-subtitle">The largest value is labeled. Every value is in the table below.</span>
+                                    <span className="chart-subtitle">
+                                        {report.chart.threshold
+                                            ? `Values past the dashed line (${report.chart.threshold.label}) are highlighted and labeled. Every value is in the table below.`
+                                            : 'The largest value is labeled. Every value is in the table below.'}
+                                    </span>
                                 </figcaption>
                                 <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
                             </figure>
                         )}
                         {report.columns.length > 0 ? (
-                            <ResultsTable columns={report.columns} rows={report.rows} />
+                            <ResultsTable columns={report.columns} rows={report.rows} filterable />
                         ) : (
                             <p className="empty-state">No results yet. They appear after the next scheduled run is synced.</p>
                         )}
@@ -137,7 +155,7 @@ async function ReportDetails({ params }: Props) {
                                 <RunTrend runs={report.history} />
                             </figure>
                         )}
-                        <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} />
+                        <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} sortValues={historySortValues} />
                     </section>
 
                     <div className="flex flex-row flex-wrap gap-1.5">

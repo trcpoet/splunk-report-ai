@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model } from 'mongoose';
-import type { ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import type { ChartThreshold, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
 
 // One report per Splunk scheduled search. The sync worker upserts it by slug
 // and recomputes the derived fields (latest, history, highlights, chart) on
@@ -68,12 +68,22 @@ const LatestRunSchema = new Schema<IRunSummary & { statusMessage?: string }>(
     { _id: false },
 );
 
+const ThresholdSchema = new Schema<ChartThreshold>(
+    {
+        value: { type: Number, required: true },
+        label: { type: String, required: true },
+    },
+    { _id: false },
+);
+
 const ChartSchema = new Schema<ReportChart>(
     {
         // A nested field called `type` needs the long form in Mongoose.
         type: { type: String, enum: ['bar', 'column', 'line', 'area'], required: true },
         x: { type: String, required: true },
         y: { type: String, required: true },
+        threshold: ThresholdSchema,
+        max: Number,
     },
     { _id: false },
 );
@@ -83,6 +93,9 @@ const HighlightSchema = new Schema<ReportHighlight>(
         label: { type: String, required: true },
         value: { type: String, required: true },
         note: String,
+        meter: Number,
+        // Left out rather than stored empty.
+        trend: { type: [Number], default: undefined },
     },
     { _id: false },
 );

@@ -39,9 +39,12 @@ The app never reads Splunk or the fixtures directly. It reads MongoDB through th
 2. **Settings:** add an entry to `reportConfig` in `lib/report-config.ts` with `slug` (kebab-case, unique), `category` and `tags`. Optional:
    - `groups`: who may see it (see "Access" below).
    - `chart`: `{ y: '<column>' }` to pick the measure to plot, `{ type }` to override the chart saved in Splunk, or `'none'` for a table only.
+     - `threshold: { value, label }` draws a dashed limit line (e.g. a 2% error budget), and the bars past it take the warning color. Put the number in a constant that the `statusRule` uses too, so the chart and the warning agree.
+     - `max` (e.g. `100` for a percentage) turns bars into meters that fill a track up to it.
+     - The measure can be a text column of formatted numbers (`"$1,234"`, `"1.84%"`, `"12G"`). The table and chart read them as numbers.
    - `index`: overrides the index text parsed from the SPL.
    - `statusRule`: turns results into a warning with a one- or two-sentence message, e.g. "warn when any host is above 2%".
-   - `highlights`: custom headline numbers. The default is the result count with its change since the previous run, the top row by the charted measure, and the search time.
+   - `highlights`: custom headline numbers. The default is the result count with its change since the previous run (and a sparkline of the recent runs), the top row by the charted measure, and the search time. A highlight with `meter` (the share of a limit, where 1 is the limit) shows a meter under its value, as on the license usage report.
 3. **Chart saved in Splunk:** add the slug to `CHARTS` in the fixture transport (`'bar'`, `'column'` or `null` for a statistics table).
 4. **Check:** run `npm test`. The fixture pipeline test round-trips every report and fails on mismatched schedules, statuses or history. Then `npm run sync`, and open the report while signed in as a user who can see it.
 

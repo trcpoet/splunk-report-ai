@@ -77,6 +77,7 @@ const RunOutcomes = ({ days }: { days: RunOutcomeDay[] }) => {
                 <ResultsTable
                     columns={['Day (UTC)', 'Healthy', 'Warning', 'Failed']}
                     rows={data.map(({ label, success, warning, failed }) => [label, success, warning, failed])}
+                    sortValues={{ 'Day (UTC)': data.map(({ day }) => day) }}
                 />
             </details>
         </figure>

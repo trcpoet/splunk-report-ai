@@ -7,7 +7,7 @@ import { Report, ReportRun, SyncState, SYNC_STATE_ID, UserAccess, type IReport }
 import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
-import type { Cell, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import type { Cell, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
 
 // The data access layer: pages and API routes get report data only from here,
 // and every exported function checks who is asking. proxy.ts merely redirects
@@ -59,6 +59,23 @@ type RunCount = { slug: string; day: string; status: ReportStatus; count: number
 
 const iso = (date: Date | null | undefined) => (date ? new Date(date).toISOString() : '');
 
+// Only the fields that are set, as plain values.
+const toHighlight = ({ label, value, note, meter, trend }: ReportHighlight): ReportHighlight => ({
+    label,
+    value,
+    ...(note ? { note } : {}),
+    ...(typeof meter === 'number' ? { meter } : {}),
+    ...(trend && trend.length > 0 ? { trend: [...trend] } : {}),
+});
+
+const toChart = ({ type, x, y, threshold, max }: ReportChart): ReportChart => ({
+    type,
+    x,
+    y,
+    ...(threshold ? { threshold: { value: threshold.value, label: threshold.label } } : {}),
+    ...(typeof max === 'number' ? { max } : {}),
+});
+
 // Plain values only: cached results can't hold ObjectIds or other class instances.
 function toListItem(doc: IReport): ReportListItem {
     return {
@@ -81,8 +98,8 @@ function toListItem(doc: IReport): ReportListItem {
         recipients: [...doc.recipients],
         tags: [...doc.tags],
         spl: doc.spl,
-        highlights: doc.highlights.map(({ label, value, note }) => (note ? { label, value, note } : { label, value })),
-        chart: doc.chart ? { type: doc.chart.type, x: doc.chart.x, y: doc.chart.y } : null,
+        highlights: doc.highlights.map(toHighlight),
+        chart: doc.chart ? toChart(doc.chart) : null,
         resultsRunAt: doc.results ? iso(doc.results.runAt) : null,
         history: doc.history.map(({ runAt, status, durationSec, resultCount }) => ({ runAt: iso(runAt), status, durationSec, resultCount })),
     };

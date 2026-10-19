@@ -2,7 +2,7 @@ import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
 import { formatDuration, formatNumber } from '@/lib/format';
 import type { ReportConfig, ResultSet, StatusRule } from '@/lib/report-config';
-import type { Cell, ChartType, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import type { Cell, ChartThreshold, ChartType, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
 import type { JobContent, ResultsResponse, SavedSearchContent, SplunkBool, SplunkEntry } from './types';
 
 // Pure functions that turn Splunk REST JSON into SplunkEvents' models. No I/O,
@@ -337,29 +337,46 @@ type ResultsRun = RunSummary & Pick<RunFacts, 'columns' | 'rows'>;
 
 const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text);
 
-// x is the first column; y is the configured measure or the first numeric column.
-export function resolveChart(type: ChartType | null, table: ResultTable, y?: string): ReportChart | null {
+type ChartOptions = { y?: string; threshold?: ChartThreshold; max?: number };
+
+// x is the first column; y is the configured measure or the first numeric
+// column. A configured threshold and max carry over unchanged.
+export function resolveChart(type: ChartType | null, table: ResultTable, { y, threshold, max }: ChartOptions = {}): ReportChart | null {
     if (!type || table.columns.length < 2 || table.rows.length === 0) return null;
 
     const measure = y && table.columns.includes(y)
         ? y
         : table.columns.find((_, i) => i > 0 && table.rows.every((row) => typeof row[i] === 'number'));
+    if (!measure) return null;
 
-    return measure ? { type, x: table.columns[0], y: measure } : null;
+    return {
+        type,
+        x: table.columns[0],
+        y: measure,
+        ...(threshold ? { threshold } : {}),
+        ...(max !== undefined ? { max } : {}),
+    };
 }
 
-type HighlightInput = ResultSet & { previousResultCount?: number; durationSec: number; chart: ReportChart | null };
+type HighlightInput = ResultSet & {
+    previousResultCount?: number;
+    // Result counts of the recent runs that finished, oldest first.
+    resultTrend?: number[];
+    durationSec: number;
+    chart: ReportChart | null;
+};
 
 const changeNote = (delta: number) =>
     delta === 0 ? 'Same as the previous run' : `${delta > 0 ? '+' : '-'}${formatNumber(Math.abs(delta))} vs. previous run`;
 
-// Result count with the change since the previous run, the top row by the
-// charted measure, and how long the search took.
-export function defaultHighlights({ columns, rows, resultCount, previousResultCount, durationSec, chart }: HighlightInput): ReportHighlight[] {
+// Result count with the change since the previous run and a sparkline of the
+// recent runs, the top row by the charted measure, and how long the search took.
+export function defaultHighlights({ columns, rows, resultCount, previousResultCount, resultTrend, durationSec, chart }: HighlightInput): ReportHighlight[] {
     const highlights: ReportHighlight[] = [{
         label: 'Results',
         value: formatNumber(resultCount),
         note: previousResultCount === undefined ? undefined : changeNote(resultCount - previousResultCount),
+        ...(resultTrend && resultTrend.length > 1 ? { trend: resultTrend } : {}),
     }];
 
     if (chart) {
@@ -396,8 +413,9 @@ export function deriveReportFields({ recent, resultsRun, chartType, config }: De
         };
     }
 
-    const chart = resolveChart(chartType, resultsRun, config?.chart === 'none' ? undefined : config?.chart?.y);
+    const chart = resolveChart(chartType, resultsRun, config?.chart === 'none' ? undefined : config?.chart);
     const previous = recent.find((run) => run.runAt < resultsRun.runAt && run.status !== 'failed');
+    const resultTrend = recent.filter((run) => run.status !== 'failed').map((run) => run.resultCount).reverse();
     const highlightRule: (input: HighlightInput) => ReportHighlight[] = config?.highlights ?? defaultHighlights;
 
     return {
@@ -410,6 +428,7 @@ export function deriveReportFields({ recent, resultsRun, chartType, config }: De
             rows: resultsRun.rows,
             resultCount: resultsRun.resultCount,
             previousResultCount: previous?.resultCount,
+            resultTrend,
             durationSec: resultsRun.durationSec,
             chart,
         }),

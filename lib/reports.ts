@@ -18,6 +18,10 @@ export type ReportHighlight = {
     label: string;
     value: string;
     note?: string;
+    // How much of a limit is used, where 1 is the limit (more is over it). Shown as a meter.
+    meter?: number;
+    // Recent values, oldest first. Shown as a sparkline.
+    trend?: number[];
 };
 
 // One cell of a results table. Splunk sends strings; numbers are converted.
@@ -25,11 +29,21 @@ export type Cell = string | number;
 
 export type ChartType = 'bar' | 'column' | 'line' | 'area';
 
+// A limit drawn across a chart, such as an error budget. Values past it are highlighted.
+export type ChartThreshold = {
+    value: number;
+    label: string;
+};
+
 // x and y are column names from the report's results.
 export type ReportChart = {
     type: ChartType;
     x: string;
     y: string;
+    threshold?: ChartThreshold;
+    // The most the measure can be, such as 100 for a percentage. Bars then fill
+    // a track up to it, like meters.
+    max?: number;
 };
 
 export type SplunkReport = {

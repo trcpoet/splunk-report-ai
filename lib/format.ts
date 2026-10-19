@@ -18,6 +18,26 @@ export const formatNumber = (value: number) => {
     return fraction ? `${grouped}.${fraction}` : grouped;
 };
 
+const SIZE_UNITS: Record<string, number> = { K: 2 ** 10, M: 2 ** 20, G: 2 ** 30, T: 2 ** 40, P: 2 ** 50 };
+
+// A number Splunk sent as formatted text: "1,234", "$18,402,117", "1.84%" or a
+// df size like "12G". Leading zeros and dotted values ("007", "192.0.2.1") are
+// identifiers, not numbers.
+const FORMATTED_NUMBER = /^(-)?\$?((?:0|[1-9]\d{0,2}(?:,\d{3})+|[1-9]\d*)(?:\.\d+)?)\s?(%|[KMGTP](?:i?B)?)?$/;
+
+// The number in a results cell, so formatted text can be sorted and charted
+// like the numbers next to it. null when the cell isn't a number.
+export const parseNumber = (cell: string | number): number | null => {
+    if (typeof cell === 'number') return cell;
+
+    const match = cell.trim().match(FORMATTED_NUMBER);
+    if (!match) return null;
+
+    const [, minus, digits, unit] = match;
+    const value = Number(digits.replace(/,/g, '')) * (unit && unit !== '%' ? SIZE_UNITS[unit[0]] : 1);
+    return minus ? -value : value;
+};
+
 // For axis ticks: 1,284 → 1.3K, 2,500,000 → 2.5M.
 export const formatCompact = (value: number) => {
     const units: [number, string][] = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
