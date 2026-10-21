@@ -120,7 +120,7 @@ export const reports: FixtureReport[] = [
 | eval error_rate=round(errors / requests * 100, 2)
 | sort - error_rate`,
         highlights: [
-            { label: 'Overall error rate', value: '1.21%', note: 'Budget: 2%' },
+            { label: 'Overall error rate', value: '1.21%', note: 'Budget: 2%', meter: 0.6 },
             { label: 'Requests (1h)', value: '296,450' },
             { label: 'Worst host', value: 'web-prod-03', note: '4.80% errors' },
         ],
@@ -198,7 +198,7 @@ export const reports: FixtureReport[] = [
 | sort - GB`,
         highlights: [
             { label: 'Total ingested', value: '439.3 GB', note: 'Yesterday' },
-            { label: 'License used', value: '87.9%', note: 'of 500 GB/day' },
+            { label: 'License used', value: '87.9%', note: 'of 500 GB/day', meter: 0.88 },
             { label: 'Largest index', value: 'firewall', note: '182.4 GB' },
         ],
         columns: ['Index', 'GB ingested', '% of quota'],

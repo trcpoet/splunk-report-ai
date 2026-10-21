@@ -234,6 +234,27 @@
         .note {
             @apply text-light-200 text-xs;
         }
+
+        .value-row {
+            @apply flex flex-row items-center justify-between gap-3;
+        }
+
+        /* How much of a limit is used (components/Meter.tsx). */
+        .meter {
+            @apply my-1 h-1.5 w-full overflow-hidden rounded-full bg-dark-200;
+
+            .fill {
+                @apply h-full rounded-full bg-chart-1;
+            }
+
+            .fill.over {
+                @apply bg-[var(--status-warning)];
+            }
+        }
+
+        .sparkline {
+            @apply shrink-0;
+        }
     }
 
     .filters {
@@ -404,6 +425,18 @@
         }
     }
 
+    .table-filter {
+        @apply flex flex-row flex-wrap items-center gap-3;
+
+        input {
+            @apply bg-dark-100 border border-dark-200 rounded-[6px] px-4 py-2 text-sm w-full sm:max-w-xs placeholder:text-light-200/70 focus:border-primary focus:outline-none;
+        }
+
+        span {
+            @apply text-light-200 text-sm;
+        }
+    }
+
     .table-wrap {
         @apply overflow-x-auto rounded-[10px] border border-dark-200;
     }
@@ -413,6 +446,32 @@
 
         th {
             @apply bg-dark-200 text-light-200 font-medium px-4 py-3 whitespace-nowrap;
+        }
+
+        /* Sort buttons. On right-aligned number columns the arrow goes first,
+           so the label lines up with the numbers. */
+        th button {
+            @apply inline-flex items-center gap-1.5 cursor-pointer hover:text-light-100;
+        }
+
+        th.numeric button {
+            @apply flex-row-reverse;
+        }
+
+        th[aria-sort] button {
+            @apply text-light-100;
+        }
+
+        .sort-icon {
+            @apply size-3.5 shrink-0 opacity-50;
+        }
+
+        th[aria-sort] .sort-icon {
+            @apply opacity-100;
+        }
+
+        td.no-match {
+            @apply py-8 text-center text-light-200 whitespace-normal;
         }
 
         td {

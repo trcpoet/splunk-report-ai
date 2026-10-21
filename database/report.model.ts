@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model } from 'mongoose';
-import type { ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import type { ChartPanel, ChartScatter, ChartThreshold, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
 
 // One report per Splunk scheduled search. The sync worker upserts it by slug
 // and recomputes the derived fields (latest, history, highlights, chart) on
@@ -68,12 +68,42 @@ const LatestRunSchema = new Schema<IRunSummary & { statusMessage?: string }>(
     { _id: false },
 );
 
+const ThresholdSchema = new Schema<ChartThreshold>(
+    {
+        value: { type: Number, required: true },
+        label: { type: String, required: true },
+    },
+    { _id: false },
+);
+
+const PanelSchema = new Schema<ChartPanel>(
+    {
+        y: { type: String, required: true },
+        threshold: ThresholdSchema,
+    },
+    { _id: false },
+);
+
+const ScatterSchema = new Schema<ChartScatter>(
+    {
+        x: { type: String, required: true },
+        log: Boolean,
+        caption: { type: String, required: true },
+    },
+    { _id: false },
+);
+
 const ChartSchema = new Schema<ReportChart>(
     {
         // A nested field called `type` needs the long form in Mongoose.
         type: { type: String, enum: ['bar', 'column', 'line', 'area'], required: true },
         x: { type: String, required: true },
         y: { type: String, required: true },
+        threshold: ThresholdSchema,
+        max: Number,
+        // Left out rather than stored empty.
+        panels: { type: [PanelSchema], default: undefined },
+        scatter: ScatterSchema,
     },
     { _id: false },
 );
@@ -83,6 +113,9 @@ const HighlightSchema = new Schema<ReportHighlight>(
         label: { type: String, required: true },
         value: { type: String, required: true },
         note: String,
+        meter: Number,
+        // Left out rather than stored empty.
+        trend: { type: [Number], default: undefined },
     },
     { _id: false },
 );

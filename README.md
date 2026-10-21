@@ -27,6 +27,8 @@ Splunk REST API (:8089) ─┐
 - **Access** (`lib/dal.ts`, `lib/access.ts`): every page and API route reads data through the data access layer, which checks the signed-in user's groups. `proxy.ts` only redirects signed-out visitors to `/login`.
 - **Login** (Better Auth, email and password for the demo): public sign-up is off; accounts come from `npm run seed`. Report access lives in its own `user_access` collection, so moving to company SSO later doesn't change the access code.
 
+New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md).
+
 ## Running locally
 
 Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and MongoDB 8.
@@ -61,7 +63,7 @@ All use the value of `DEMO_PASSWORD` from `.env.local` as their password (see it
 | finance.analyst@example.com | finance-ops, it-finance | payments, license usage |
 | it.director@example.com | it-director | failed logins, VPN by country |
 
-A report's groups default to the email lists it was sent to (`secops@example.com` → `secops`). Override them per report in `lib/report-config.ts`, and copy them there **before** you turn off a report's email action in Splunk, because the defaults disappear with it. Scheduled searches that aren't in `report-config` yet are admin-only.
+A report's groups default to the email lists it was sent to (`secops@example.com` → `secops`). Override them per report in `lib/report-config.ts`, and copy them there **before** you turn off a report's email action in Splunk, because the defaults disappear with it. Scheduled searches that aren't in `report-config` yet are admin-only. See [docs/report-access.md](docs/report-access.md) for every setting and a worked example.
 
 ### Scripts
 
@@ -93,7 +95,9 @@ The live demo runs on Vercel with a free MongoDB Atlas cluster (M0). To host you
 
 ## Connecting real Splunk
 
-The mapping, access and UI code stay the same; only the worker's settings change:
+**Step-by-step guide:** [docs/connecting-live-splunk.md](docs/connecting-live-splunk.md) (work laptop setup, what to ask your Splunk admin, testing the token, troubleshooting). **Who sees which report:** [docs/report-access.md](docs/report-access.md).
+
+In short, the mapping, access and UI code stay the same; only the worker's settings change:
 
 1. Create a Splunk service account with an authentication token, and share the scheduled reports with its role.
 2. On Splunk Cloud, add the worker's IP address to the `search-api` allow list (needs `sc_admin` or a support ticket; trial stacks have no REST access).

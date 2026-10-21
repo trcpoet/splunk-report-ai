@@ -30,3 +30,14 @@ export const LINE_CURSOR = { stroke: 'var(--color-light-200)', strokeWidth: 1 };
 // Marks: bars at most 24px thick with a 4px rounded data end; 2px lines.
 export const MAX_BAR_SIZE = 24;
 export const LINE_WIDTH = 2;
+
+// A limit across the chart, such as an error budget. Dashed, so it reads as a
+// threshold rather than a gridline, and always labeled with its name.
+export const THRESHOLD_LINE = { stroke: 'var(--status-warning)', strokeWidth: 1.5, strokeDasharray: '4 4' };
+
+// Values past the threshold. They're what make the report's status rule warn,
+// so they take the warning status color.
+export const OVER_THRESHOLD_FILL = 'var(--status-warning)';
+
+// The empty part of a meter bar, one step off the chart surface.
+export const METER_TRACK_FILL = 'var(--color-dark-200)';
