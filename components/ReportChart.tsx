@@ -21,7 +21,7 @@ type Box = { x?: number | string; y?: number | string; width?: number | string; 
 //
 // A threshold adds a dashed line at the limit, and the values past it take the
 // warning color. A max turns bars into meters: each one fills a track up to it.
-const ReportChart = ({ chart, columns, rows }: Props) => {
+const SingleChart = ({ chart, columns, rows }: Props) => {
     const x = columns.indexOf(chart.x);
     const y = columns.indexOf(chart.y);
     // Text such as "$18,402,117" is plotted as its number and labeled as written.
@@ -85,10 +85,12 @@ const ReportChart = ({ chart, columns, rows }: Props) => {
         const labelWidth = Math.min(160, Math.max(...data.map(({ label }) => label.length)) * 7 + 12);
         // Room above the plot for the threshold's label.
         const top = threshold ? 22 : 4;
+        // Room after the bars for the longest value label, such as "$18,402,117".
+        const right = Math.max(56, ...data.filter((point, i) => i === peak || isOver(point.value)).map(({ text }) => String(text).length * 7 + 10));
 
         return (
             <ChartContainer config={config} className={CHART_CLASS} style={{ height: data.length * 36 + 36 + top }} aria-label={description}>
-                <BarChart data={data} layout="vertical" margin={{ top, right: 56, bottom: 4, left: 0 }}>
+                <BarChart data={data} layout="vertical" margin={{ top, right, bottom: 4, left: 0 }}>
                     <CartesianGrid horizontal={false} stroke={GRID_STROKE} />
                     <XAxis tickMargin={X_TICK_MARGIN} type="number" domain={domain} tickFormatter={formatCompact} tickLine={false} axisLine={false} tick={AXIS_TICK} />
                     <YAxis type="category" dataKey="label" width={labelWidth} tickLine={false} axisLine={false} tick={AXIS_TICK} />
@@ -160,6 +162,23 @@ const ReportChart = ({ chart, columns, rows }: Props) => {
                 </LineChart>
             )}
         </ChartContainer>
+    );
+}
+
+// With panels, one small chart per measure (small multiples). Each keeps the
+// rows in the results order, so a category sits in the same place in every chart.
+const ReportChart = ({ chart, columns, rows }: Props) => {
+    if (!chart.panels) return <SingleChart chart={chart} columns={columns} rows={rows} />;
+
+    return (
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+            {chart.panels.map(({ y, threshold }) => (
+                <div key={y} className="flex min-w-0 flex-col gap-1">
+                    <span className="text-light-100 text-sm font-semibold">{y}</span>
+                    <SingleChart chart={{ type: chart.type, x: chart.x, y, ...(threshold ? { threshold } : {}) }} columns={columns} rows={rows} />
+                </div>
+            ))}
+        </div>
     );
 }
 

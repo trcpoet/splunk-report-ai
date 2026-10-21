@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model } from 'mongoose';
-import type { ChartThreshold, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import type { ChartPanel, ChartScatter, ChartThreshold, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
 
 // One report per Splunk scheduled search. The sync worker upserts it by slug
 // and recomputes the derived fields (latest, history, highlights, chart) on
@@ -76,6 +76,23 @@ const ThresholdSchema = new Schema<ChartThreshold>(
     { _id: false },
 );
 
+const PanelSchema = new Schema<ChartPanel>(
+    {
+        y: { type: String, required: true },
+        threshold: ThresholdSchema,
+    },
+    { _id: false },
+);
+
+const ScatterSchema = new Schema<ChartScatter>(
+    {
+        x: { type: String, required: true },
+        log: Boolean,
+        caption: { type: String, required: true },
+    },
+    { _id: false },
+);
+
 const ChartSchema = new Schema<ReportChart>(
     {
         // A nested field called `type` needs the long form in Mongoose.
@@ -84,6 +101,9 @@ const ChartSchema = new Schema<ReportChart>(
         y: { type: String, required: true },
         threshold: ThresholdSchema,
         max: Number,
+        // Left out rather than stored empty.
+        panels: { type: [PanelSchema], default: undefined },
+        scatter: ScatterSchema,
     },
     { _id: false },
 );

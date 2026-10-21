@@ -35,6 +35,23 @@ export type ChartThreshold = {
     label: string;
 };
 
+// One small chart among several, each plotting another measure of the same rows.
+export type ChartPanel = {
+    y: string;
+    threshold?: ChartThreshold;
+};
+
+// A dot per row, placed by the chart's measure (up) and another measure
+// (across), and labeled with the chart's x column. It shows what one measure
+// can't, such as many failures coming from a single source.
+export type ChartScatter = {
+    x: string;
+    // A log scale across, for a measure that runs from 1 into the thousands.
+    log?: boolean;
+    // How to read the dots.
+    caption: string;
+};
+
 // x and y are column names from the report's results.
 export type ReportChart = {
     type: ChartType;
@@ -44,6 +61,11 @@ export type ReportChart = {
     // The most the measure can be, such as 100 for a percentage. Bars then fill
     // a track up to it, like meters.
     max?: number;
+    // Small multiples: one small chart per measure, with the rows in the same
+    // order in each, in place of the single chart. Never one chart with two y-axes.
+    panels?: ChartPanel[];
+    // A second chart, drawn below the first.
+    scatter?: ChartScatter;
 };
 
 export type SplunkReport = {

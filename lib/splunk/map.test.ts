@@ -11,6 +11,7 @@ import {
     mapResults,
     parseRecipients,
     parseSplunkTime,
+    resolveChart,
     runStatus,
     runsPerWeek,
     toCell,
@@ -113,6 +114,29 @@ describe('runStatus', () => {
     });
 });
 
+describe('resolveChart', () => {
+    const table = {
+        columns: ['Region', 'Transactions', 'Volume', 'Owner'],
+        rows: [['us-east', 412880, '$18,402,117', 'payments-eng'], ['eu-central', 214902, '$9,516,340', 'payments-eu']],
+    };
+
+    test('keeps panels whose columns read as numbers, including formatted text', () => {
+        const chart = resolveChart('bar', table, { panels: [{ y: 'Transactions' }, { y: 'Volume' }, { y: 'Owner' }, { y: 'Missing' }] });
+        assert.deepEqual(chart?.panels, [{ y: 'Transactions' }, { y: 'Volume' }]);
+    });
+
+    test('leaves panels out when none can be drawn', () => {
+        assert.equal(resolveChart('bar', table, { panels: [{ y: 'Owner' }] })?.panels, undefined);
+    });
+
+    test('keeps a scatter only when its measure is a numeric column', () => {
+        const scatter = { x: 'Volume', caption: 'Each dot is a region.' };
+        assert.deepEqual(resolveChart('bar', table, { scatter })?.scatter, scatter);
+        assert.equal(resolveChart('bar', table, { scatter: { ...scatter, x: 'Owner' } })?.scatter, undefined);
+        assert.equal(resolveChart('bar', table, { scatter: { ...scatter, x: 'Missing' } })?.scatter, undefined);
+    });
+});
+
 // Runs the Splunk side of the sync against the fixture transport, without
 // MongoDB, and checks that it reproduces the dummy reports.
 describe('fixture pipeline', () => {
@@ -210,8 +234,26 @@ describe('fixture pipeline', () => {
         assert.equal(charts['privileged-group-changes'], null);
         assert.deepEqual(charts['web-5xx-error-rate'], { type: 'column', x: 'Host', y: 'Error rate %', threshold: { value: 2, label: '2% error budget' } });
         assert.deepEqual(charts['disk-space-over-85'], { type: 'bar', x: 'Host', y: 'Used %', threshold: { value: 95, label: '95% critical' }, max: 100 });
-        assert.deepEqual(charts['failed-logins-by-user'], { type: 'bar', x: 'User', y: 'Failures' });
         assert.deepEqual(charts['forwarder-health-missing-hosts'], { type: 'bar', x: 'Host', y: 'Minutes silent' });
+
+        const { scatter: loginScatter, ...logins } = charts['failed-logins-by-user']!;
+        assert.deepEqual(logins, { type: 'bar', x: 'User', y: 'Failures' });
+        assert.equal(loginScatter?.x, 'Distinct sources');
+
+        const firewall = charts['firewall-denied-top-sources']!;
+        assert.equal(firewall.y, 'Denied');
+        assert.equal(firewall.scatter?.x, 'Distinct ports');
+        assert.equal(firewall.scatter?.log, true);
+
+        // Volume and Decline rate are text ("$18,402,117", "1.84%") but still count as numbers.
+        const payments = charts['payments-volume-latency']!;
+        assert.equal(payments.type, 'bar');
+        assert.deepEqual(payments.panels, [
+            { y: 'Transactions' },
+            { y: 'Volume' },
+            { y: 'p95 latency (ms)', threshold: { value: 400, label: '400 ms SLO' } },
+            { y: 'Decline rate' },
+        ]);
     });
 
     test('builds highlights, with the custom ones for web 5xx and license usage', async () => {

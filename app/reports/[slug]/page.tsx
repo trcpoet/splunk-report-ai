@@ -7,6 +7,7 @@ import ResultsTable from "@/components/ResultsTable";
 import ReportActions from "@/components/ReportActions";
 import ReportCard from "@/components/ReportCard";
 import ReportChart from "@/components/ReportChart";
+import ReportScatter from "@/components/ReportScatter";
 import RunTrend from "@/components/RunTrend";
 import Meter from "@/components/Meter";
 import Sparkline from "@/components/Sparkline";
@@ -17,6 +18,9 @@ import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 type Props = { params: Promise<{ slug: string }> };
 
 const STATUS_LABELS = { success: 'Success', warning: 'Warning', failed: 'Failed' } as const;
+
+// "Transactions, Volume, and Decline rate", for small-multiple headings.
+const LIST_FORMAT = new Intl.ListFormat('en', { type: 'conjunction' });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
@@ -117,14 +121,36 @@ async function ReportDetails({ params }: Props) {
                         {report.chart && report.rows.length > 0 && (
                             <figure className="chart-card">
                                 <figcaption className="flex flex-col gap-0.5">
-                                    <span className="chart-heading">{report.chart.y} by {report.chart.x}</span>
-                                    <span className="chart-subtitle">
-                                        {report.chart.threshold
-                                            ? `Values past the dashed line (${report.chart.threshold.label}) are highlighted and labeled. Every value is in the table below.`
-                                            : 'The largest value is labeled. Every value is in the table below.'}
-                                    </span>
+                                    {report.chart.panels ? (
+                                        <>
+                                            <span className="chart-heading">
+                                                {LIST_FORMAT.format(report.chart.panels.map(({ y }) => y))} by {report.chart.x}
+                                            </span>
+                                            <span className="chart-subtitle">
+                                                One chart per measure, with the bars in the same order in each. The largest value in each is labeled, and values past a dashed line are highlighted. Every value is in the table below.
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="chart-heading">{report.chart.y} by {report.chart.x}</span>
+                                            <span className="chart-subtitle">
+                                                {report.chart.threshold
+                                                    ? `Values past the dashed line (${report.chart.threshold.label}) are highlighted and labeled. Every value is in the table below.`
+                                                    : 'The largest value is labeled. Every value is in the table below.'}
+                                            </span>
+                                        </>
+                                    )}
                                 </figcaption>
                                 <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
+                            </figure>
+                        )}
+                        {report.chart?.scatter && report.rows.length > 0 && (
+                            <figure className="chart-card">
+                                <figcaption className="flex flex-col gap-0.5">
+                                    <span className="chart-heading">{report.chart.y} vs. {report.chart.scatter.x}</span>
+                                    <span className="chart-subtitle">{report.chart.scatter.caption}</span>
+                                </figcaption>
+                                <ReportScatter chart={{ ...report.chart, scatter: report.chart.scatter }} columns={report.columns} rows={report.rows} />
                             </figure>
                         )}
                         {report.columns.length > 0 ? (

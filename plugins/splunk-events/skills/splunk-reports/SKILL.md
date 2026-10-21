@@ -42,6 +42,9 @@ The app never reads Splunk or the fixtures directly. It reads MongoDB through th
      - `threshold: { value, label }` draws a dashed limit line (e.g. a 2% error budget), and the bars past it take the warning color. Put the number in a constant that the `statusRule` uses too, so the chart and the warning agree.
      - `max` (e.g. `100` for a percentage) turns bars into meters that fill a track up to it.
      - The measure can be a text column of formatted numbers (`"$1,234"`, `"1.84%"`, `"12G"`). The table and chart read them as numbers.
+     - `panels: [{ y, threshold? }, ...]` draws one small chart per measure instead of one chart (small multiples), with the rows in the same order in each, as on the payments report. Use it for measures with different units; never put two y-axes on one chart.
+     - `scatter: { x, log?, caption }` adds a second chart: a dot per row, with the chart's measure going up and `x` going across, labeled with the first column. `log: true` suits measures that run from 1 into the thousands (ports). `caption` says how to read it, e.g. "far right suggests a port scan".
+     - Panels and the scatter are dropped when their columns are missing or not numeric. The sync works out the chart, so run `npm run sync` after changing it.
    - `index`: overrides the index text parsed from the SPL.
    - `statusRule`: turns results into a warning with a one- or two-sentence message, e.g. "warn when any host is above 2%".
    - `highlights`: custom headline numbers. The default is the result count with its change since the previous run (and a sparkline of the recent runs), the top row by the charted measure, and the search time. A highlight with `meter` (the share of a limit, where 1 is the limit) shows a meter under its value, as on the license usage report.

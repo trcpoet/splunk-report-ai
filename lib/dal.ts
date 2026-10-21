@@ -7,7 +7,7 @@ import { Report, ReportRun, SyncState, SYNC_STATE_ID, UserAccess, type IReport }
 import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
-import type { Cell, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import type { Cell, ChartThreshold, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
 
 // The data access layer: pages and API routes get report data only from here,
 // and every exported function checks who is asking. proxy.ts merely redirects
@@ -68,12 +68,18 @@ const toHighlight = ({ label, value, note, meter, trend }: ReportHighlight): Rep
     ...(trend && trend.length > 0 ? { trend: [...trend] } : {}),
 });
 
-const toChart = ({ type, x, y, threshold, max }: ReportChart): ReportChart => ({
+const toThreshold = ({ value, label }: ChartThreshold): ChartThreshold => ({ value, label });
+
+const toChart = ({ type, x, y, threshold, max, panels, scatter }: ReportChart): ReportChart => ({
     type,
     x,
     y,
-    ...(threshold ? { threshold: { value: threshold.value, label: threshold.label } } : {}),
+    ...(threshold ? { threshold: toThreshold(threshold) } : {}),
     ...(typeof max === 'number' ? { max } : {}),
+    ...(panels && panels.length > 0
+        ? { panels: panels.map((panel) => ({ y: panel.y, ...(panel.threshold ? { threshold: toThreshold(panel.threshold) } : {}) })) }
+        : {}),
+    ...(scatter ? { scatter: { x: scatter.x, caption: scatter.caption, ...(scatter.log ? { log: true } : {}) } } : {}),
 });
 
 // Plain values only: cached results can't hold ObjectIds or other class instances.

@@ -1,5 +1,5 @@
 import { formatNumber } from '@/lib/format';
-import type { Cell, ChartThreshold, ChartType, ReportCategory, ReportHighlight } from '@/lib/reports';
+import type { Cell, ChartPanel, ChartScatter, ChartThreshold, ChartType, ReportCategory, ReportHighlight } from '@/lib/reports';
 
 // What Splunk doesn't know about each report, keyed by the saved search name:
 // its slug, category and tags, who may see it, and optional chart, status and
@@ -32,7 +32,9 @@ export type ReportConfig = {
     // (default: the first numeric column). type overrides the chart saved in Splunk.
     // threshold draws a limit across the chart and highlights the values past
     // it; max turns the bars into meters that fill up to it (100 for a percentage).
-    chart?: 'none' | { type?: ChartType; y?: string; threshold?: ChartThreshold; max?: number };
+    // panels draws one small chart per measure instead of one chart, and
+    // scatter adds a chart of dots placing y against another measure.
+    chart?: 'none' | { type?: ChartType; y?: string; threshold?: ChartThreshold; max?: number; panels?: ChartPanel[]; scatter?: ChartScatter };
     // Overrides the index text parsed from the SPL.
     index?: string;
     statusRule?: StatusRule;
@@ -53,6 +55,7 @@ const hours = (minutes: number) => {
 const ERROR_BUDGET_PCT = 2;
 const DISK_CRITICAL_PCT = 95;
 const LICENSE_GB_PER_DAY = 500;
+const PAYMENTS_P95_SLO_MS = 400;
 
 // How much of a limit a value uses, for highlight meters: 0.6 is 60%.
 const share = (value: number, limit: number) => Math.round((value / limit) * 100) / 100;
@@ -62,6 +65,12 @@ export const reportConfig: Record<string, ReportConfig> = {
         slug: 'failed-logins-by-user',
         category: 'Security',
         tags: ['security', 'authentication', 'daily'],
+        chart: {
+            scatter: {
+                x: 'Distinct sources',
+                caption: 'Each dot is an account. High and to the left: many failures from one source, which suggests password guessing. Further right: failures from many sources, which suggests password spraying.',
+            },
+        },
     },
     'Web Server 5xx Error Rate': {
         slug: 'web-5xx-error-rate',
@@ -106,6 +115,13 @@ export const reportConfig: Record<string, ReportConfig> = {
         slug: 'firewall-denied-top-sources',
         category: 'Security',
         tags: ['security', 'network', 'firewall'],
+        chart: {
+            scatter: {
+                x: 'Distinct ports',
+                log: true,
+                caption: 'Each dot is a source IP. Far right: hundreds of ports, which suggests a port scan. Far left: one port hit again and again, which suggests a flood. Ports use a log scale.',
+            },
+        },
     },
     'License Usage by Index': {
         slug: 'license-usage-by-index',
@@ -134,6 +150,16 @@ export const reportConfig: Record<string, ReportConfig> = {
         slug: 'payments-volume-latency',
         category: 'Business',
         tags: ['business', 'payments', 'daily'],
+        // Four measures with different units, so four small charts.
+        chart: {
+            type: 'bar',
+            panels: [
+                { y: 'Transactions' },
+                { y: 'Volume' },
+                { y: 'p95 latency (ms)', threshold: { value: PAYMENTS_P95_SLO_MS, label: `${PAYMENTS_P95_SLO_MS} ms SLO` } },
+                { y: 'Decline rate' },
+            ],
+        },
     },
     'Disk Space Utilization Above 85%': {
         slug: 'disk-space-over-85',

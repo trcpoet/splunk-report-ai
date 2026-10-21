@@ -1,8 +1,8 @@
 import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
-import { formatDuration, formatNumber } from '@/lib/format';
+import { formatDuration, formatNumber, parseNumber } from '@/lib/format';
 import type { ReportConfig, ResultSet, StatusRule } from '@/lib/report-config';
-import type { Cell, ChartThreshold, ChartType, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import type { Cell, ChartPanel, ChartScatter, ChartThreshold, ChartType, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
 import type { JobContent, ResultsResponse, SavedSearchContent, SplunkBool, SplunkEntry } from './types';
 
 // Pure functions that turn Splunk REST JSON into SplunkEvents' models. No I/O,
@@ -337,11 +337,18 @@ type ResultsRun = RunSummary & Pick<RunFacts, 'columns' | 'rows'>;
 
 const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text);
 
-type ChartOptions = { y?: string; threshold?: ChartThreshold; max?: number };
+type ChartOptions = { y?: string; threshold?: ChartThreshold; max?: number; panels?: ChartPanel[]; scatter?: ChartScatter };
+
+// Every row of the column reads as a number, including text such as "$1,234".
+const isNumericColumn = (table: ResultTable, column: string) => {
+    const index = table.columns.indexOf(column);
+    return index >= 0 && table.rows.every((row) => parseNumber(row[index]) !== null);
+};
 
 // x is the first column; y is the configured measure or the first numeric
-// column. A configured threshold and max carry over unchanged.
-export function resolveChart(type: ChartType | null, table: ResultTable, { y, threshold, max }: ChartOptions = {}): ReportChart | null {
+// column. A configured threshold and max carry over unchanged. Panels and the
+// scatter are kept only when their measures are numeric columns of this run.
+export function resolveChart(type: ChartType | null, table: ResultTable, { y, threshold, max, panels, scatter }: ChartOptions = {}): ReportChart | null {
     if (!type || table.columns.length < 2 || table.rows.length === 0) return null;
 
     const measure = y && table.columns.includes(y)
@@ -349,12 +356,17 @@ export function resolveChart(type: ChartType | null, table: ResultTable, { y, th
         : table.columns.find((_, i) => i > 0 && table.rows.every((row) => typeof row[i] === 'number'));
     if (!measure) return null;
 
+    const shownPanels = panels?.filter((panel) => isNumericColumn(table, panel.y)) ?? [];
+    const showScatter = scatter && isNumericColumn(table, scatter.x) && isNumericColumn(table, measure);
+
     return {
         type,
         x: table.columns[0],
         y: measure,
         ...(threshold ? { threshold } : {}),
         ...(max !== undefined ? { max } : {}),
+        ...(shownPanels.length > 0 ? { panels: shownPanels } : {}),
+        ...(showScatter ? { scatter } : {}),
     };
 }
 
