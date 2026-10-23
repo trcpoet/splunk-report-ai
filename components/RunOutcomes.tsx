@@ -3,6 +3,7 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { BarShapeProps } from "recharts";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import ChartBoundary from "@/components/ChartBoundary";
 import ResultsTable from "@/components/ResultsTable";
 import { AXIS_TICK, X_TICK_MARGIN, BAND_CURSOR, CHART_CLASS, GRID_STROKE, MAX_BAR_SIZE, TOOLTIP_CLASS } from "@/lib/chart-theme";
 import { formatDay } from "@/lib/format";
@@ -52,25 +53,27 @@ const RunOutcomes = ({ days }: { days: RunOutcomeDay[] }) => {
                 <span className="chart-subtitle">By outcome, {first} to {last} (UTC)</span>
             </figcaption>
 
-            <ChartContainer config={config} className={CHART_CLASS} style={{ height: 260 }} aria-label="Stacked bar chart of scheduled runs per day by outcome">
-                <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                    <CartesianGrid vertical={false} stroke={GRID_STROKE} />
-                    <XAxis tickMargin={X_TICK_MARGIN} dataKey="label" tickLine={false} axisLine={false} tick={AXIS_TICK} />
-                    <YAxis tickLine={false} axisLine={false} tick={AXIS_TICK} width={32} allowDecimals={false} />
-                    <ChartTooltip cursor={BAND_CURSOR} itemSorter={byOutcome} content={<ChartTooltipContent className={TOOLTIP_CLASS} />} />
-                    <ChartLegend itemSorter={byOutcome} content={<ChartLegendContent />} />
-                    {OUTCOMES.map((outcome) => (
-                        <Bar
-                            key={outcome}
-                            dataKey={outcome}
-                            stackId="runs"
-                            fill={`var(--color-${outcome})`}
-                            maxBarSize={MAX_BAR_SIZE}
-                            shape={(props: BarShapeProps) => <StackSegment {...props} outcome={outcome} />}
-                        />
-                    ))}
-                </BarChart>
-            </ChartContainer>
+            <ChartBoundary>
+                <ChartContainer config={config} className={CHART_CLASS} style={{ height: 260 }} aria-label="Stacked bar chart of scheduled runs per day by outcome">
+                    <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+                        <CartesianGrid vertical={false} stroke={GRID_STROKE} />
+                        <XAxis tickMargin={X_TICK_MARGIN} dataKey="label" tickLine={false} axisLine={false} tick={AXIS_TICK} />
+                        <YAxis tickLine={false} axisLine={false} tick={AXIS_TICK} width={32} allowDecimals={false} />
+                        <ChartTooltip cursor={BAND_CURSOR} itemSorter={byOutcome} content={<ChartTooltipContent className={TOOLTIP_CLASS} />} />
+                        <ChartLegend itemSorter={byOutcome} content={<ChartLegendContent />} />
+                        {OUTCOMES.map((outcome) => (
+                            <Bar
+                                key={outcome}
+                                dataKey={outcome}
+                                stackId="runs"
+                                fill={`var(--color-${outcome})`}
+                                maxBarSize={MAX_BAR_SIZE}
+                                shape={(props: BarShapeProps) => <StackSegment {...props} outcome={outcome} />}
+                            />
+                        ))}
+                    </BarChart>
+                </ChartContainer>
+            </ChartBoundary>
 
             <details>
                 <summary>Show as table</summary>

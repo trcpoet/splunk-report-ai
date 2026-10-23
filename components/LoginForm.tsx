@@ -1,32 +1,53 @@
 'use client';
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { safeNextPath } from "@/lib/next-path";
 
 type Props = {
-    // A same-site path, already checked by the login page.
-    next: string;
     // Listed in development and in DEMO_MODE, to make the demo easy to try.
     demoAccounts: { email: string; access: string }[];
     // DEMO_MODE only: the shared password, so each account signs in with one click.
     demoPassword?: string;
 };
 
-const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
+// Says what went wrong in terms the person can act on. Better Auth answers 401
+// for a wrong email or password, 429 after too many tries in a row, and 403
+// on an address it doesn't trust, such as a per-deployment Vercel URL.
+const messageFor = (status: number | undefined) => {
+    if (status === 429) return 'Too many attempts. Wait a minute and try again.';
+    if (status === 403) return 'Signing in doesn’t work from this address. Open the app’s main address and sign in there.';
+    if (status === undefined || status >= 500) return 'Couldn’t reach the sign-in service. Try again in a moment.';
+    return 'Wrong email or password.';
+};
+
+const Spinner = () => <LoaderCircle aria-hidden="true" className="spinner" />;
+
+const LoginForm = ({ demoAccounts, demoPassword }: Props) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [pending, setPending] = useState(false);
+    // What is signing in: 'form', or the email of the demo account clicked.
+    const [pending, setPending] = useState<string | null>(null);
+    const passwordRef = useRef<HTMLInputElement>(null);
 
-    const signIn = async (email: string, password: string) => {
-        setPending(true);
+    const signIn = async (email: string, password: string, source: string) => {
+        setPending(source);
         setError(null);
 
-        const { error } = await authClient.signIn.email({ email, password });
+        let status: number | undefined;
+        try {
+            const { error } = await authClient.signIn.email({ email, password });
+            if (!error) status = 200;
+            else status = error.status;
+        } catch {
+            status = undefined;
+        }
 
-        if (error) {
-            setError(error.status === 429 ? 'Too many attempts. Wait a minute and try again.' : 'Wrong email or password.');
-            setPending(false);
+        if (status !== 200) {
+            setError(messageFor(status));
+            setPending(null);
             return;
         }
 
@@ -34,20 +55,35 @@ const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
         // the redirect to /login that was prefetched for `next` while signed out,
         // and reusing it bounced production builds between /login and `next`.
         // replace() keeps /login out of the history, as router.replace() did.
-        window.location.replace(next);
+        // The proxy puts `next` in the address; safeNextPath keeps it on this site.
+        window.location.replace(safeNextPath(new URLSearchParams(window.location.search).get('next')));
     }
 
     const onSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        signIn(email, password);
+        signIn(email, password, 'form');
     }
 
+    // Without the demo password (local development), a click fills in the email
+    // and moves on to the password.
+    const pickAccount = (account: string) => {
+        if (demoPassword) {
+            signIn(account, demoPassword, account);
+            return;
+        }
+        setEmail(account);
+        passwordRef.current?.focus();
+    }
+
+    // method="post": a submit before the page's JavaScript has loaded reloads
+    // the page instead of putting the password in the address bar.
     return (
-        <form className="login-card" onSubmit={onSubmit}>
+        <form className="login-card" method="post" onSubmit={onSubmit} aria-busy={pending !== null}>
             <label>
                 Email
                 <input
                     type="email"
+                    name="email"
                     autoComplete="username"
                     required
                     value={email}
@@ -58,7 +94,9 @@ const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
             <label>
                 Password
                 <input
+                    ref={passwordRef}
                     type="password"
+                    name="password"
                     autoComplete="current-password"
                     required
                     value={password}
@@ -68,8 +106,8 @@ const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
 
             {error && <p className="form-error" role="alert">{error}</p>}
 
-            <button type="submit" className="btn-primary" disabled={pending}>
-                {pending ? 'Signing in…' : 'Sign in'}
+            <button type="submit" className="btn-primary" disabled={pending !== null}>
+                {pending === 'form' ? <><Spinner /> Signing in…</> : 'Sign in'}
             </button>
 
             {demoAccounts.length > 0 && (
@@ -85,14 +123,10 @@ const LoginForm = ({ next, demoAccounts, demoPassword }: Props) => {
                     <ul>
                         {demoAccounts.map((account) => (
                             <li key={account.email}>
-                                <button
-                                    type="button"
-                                    disabled={pending}
-                                    onClick={() => (demoPassword ? signIn(account.email, demoPassword) : setEmail(account.email))}
-                                >
+                                <button type="button" disabled={pending !== null} onClick={() => pickAccount(account.email)}>
                                     {account.email}
                                 </button>
-                                <span>{account.access}</span>
+                                {pending === account.email ? <span className="signing-in"><Spinner /> Signing in…</span> : <span>{account.access}</span>}
                             </li>
                         ))}
                     </ul>

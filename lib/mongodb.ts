@@ -23,7 +23,13 @@ async function connectDB(): Promise<typeof mongoose> {
         const uri = process.env.MONGODB_URI;
         if (!uri) throw new Error('MONGODB_URI is not set. Add it to .env.local.');
 
-        cached.promise = mongoose.connect(uri, { bufferCommands: false });
+        cached.promise = mongoose.connect(uri, {
+            bufferCommands: false,
+            // Atlas in the same region answers in well under a second, even on a
+            // cold start. If the database is down, pages show their error screen
+            // after 5 s instead of the driver's default 30 s.
+            serverSelectionTimeoutMS: 5000,
+        });
     }
 
     try {

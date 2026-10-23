@@ -13,8 +13,9 @@ function getClient() {
     const uri = process.env.MONGODB_URI;
     if (!uri) throw new Error('MONGODB_URI is not set. Add it to .env.local.');
 
-    // Reused across dev hot reloads. It connects on first use.
-    global.authMongoClient ??= new MongoClient(uri);
+    // Reused across dev hot reloads. It connects on first use, and gives up
+    // after 5 s like the app's own connection (lib/mongodb.ts).
+    global.authMongoClient ??= new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
     return global.authMongoClient;
 }
 

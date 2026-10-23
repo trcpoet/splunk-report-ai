@@ -1,23 +1,27 @@
-import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
+import NavLinks, { HomeLink, NavLinkList } from "@/components/NavLinks";
+import { UserMenuSkeleton } from "@/components/Skeletons";
 import UserMenu from "@/components/UserMenu";
 
 const Navbar = () => {
     return (
         <header>
             <nav>
-                <Link href='/' className="logo">
+                <HomeLink className="logo">
                     <Image src="/icons/logo.svg" alt="SplunkEvents logo" width={24} height={24} />
 
                     <p>SplunkEvents</p>
-                </Link>
+                </HomeLink>
 
                 <ul>
-                    <li><Link href="/">Overview</Link></li>
-                    <li><Link href="/#reports">All Reports</Link></li>
+                    {/* Marking the current page needs the address, which a report
+                        page's prerendered shell doesn't know yet. */}
+                    <Suspense fallback={<NavLinkList />}>
+                        <NavLinks />
+                    </Suspense>
                     <li>
-                        <Suspense fallback={null}>
+                        <Suspense fallback={<UserMenuSkeleton />}>
                             <UserMenu />
                         </Suspense>
                     </li>

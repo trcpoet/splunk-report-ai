@@ -12,17 +12,26 @@ const AutoRefresh = () => {
     const router = useRouter();
 
     useEffect(() => {
-        // Skip hidden tabs, and catch up as soon as one is shown again.
+        let last = Date.now();
+
+        // Skips hidden tabs and the sign-in page, which has no report data.
         const refresh = () => {
-            if (document.visibilityState === 'visible') router.refresh();
+            if (document.visibilityState !== 'visible' || window.location.pathname === '/login') return;
+            last = Date.now();
+            router.refresh();
+        };
+
+        // A tab shown again catches up, unless it refreshed under a minute ago.
+        const onVisibilityChange = () => {
+            if (Date.now() - last >= EVERY_MS) refresh();
         };
 
         const timer = setInterval(refresh, EVERY_MS);
-        document.addEventListener('visibilitychange', refresh);
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
             clearInterval(timer);
-            document.removeEventListener('visibilitychange', refresh);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         };
     }, [router]);
 

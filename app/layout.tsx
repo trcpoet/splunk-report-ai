@@ -30,6 +30,7 @@ export default function RootLayout({
       <body
         className={`${schibstedGrotesk.variable} ${martianMono.variable} min-h-screen antialiased`}
       >
+      <a href="#content" className="skip-link">Skip to content</a>
       <Navbar />
       <AutoRefresh />
 
@@ -47,7 +48,7 @@ export default function RootLayout({
               />
           </div>
 
-          <main>
+          <main id="content" tabIndex={-1}>
             {children}
           </main>
       </body>

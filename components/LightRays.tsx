@@ -139,9 +139,15 @@ const LightRays: React.FC<LightRaysProps> = ({
             });
             rendererRef.current = renderer;
 
+            // People who ask for less motion get one still frame instead of moving rays.
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
             const gl = renderer.gl;
             gl.canvas.style.width = "100%";
             gl.canvas.style.height = "100%";
+            // Fades in once the first frame is drawn, instead of popping in.
+            gl.canvas.style.opacity = "0";
+            if (!reduceMotion) gl.canvas.style.transition = "opacity 800ms ease-out";
 
             while (containerRef.current.firstChild) {
                 containerRef.current.removeChild(containerRef.current.firstChild);
@@ -324,14 +330,21 @@ void main() {
 
                 try {
                     renderer.render({ scene: mesh });
-                    animationIdRef.current = requestAnimationFrame(loop);
+                    if (gl.canvas.style.opacity !== "1") gl.canvas.style.opacity = "1";
+                    if (!reduceMotion) animationIdRef.current = requestAnimationFrame(loop);
                 } catch (error) {
                     console.warn("WebGL rendering error:", error);
                     return;
                 }
             };
 
-            window.addEventListener("resize", updatePlacement);
+            // A still frame (reduced motion) is drawn again at the new size.
+            const onResize = () => {
+                updatePlacement();
+                if (reduceMotion) renderer.render({ scene: mesh });
+            };
+
+            window.addEventListener("resize", onResize);
             updatePlacement();
             animationIdRef.current = requestAnimationFrame(loop);
 
@@ -341,7 +354,7 @@ void main() {
                     animationIdRef.current = null;
                 }
 
-                window.removeEventListener("resize", updatePlacement);
+                window.removeEventListener("resize", onResize);
 
                 if (renderer) {
                     try {

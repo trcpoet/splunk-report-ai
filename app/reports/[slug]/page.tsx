@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import ChartBoundary from "@/components/ChartBoundary";
 import StatusBadge from "@/components/StatusBadge";
 import ResultsTable from "@/components/ResultsTable";
 import ReportActions from "@/components/ReportActions";
@@ -11,6 +11,8 @@ import ReportScatter from "@/components/ReportScatter";
 import RunTrend from "@/components/RunTrend";
 import Meter from "@/components/Meter";
 import Sparkline from "@/components/Sparkline";
+import { ReportSkeleton } from "@/components/Skeletons";
+import { PAGE_TRANSITION, PageTransition, Reveal } from "@/components/Transitions";
 import { getVisibleReport, getVisibleReports } from "@/lib/dal";
 import { getSimilarReports } from "@/lib/reports";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
@@ -34,13 +36,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const ReportPage = ({ params }: Props) => {
     return (
-        <section id="report">
-            <Link href="/#reports" className="back-link">← All reports</Link>
+        <PageTransition>
+            <section id="report">
+                <Link href="/#reports" className="back-link" transitionTypes={PAGE_TRANSITION}>← All reports</Link>
 
-            <Suspense fallback={<div className="skeleton-card h-96" aria-busy="true" />}>
-                <ReportDetails params={params} />
-            </Suspense>
-        </section>
+                <Reveal fallback={<ReportSkeleton />}>
+                    <ReportDetails params={params} />
+                </Reveal>
+            </section>
+        </PageTransition>
     )
 }
 
@@ -141,7 +145,9 @@ async function ReportDetails({ params }: Props) {
                                         </>
                                     )}
                                 </figcaption>
-                                <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
+                                <ChartBoundary>
+                                    <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
+                                </ChartBoundary>
                             </figure>
                         )}
                         {report.chart?.scatter && report.rows.length > 0 && (
@@ -150,7 +156,9 @@ async function ReportDetails({ params }: Props) {
                                     <span className="chart-heading">{report.chart.y} vs. {report.chart.scatter.x}</span>
                                     <span className="chart-subtitle">{report.chart.scatter.caption}</span>
                                 </figcaption>
-                                <ReportScatter chart={{ ...report.chart, scatter: report.chart.scatter }} columns={report.columns} rows={report.rows} />
+                                <ChartBoundary>
+                                    <ReportScatter chart={{ ...report.chart, scatter: report.chart.scatter }} columns={report.columns} rows={report.rows} />
+                                </ChartBoundary>
                             </figure>
                         )}
                         {report.columns.length > 0 ? (
@@ -178,7 +186,9 @@ async function ReportDetails({ params }: Props) {
                                     <span className="chart-heading">Results per run</span>
                                     <span className="chart-subtitle">Skipped runs show as gaps.</span>
                                 </figcaption>
-                                <RunTrend runs={report.history} />
+                                <ChartBoundary>
+                                    <RunTrend runs={report.history} />
+                                </ChartBoundary>
                             </figure>
                         )}
                         <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} sortValues={historySortValues} />
