@@ -1,6 +1,7 @@
 'use client';
 
 import "./globals.css";
+import { fontVariables } from "./fonts";
 
 type Props = {
     error: Error & { digest?: string };
@@ -11,7 +12,7 @@ type Props = {
 // its own <html>, <body> and styles. Page-level problems use app/error.tsx.
 const GlobalError = ({ error, retry }: Props) => (
     <html lang="en">
-        <body className="min-h-screen antialiased">
+        <body className={`${fontVariables} min-h-screen antialiased`}>
             <title>Something went wrong | SplunkEvents</title>
             <main id="content">
                 <section className="status-page" aria-labelledby="error-title">

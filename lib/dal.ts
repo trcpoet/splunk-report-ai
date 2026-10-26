@@ -31,10 +31,14 @@ export async function getViewerOrNull(): Promise<Viewer | null> {
     cacheLife('minutes');
 
     // The app's connection opens while Better Auth looks up the session, so a
-    // cold start waits for one connection setup instead of two in a row.
-    const [session] = await Promise.all([auth.api.getSession({ headers: await headers() }), connectDB()]);
+    // cold start waits for one connection setup instead of two in a row. It's
+    // awaited only once there is a session: signed-out visitors don't need it.
+    const connected = connectDB();
+    connected.catch(() => {});
+    const session = await auth.api.getSession({ headers: await headers() });
     if (!session) return null;
 
+    await connected;
     const access = await UserAccess.findOne({ email: session.user.email.toLowerCase() }).lean();
 
     // No access record means no groups: the user sees nothing until one is added.

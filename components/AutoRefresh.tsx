@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { onSessionChange } from "@/lib/session-sync";
 
 const EVERY_MS = 60_000;
 
@@ -28,10 +29,14 @@ const AutoRefresh = () => {
 
         const timer = setInterval(refresh, EVERY_MS);
         document.addEventListener('visibilitychange', onVisibilityChange);
+        // Someone signed in or out in another tab: start over with a full page
+        // load, so this tab drops the pages it cached for the old session.
+        const stopListening = onSessionChange(() => window.location.reload());
 
         return () => {
             clearInterval(timer);
             document.removeEventListener('visibilitychange', onVisibilityChange);
+            stopListening();
         };
     }, [router]);
 

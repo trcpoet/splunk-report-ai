@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { announceSessionChange } from "@/lib/session-sync";
 
 const LABELS = { idle: 'Sign out', pending: 'Signing out…', failed: 'Try again' } as const;
 
@@ -23,6 +24,8 @@ const SignOutButton = () => {
         // A full page load drops the client cache, which holds pages rendered for
         // this session, so whoever signs in next (say, another demo account)
         // doesn't see them. router.refresh() only clears the current route.
+        // Other open tabs reload too.
+        announceSessionChange();
         window.location.replace('/login');
     }
 

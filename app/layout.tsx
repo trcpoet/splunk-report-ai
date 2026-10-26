@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import { Schibsted_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
+import { fontVariables } from "./fonts";
 import AutoRefresh from "@/components/AutoRefresh";
 import LightRays from "@/components/LightRays";
 import Navbar from "@/components/Navbar";
-
-const schibstedGrotesk = Schibsted_Grotesk({
-  variable: "--font-schibsted-grotesk",
-  subsets: ["latin"],
-});
-
-const martianMono = Martian_Mono({
-  variable: "--font-martian-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "SplunkEvents",
@@ -28,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${schibstedGrotesk.variable} ${martianMono.variable} min-h-screen antialiased`}
+        className={`${fontVariables} min-h-screen antialiased`}
       >
       <a href="#content" className="skip-link">Skip to content</a>
       <Navbar />

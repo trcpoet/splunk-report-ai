@@ -25,10 +25,12 @@ async function connectDB(): Promise<typeof mongoose> {
 
         cached.promise = mongoose.connect(uri, {
             bufferCommands: false,
-            // Atlas in the same region answers in well under a second, even on a
-            // cold start. If the database is down, pages show their error screen
-            // after 5 s instead of the driver's default 30 s.
-            serverSelectionTimeoutMS: 5000,
+            // In the web app (Next.js sets NEXT_RUNTIME): if the database doesn't
+            // answer, pages show their error screen after 5 s instead of the
+            // driver's default 30 s. Atlas in the same region answers in well
+            // under a second, even on a cold start. The sync worker keeps the
+            // default, so its writes ride out an Atlas primary election (~12 s).
+            ...(process.env.NEXT_RUNTIME ? { serverSelectionTimeoutMS: 5000 } : {}),
         });
     }
 

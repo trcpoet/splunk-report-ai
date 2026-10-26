@@ -14,7 +14,7 @@ import Sparkline from "@/components/Sparkline";
 import { ReportSkeleton } from "@/components/Skeletons";
 import { PAGE_TRANSITION, PageTransition, Reveal } from "@/components/Transitions";
 import { getVisibleReport, getVisibleReports } from "@/lib/dal";
-import { getSimilarReports } from "@/lib/reports";
+import { getSimilarReports, toSummary } from "@/lib/reports";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -55,7 +55,8 @@ async function ReportDetails({ params }: Props) {
     // Hidden reports get the same answer as missing ones.
     if (!report) notFound();
 
-    const similarReports = getSimilarReports(report, await getVisibleReports());
+    // Summaries only: the cards are client components, so this is what the browser gets.
+    const similarReports = getSimilarReports(report, await getVisibleReports()).map(toSummary);
     const details = [
         { label: 'Schedule', value: report.schedule, code: report.cron },
         { label: 'Time range', value: report.timeRange },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Copy, Download } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -29,11 +29,15 @@ const toCsv = (columns: string[], rows: Cell[][]) =>
 const ReportActions = ({ slug, lastRun, spl, columns, rows }: Props) => {
     const [download, setDownload] = useState<Feedback>('idle');
     const [copy, setCopy] = useState<Feedback>('idle');
+    const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-    // Each button confirms what it did for a moment, then goes back to its label.
-    const confirm = (set: (feedback: Feedback) => void, feedback: Feedback) => {
+    // Each button confirms what it did for a moment, then goes back to its
+    // label. A second click restarts that moment instead of cutting it short.
+    const confirm = (button: 'download' | 'copy', feedback: Feedback) => {
+        const set = button === 'download' ? setDownload : setCopy;
+        clearTimeout(timers.current[button]);
         set(feedback);
-        setTimeout(() => set('idle'), feedback === 'failed' ? 5000 : 2000);
+        timers.current[button] = setTimeout(() => set('idle'), feedback === 'failed' ? 5000 : 2000);
     }
 
     const downloadCsv = () => {
@@ -44,17 +48,17 @@ const ReportActions = ({ slug, lastRun, spl, columns, rows }: Props) => {
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        confirm(setDownload, 'done');
+        confirm('download', 'done');
         track('report_csv_downloaded', { slug });
     }
 
     const copySpl = async () => {
         try {
             await navigator.clipboard.writeText(spl);
-            confirm(setCopy, 'done');
+            confirm('copy', 'done');
             track('report_spl_copied', { slug });
         } catch {
-            confirm(setCopy, 'failed');
+            confirm('copy', 'failed');
         }
     }
 

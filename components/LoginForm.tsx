@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { safeNextPath } from "@/lib/next-path";
+import { announceSessionChange } from "@/lib/session-sync";
 
 type Props = {
     // Listed in development and in DEMO_MODE, to make the demo easy to try.
@@ -32,6 +33,14 @@ const LoginForm = ({ demoAccounts, demoPassword }: Props) => {
     const [pending, setPending] = useState<string | null>(null);
     const passwordRef = useRef<HTMLInputElement>(null);
 
+    // Landing here from inside the app means the session ended while a tab was
+    // open (an automatic refresh found it gone). Reload, as signing out does, so
+    // the pages this tab cached for that session are dropped.
+    useEffect(() => {
+        const [entry] = performance.getEntriesByType('navigation');
+        if (entry && new URL(entry.name).pathname !== '/login') window.location.reload();
+    }, []);
+
     const signIn = async (email: string, password: string, source: string) => {
         setPending(source);
         setError(null);
@@ -56,6 +65,8 @@ const LoginForm = ({ demoAccounts, demoPassword }: Props) => {
         // and reusing it bounced production builds between /login and `next`.
         // replace() keeps /login out of the history, as router.replace() did.
         // The proxy puts `next` in the address; safeNextPath keeps it on this site.
+        // Other open tabs reload too.
+        announceSessionChange();
         window.location.replace(safeNextPath(new URLSearchParams(window.location.search).get('next')));
     }
 

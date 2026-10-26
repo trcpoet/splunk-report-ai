@@ -173,7 +173,7 @@
         @apply animate-pulse motion-reduce:animate-none;
     }
 
-    body:has(#login) .user-menu-placeholder {
+    body:has(#login) :is(.user-menu-placeholder, .user-menu-fallback) {
         @apply hidden;
     }
 

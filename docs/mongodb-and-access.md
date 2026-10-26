@@ -33,7 +33,7 @@ One setting, `MONGODB_URI=mongodb://127.0.0.1:27017/splunkevents`, used by two c
 - **Mongoose** (`lib/mongodb.ts`) for report data. It opens one connection and reuses it, even across dev hot reloads.
 - **The MongoDB driver** (`lib/auth-options.ts`) for logins, used by Better Auth.
 
-Both give up after 5 seconds if the database doesn't answer, so pages show an error screen with **Try again** instead of hanging (see [caching-and-loading.md](caching-and-loading.md)).
+In the web app, both give up after 5 seconds if the database doesn't answer, so pages show an error screen with **Try again** instead of hanging (see [caching-and-loading.md](caching-and-loading.md)). The sync worker and the seed script keep the driver's default of 30 seconds, so their writes ride out a brief Atlas primary election.
 
 Locally, MongoDB runs through Homebrew (`brew services start mongodb-community@8.0`) and only accepts connections from this machine. It has no password of its own, which is fine for the demo. Before real data goes in, the database moves to a hosted service with its own login.
 

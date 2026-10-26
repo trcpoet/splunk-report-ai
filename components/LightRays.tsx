@@ -96,6 +96,9 @@ const LightRays: React.FC<LightRaysProps> = ({
     const cleanupFunctionRef = useRef<(() => void) | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const observerRef = useRef<IntersectionObserver | null>(null);
+    // The canvas is rebuilt each time it scrolls back into view; only the first
+    // one fades in.
+    const fadedInRef = useRef(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -147,7 +150,8 @@ const LightRays: React.FC<LightRaysProps> = ({
             gl.canvas.style.height = "100%";
             // Fades in once the first frame is drawn, instead of popping in.
             gl.canvas.style.opacity = "0";
-            if (!reduceMotion) gl.canvas.style.transition = "opacity 800ms ease-out";
+            if (!reduceMotion && !fadedInRef.current) gl.canvas.style.transition = "opacity 800ms ease-out";
+            fadedInRef.current = true;
 
             while (containerRef.current.firstChild) {
                 containerRef.current.removeChild(containerRef.current.firstChild);

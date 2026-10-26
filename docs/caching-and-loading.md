@@ -21,6 +21,12 @@ A plain-language guide to what SplunkEvents keeps ready ahead of time, what you 
 
 Each server instance on Vercel has its own memory, so a freshly started one reads MongoDB once before its cache is warm.
 
+**When access changes or a session ends:**
+- Signing in or out reloads every other open tab of the app in that browser, so no tab keeps showing the previous person's reports.
+- If a session ends some other way (it expires, or is ended on the server), the next automatic refresh sends the tab to the sign-in page, which reloads to drop the cached pages.
+- An admin changing someone's groups reaches their open tab within a minute for the page on screen, and within 5 minutes for pages already loaded in the background. Those pages only hold what the person could already see.
+- The database connections give up after 5 seconds in the web app only. The sync worker and the seed script keep the driver's 30 seconds, so their writes ride out a brief Atlas primary election.
+
 Open pages still refresh themselves once a minute (`components/AutoRefresh.tsx`), so new sync results show up without a reload. A tab you come back to catches up at once, unless it refreshed in the last minute. The sign-in page never refreshes.
 
 ## Loading pages before you click
