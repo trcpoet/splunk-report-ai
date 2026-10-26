@@ -23,6 +23,7 @@ Each server instance on Vercel has its own memory, so a freshly started one read
 
 **When access changes or a session ends:**
 - Signing in or out reloads every other open tab of the app in that browser, so no tab keeps showing the previous person's reports.
+- The browser's **Back** and **Forward** buttons can bring a whole page back from the browser's cache (Vercel serves pages as cacheable). A small script in `app/layout.tsx` hides such a page before it shows and loads it again, so after signing out, Back shows the sign-in page instead of the old reports. Back and Forward inside the app are unaffected.
 - If a session ends some other way (it expires, or is ended on the server), the next automatic refresh sends the tab to the sign-in page, which reloads to drop the cached pages.
 - An admin changing someone's groups reaches their open tab within a minute for the page on screen, and within 5 minutes for pages already loaded in the background. Those pages only hold what the person could already see.
 - The database connections give up after 5 seconds in the web app only. The sync worker and the seed script keep the driver's 30 seconds, so their writes ride out a brief Atlas primary election.
