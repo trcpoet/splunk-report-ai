@@ -48,7 +48,7 @@ export default function RootLayout({
               />
           </div>
 
-          <main id="content" tabIndex={-1}>
+          <main id="content">
             {children}
           </main>
       </body>
