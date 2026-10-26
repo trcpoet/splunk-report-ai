@@ -115,8 +115,15 @@
 }
 
 @layer base {
+    /* Outlines default to the accent color, so a focus ring never fades in from
+       grey on elements that transition their colors. */
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border outline-primary;
+    }
+
+    /* Keyboard focus is always visible. */
+    :focus-visible {
+        @apply outline-2 outline-offset-2;
     }
 
     body {
@@ -151,8 +158,23 @@
         }
     }
 
-    .skeleton-tile {
-        @apply h-[104px] animate-pulse;
+    /* Loading placeholders (components/Skeletons.tsx). A line is as tall as
+       the text it stands for; a block takes a fixed size. */
+    .skeleton-line {
+        @apply inline-block max-w-full rounded-[4px] bg-dark-200/70 text-transparent select-none animate-pulse motion-reduce:animate-none;
+    }
+
+    .skeleton-block {
+        @apply block rounded-[6px] bg-dark-200/50 animate-pulse motion-reduce:animate-none;
+    }
+
+    /* Holds the user menu's place; the sign-in page has no menu. */
+    .user-menu-placeholder {
+        @apply animate-pulse motion-reduce:animate-none;
+    }
+
+    body:has(#login) :is(.user-menu-placeholder, .user-menu-fallback) {
+        @apply hidden;
     }
 
     .chart-card {
@@ -177,10 +199,64 @@
                 @apply mt-3;
             }
         }
+
+        /* Charts draw once the page's JavaScript has loaded. Until then their
+           space shows as a quiet placeholder rather than an empty gap. */
+        [data-slot="chart"]:not(:has(svg)) {
+            @apply rounded-[6px] bg-dark-200/40 animate-pulse motion-reduce:animate-none;
+        }
+
+        /* A chart that couldn't be drawn (components/ChartBoundary.tsx). */
+        .chart-error {
+            @apply rounded-[6px] border border-dashed border-dark-200 px-4 py-10 text-center text-sm text-light-200;
+        }
     }
 
-    .skeleton-card {
-        @apply bg-dark-100/80 border border-dark-200 rounded-[10px] h-64 animate-pulse;
+    /* Buttons and button-styled links. */
+    .btn-primary,
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 font-semibold cursor-pointer transition-colors enabled:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-wait;
+
+        svg {
+            @apply size-4 shrink-0;
+        }
+    }
+
+    .btn-primary {
+        @apply bg-primary text-black hover:bg-primary/90;
+    }
+
+    .btn-secondary {
+        @apply border border-dark-200 bg-dark-200 text-light-100 hover:border-primary/60;
+    }
+
+    .spinner {
+        @apply size-4 shrink-0 animate-spin;
+    }
+
+    /* Error and not-found screens. */
+    .status-page {
+        @apply flex flex-col items-center gap-5 py-16 text-center;
+
+        p {
+            @apply max-w-lg text-light-100 max-sm:text-sm;
+        }
+
+        .actions {
+            @apply mt-2 flex flex-row flex-wrap justify-center gap-3;
+        }
+
+        .error-id {
+            @apply text-xs text-light-200;
+
+            code {
+                @apply font-martian-mono;
+            }
+        }
+    }
+
+    .skip-link {
+        @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[6px] focus:bg-primary focus:px-4 focus:py-2 focus:font-semibold focus:text-black;
     }
 
     #explore-btn {
@@ -189,6 +265,8 @@
 
     header {
         @apply glass sticky top-0 z-50;
+        /* Stays put while the page under it crossfades (see the end of this file). */
+        view-transition-name: site-header;
 
         nav {
             @apply flex flex-row justify-between mx-auto container sm:px-10 px-5 py-4;
@@ -204,6 +282,15 @@
 
         ul {
             @apply flex flex-row items-center gap-6 list-none;
+
+            /* The padding makes them easier to tap without moving anything. */
+            a {
+                @apply py-1.5 transition-colors hover:text-primary;
+            }
+
+            a[aria-current="page"] {
+                @apply text-primary;
+            }
         }
     }
 
@@ -261,7 +348,7 @@
         @apply flex flex-col gap-3;
 
         input {
-            @apply bg-dark-100 border border-dark-200 rounded-[6px] px-5 py-2.5 w-full md:max-w-md placeholder:text-light-200/70 focus:border-primary focus:outline-none;
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-5 py-2.5 w-full md:max-w-md placeholder:text-light-200/70 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
         }
     }
 
@@ -286,7 +373,27 @@
     }
 
     .report-card {
-        @apply bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] p-5 flex flex-col gap-4 h-full transition-colors hover:border-primary/60;
+        @apply relative overflow-hidden bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] p-5 flex flex-col gap-4 h-full transition-colors hover:border-primary/60;
+
+        /* Along the top edge while the report it opens is still loading
+           (components/ReportCard.tsx). It waits 150 ms, so cards that open at
+           once never flash it. */
+        .pending-bar {
+            @apply pointer-events-none absolute inset-x-0 top-0 h-0.5 opacity-0;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent) no-repeat;
+            background-size: 50% 100%;
+        }
+
+        .pending-bar.is-pending {
+            @apply opacity-100;
+            transition: opacity 150ms 150ms;
+            animation: pending-slide 1.2s ease-in-out infinite;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: none;
+                background-size: 100% 100%;
+            }
+        }
 
         .title {
             @apply text-lg font-semibold leading-snug line-clamp-2;
@@ -429,7 +536,7 @@
         @apply flex flex-row flex-wrap items-center gap-3;
 
         input {
-            @apply bg-dark-100 border border-dark-200 rounded-[6px] px-4 py-2 text-sm w-full sm:max-w-xs placeholder:text-light-200/70 focus:border-primary focus:outline-none;
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-4 py-2 text-sm w-full sm:max-w-xs placeholder:text-light-200/70 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
         }
 
         span {
@@ -499,15 +606,11 @@
         @apply flex flex-col gap-3;
 
         button {
-            @apply w-full cursor-pointer rounded-[6px] px-4 py-2.5 font-semibold;
+            @apply w-full;
         }
 
-        .btn-primary {
-            @apply bg-primary hover:bg-primary/90 text-black;
-        }
-
-        .btn-secondary {
-            @apply border border-dark-200 bg-dark-200 hover:border-primary/60 text-light-100;
+        .action-error {
+            @apply text-sm text-amber-300;
         }
     }
 
@@ -531,11 +634,11 @@
         }
 
         input {
-            @apply bg-dark-100 border border-dark-200 rounded-[6px] px-4 py-2.5 text-light-100 focus:border-primary focus:outline-none;
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-4 py-2.5 text-light-100 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
         }
 
         .btn-primary {
-            @apply w-full cursor-pointer rounded-[6px] px-4 py-2.5 font-semibold bg-primary hover:bg-primary/90 text-black disabled:cursor-wait disabled:opacity-60;
+            @apply w-full;
         }
 
         .form-error {
@@ -554,7 +657,11 @@
             }
 
             button {
-                @apply font-martian-mono text-light-100 cursor-pointer hover:text-primary;
+                @apply font-martian-mono text-light-100 cursor-pointer hover:text-primary disabled:cursor-not-allowed disabled:opacity-60;
+            }
+
+            .signing-in {
+                @apply inline-flex items-center gap-1.5 text-primary;
             }
 
             code {
@@ -579,7 +686,71 @@
         }
 
         .sign-out {
-            @apply rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer hover:border-primary/60 disabled:opacity-60;
+            @apply inline-flex items-center gap-1.5 rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer transition-colors hover:border-primary/60 disabled:opacity-60 aria-busy:cursor-wait;
         }
+    }
+}
+
+@keyframes pending-slide {
+    from {
+        background-position: -100% 0;
+    }
+
+    to {
+        background-position: 200% 0;
+    }
+}
+
+/* View transitions (components/Transitions.tsx): short opacity fades, no
+   movement. Only the page content and loading placeholders fade; the header
+   and the rest of the window swap at once, so the header never flickers. */
+::view-transition {
+    /* Clicks during a fade reach the page instead of being lost. */
+    pointer-events: none;
+}
+
+::view-transition-old(root),
+::view-transition-old(site-header) {
+    display: none;
+}
+
+::view-transition-new(root),
+::view-transition-new(site-header),
+::view-transition-group(site-header) {
+    animation: none;
+}
+
+::view-transition-group(site-header) {
+    z-index: 100;
+}
+
+::view-transition-old(.page-out),
+::view-transition-old(.skeleton-out) {
+    animation: 120ms ease-out both view-fade-out;
+}
+
+::view-transition-new(.page-in),
+::view-transition-new(.content-in) {
+    animation: 180ms ease-in 60ms both view-fade-in;
+}
+
+@keyframes view-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes view-fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
     }
 }

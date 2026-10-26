@@ -21,12 +21,24 @@ import type { Cell, ChartThreshold, ReportChart, ReportHighlight, ReportListItem
 // Who is asking
 
 // The signed-in user and the groups that decide what they see, or null.
-// React's cache() runs it once per render; Route Handlers call it each time.
-export const getViewerOrNull = cache(async (): Promise<Viewer | null> => {
+//
+// 'use cache: private' keeps the result in this user's browser for a few
+// minutes and never stores it on the server. That lets the page shells Next
+// prefetches carry the user's own reports, so moving between pages shows them
+// at once. Signing in or out reloads the page, which clears it.
+export async function getViewerOrNull(): Promise<Viewer | null> {
+    'use cache: private';
+    cacheLife('minutes');
+
+    // The app's connection opens while Better Auth looks up the session, so a
+    // cold start waits for one connection setup instead of two in a row. It's
+    // awaited only once there is a session: signed-out visitors don't need it.
+    const connected = connectDB();
+    connected.catch(() => {});
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) return null;
 
-    await connectDB();
+    await connected;
     const access = await UserAccess.findOne({ email: session.user.email.toLowerCase() }).lean();
 
     // No access record means no groups: the user sees nothing until one is added.
@@ -37,7 +49,7 @@ export const getViewerOrNull = cache(async (): Promise<Viewer | null> => {
         role: access?.role ?? 'viewer',
         groups: access?.groups ?? [],
     };
-});
+}
 
 // For pages: sends signed-out visitors to /login.
 export const getViewer = cache(async (): Promise<Viewer> => {

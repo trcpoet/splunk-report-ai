@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { onSessionChange } from "@/lib/session-sync";
 
 const EVERY_MS = 60_000;
 
@@ -12,17 +13,30 @@ const AutoRefresh = () => {
     const router = useRouter();
 
     useEffect(() => {
-        // Skip hidden tabs, and catch up as soon as one is shown again.
+        let last = Date.now();
+
+        // Skips hidden tabs and the sign-in page, which has no report data.
         const refresh = () => {
-            if (document.visibilityState === 'visible') router.refresh();
+            if (document.visibilityState !== 'visible' || window.location.pathname === '/login') return;
+            last = Date.now();
+            router.refresh();
+        };
+
+        // A tab shown again catches up, unless it refreshed under a minute ago.
+        const onVisibilityChange = () => {
+            if (Date.now() - last >= EVERY_MS) refresh();
         };
 
         const timer = setInterval(refresh, EVERY_MS);
-        document.addEventListener('visibilitychange', refresh);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        // Someone signed in or out in another tab: start over with a full page
+        // load, so this tab drops the pages it cached for the old session.
+        const stopListening = onSessionChange(() => window.location.reload());
 
         return () => {
             clearInterval(timer);
-            document.removeEventListener('visibilitychange', refresh);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            stopListening();
         };
     }, [router]);
 

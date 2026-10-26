@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReportCard from "@/components/ReportCard";
 import type { ReportCategory, ReportStatus, ReportSummary } from "@/lib/reports";
 
@@ -15,6 +15,22 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
     const [query, setQuery] = useState('');
     const [status, setStatus] = useState<ReportStatus | 'all'>('all');
     const [category, setCategory] = useState<ReportCategory | 'all'>('all');
+
+    // Links to /#reports ("All Reports", "← All reports") should land on this
+    // list. Next scrolls to it once, when the page appears, but the list can
+    // arrive later (it streams in, and a page kept from an earlier visit is
+    // shown a moment after the address changes), and the scroll is lost. This
+    // runs when the list appears, including when a kept page is shown again.
+    useEffect(() => {
+        const list = window.location.hash === '#reports' ? document.getElementById('reports') : null;
+        if (!list) return;
+
+        // Already at the list, or partway down it (say, after the back button): stay put.
+        const { top, bottom } = list.getBoundingClientRect();
+        if (top <= parseFloat(getComputedStyle(list).scrollMarginTop) + 24 && bottom > 0) return;
+
+        list.scrollIntoView({ behavior: 'instant' });
+    }, []);
 
     const search = query.trim().toLowerCase();
     const visible = reports.filter((report) => {

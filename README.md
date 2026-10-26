@@ -26,8 +26,9 @@ Splunk REST API (:8089) ─┐
 - **Report settings** (`lib/report-config.ts`): what Splunk doesn't know about a report, such as its category, tags, who may see it, the chart measure, and status rules (for example, "warn when any host is above 2% errors").
 - **Access** (`lib/dal.ts`, `lib/access.ts`): every page and API route reads data through the data access layer, which checks the signed-in user's groups. `proxy.ts` only redirects signed-out visitors to `/login`.
 - **Login** (Better Auth, email and password for the demo): public sign-up is off; accounts come from `npm run seed`. Report access lives in its own `user_access` collection, so moving to company SSO later doesn't change the access code.
+- **Caching and loading** (`lib/dal.ts`, `components/Skeletons.tsx`, `components/Transitions.tsx`): report data is cached on the server until the next sync, each user's own pages in their browser for 5 minutes, and a report card loads its report when you point at it. Placeholders keep their content's size, so nothing jumps.
 
-New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md).
+New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
 
 ## Running locally
 
@@ -91,7 +92,7 @@ The live demo runs on Vercel with a free MongoDB Atlas cluster (M0). To host you
 
 3. Import the repo in Vercel and set `MONGODB_URI`, `RUN_RETENTION_DAYS=3650`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (the site's URL), `DEMO_MODE=true`, `DEMO_PASSWORD`, `REVALIDATE_SECRET` and `APP_URL` (the site's URL).
 
-`DEMO_MODE=true` lists the demo accounts on the sign-in page with one-click sign-in and shows their password, so use it only with dummy data. Because visitors share those accounts, `/api/auth` only serves sign-in, sign-out and session lookups ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)): nobody can change a demo account's password or see who else is signed in to it.
+`DEMO_MODE=true` lists the demo accounts on the sign-in page with one-click sign-in and shows their password, so use it only with dummy data. The sign-in form is built into the page when the app is built, so after changing `DEMO_MODE` or `DEMO_PASSWORD`, redeploy (Vercel applies new settings only to new deployments anyway). Because visitors share those accounts, `/api/auth` only serves sign-in, sign-out and session lookups ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)): nobody can change a demo account's password or see who else is signed in to it.
 
 ## Connecting real Splunk
 

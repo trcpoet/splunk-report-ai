@@ -1,31 +1,34 @@
-import { Suspense } from "react";
 import ExploreBtn from "@/components/ExploreBtn";
 import ReportBrowser from "@/components/ReportBrowser";
 import RunOutcomes from "@/components/RunOutcomes";
+import { OverviewSkeleton, ReportsSkeleton } from "@/components/Skeletons";
+import { PageTransition, Reveal } from "@/components/Transitions";
 import { getRunOutcomes, getSyncInfo, getVisibleReports } from "@/lib/dal";
 import { getCategories, getReportStats, toSummary } from "@/lib/reports";
 import { formatDateTime, formatNumber } from "@/lib/format";
 
 const Page = () => {
     return (
-        <section id="home">
-            <h1 className="text-center">Splunk Reports, <br /> Without the Inbox</h1>
-            <p className="subheading">Every scheduled Splunk report your team used to get by email, now searchable and up to date in one place.</p>
+        <PageTransition>
+            <section id="home">
+                <h1 className="text-center">Splunk Reports, <br /> Without the Inbox</h1>
+                <p className="subheading">Every scheduled Splunk report your team used to get by email, now searchable and up to date in one place.</p>
 
-            <ExploreBtn />
+                <ExploreBtn />
 
-            <Suspense fallback={<StatsSkeleton />}>
-                <Overview />
-            </Suspense>
+                <Reveal fallback={<OverviewSkeleton />}>
+                    <Overview />
+                </Reveal>
 
-            <div id="reports" className="mt-20 space-y-7 scroll-mt-24">
-                <h3>All Reports</h3>
+                <div id="reports" className="mt-20 space-y-7 scroll-mt-24">
+                    <h3>All Reports</h3>
 
-                <Suspense fallback={<ReportsSkeleton />}>
-                    <Reports />
-                </Suspense>
-            </div>
-        </section>
+                    <Reveal fallback={<ReportsSkeleton />}>
+                        <Reports />
+                    </Reveal>
+                </div>
+            </section>
+        </PageTransition>
     )
 }
 
@@ -78,17 +81,5 @@ async function Reports() {
 
     return <ReportBrowser reports={reports.map(toSummary)} categories={getCategories(reports)} />;
 }
-
-const StatsSkeleton = () => (
-    <div className="stats" aria-busy="true">
-        {Array.from({ length: 4 }, (_, i) => <div key={i} className="stat-tile skeleton-tile" />)}
-    </div>
-)
-
-const ReportsSkeleton = () => (
-    <div className="reports" aria-busy="true">
-        {Array.from({ length: 3 }, (_, i) => <div key={i} className="report-card skeleton-card" />)}
-    </div>
-)
 
 export default Page;
