@@ -64,7 +64,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 **The briefing** sits on the home page, between the headline numbers and the runs-per-day chart, and at the top of the Ask about reports side panel. Most of it needs no AI:
 - **Headline**, such as "3 reports need attention, 1 run looks unusual".
 - **Needs attention:** reports whose latest run warns or failed, with their message and an **Ask about it** link.
-- **Unusual runs:** reports whose newest run stands out from their recent runs (below), with a sparkline that marks the odd run.
+- **Unusual runs:** reports whose newest run stands out from their recent runs (below), or that the ML job flags ([ml.md](ml.md)), with a sparkline that marks the odd run.
 - **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports. Since the briefing loads by itself, writing one counts toward the site's daily limit only, not yours.
 
 **Explain** is on every report card and at the top of each report page. It opens a side panel (a bottom sheet on phones):
@@ -185,6 +185,6 @@ Ask your Splunk admin which integration the company uses before building on it.
 
 ## Ideas for later
 
-- **A Python ML job** that learns from the "Worth flagging?" votes which flags people find useful, and scores runs with an Isolation Forest (see [ml.md](ml.md)).
+- **Running the ML job on a schedule**, right after each sync (see [ml.md](ml.md)).
 - **Showing the AI's reasoning:** Gemini can return a summary of its thinking, which could open under an answer.
 - **A summary in the report email's place:** the briefing, sent on a schedule to people who still want email.

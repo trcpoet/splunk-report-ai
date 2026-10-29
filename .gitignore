@@ -46,3 +46,9 @@ next-env.d.ts
 
 # editor settings
 .idea/
+
+# the ML job (ml/): its virtual environment, charts and Python caches
+ml/.venv/
+ml/out/
+__pycache__/
+.pytest_cache/

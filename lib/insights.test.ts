@@ -65,6 +65,32 @@ describe('findUnusualRun', () => {
         assert.equal(findUnusualRun(history([40, 41, 39], 400)), null);
     });
 
+    test('takes a flag from the ML model when the statistics see nothing, with its reason', () => {
+        const runs = history([40, 42, 38, 41, 39, 40], 52);
+        assert.equal(findUnusualRun(runs), null);
+
+        const modelRun = { score: 0.81, unusual: true, reason: 'Results well above usual: 52 against about 40.', measure: 'results' as const };
+        const unusual = findUnusualRun(runs, modelRun)!;
+        assert.equal(unusual.flaggedBy, 'model');
+        assert.equal(unusual.message, modelRun.reason);
+        assert.equal(unusual.measure, 'results');
+        assert.equal(unusual.usual, 40);
+        assert.equal(unusual.modelScore, 0.81);
+    });
+
+    test('keeps its own wording when it flags the run too, and adds the model score', () => {
+        const unusual = findUnusualRun(history([40, 41, 39, 40, 42, 41], 120), { score: 0.97, unusual: true, reason: 'Results far above usual.', measure: 'results' })!;
+        assert.equal(unusual.flaggedBy, 'statistics');
+        assert.equal(unusual.message, '120 results, about 3× the usual 41 (compared with the previous 6 runs).');
+        assert.equal(unusual.modelScore, 0.97);
+    });
+
+    test("ignores the model's flag on a failed run, or one it can't name a measure for", () => {
+        const failed = [...history([40, 41, 39, 40, 42], 41), run(0, 0, 'failed', 9)];
+        assert.equal(findUnusualRun(failed, { score: 1, unusual: true, reason: 'The run failed.', measure: null }), null);
+        assert.equal(findUnusualRun(history([40, 41, 39, 40, 42], 41), { score: 0.9, unusual: true, reason: 'x', measure: null }), null);
+    });
+
     test('leaves failed runs out of the baseline', () => {
         const runs = [run(40), run(0, 0, 'failed', 1), run(41, 10, 'success', 2), run(39, 10, 'success', 3), run(40, 10, 'success', 4), run(42, 10, 'success', 5), run(41, 10, 'success', 6)];
         assert.equal(findUnusualRun(runs), null);

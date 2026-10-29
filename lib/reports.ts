@@ -99,6 +99,24 @@ export type SplunkReport = {
     rows: Cell[][];
     // The newest runs, oldest first.
     history: RunRecord[];
+    // What the ML job (ml/score.py) said about the newest run, once it has scored it.
+    modelRun?: ModelRun;
+    // Learned by the ML job from the "Worth flagging?" votes, once there are
+    // enough: the chance that a flag on this report is worth someone's attention.
+    attention?: number;
+};
+
+// The ML job's view of one run. See docs/ml.md.
+export type ModelRun = {
+    // 0 is a typical run, 1 the most unusual of all the runs the job scored.
+    score: number;
+    // Among the 5% of runs that differ most.
+    unusual: boolean;
+    // How it compares with its usual, in plain words.
+    reason: string;
+    // The measure that stands out more. Null for a failed run, or one with too
+    // few earlier runs to compare with.
+    measure: 'results' | 'duration' | null;
 };
 
 // A report without its result rows, for lists.

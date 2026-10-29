@@ -12,7 +12,7 @@ import { useSummary } from "@/components/useSummary";
 import { track } from "@/lib/analytics";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { describeColumn, findUnusualRun, profileResults, unusualTrend } from "@/lib/insights";
-import type { SplunkReport } from "@/lib/reports";
+import type { ModelRun, SplunkReport } from "@/lib/reports";
 
 // The report with its result rows: the one the page already has (a report
 // page), or else from the same JSON API the app offers (a report card).
@@ -36,6 +36,14 @@ function useReport(slug: string, given?: SplunkReport) {
     return given ? { report: given } : fetched;
 }
 
+// What the ML job (ml/score.py) says about the newest run, in a sentence or two.
+function modelSentence(run: ModelRun, attention?: number) {
+    const score = `ML model: ${run.score.toFixed(2)} of 1 for how unusual this run is`;
+    const where = run.unusual ? ', among the 5% of all runs that differ most.' : ' (0 is typical).';
+    const learned = attention === undefined ? '' : ` Learned from people's votes: a flag on this report is worth attention about ${Math.round(attention * 100)}% of the time.`;
+    return score + where + learned;
+}
+
 // What's inside the panel. It mounts when the panel opens, so nothing loads
 // for the cards nobody opens.
 type ContentProps = { slug: string; title: string; given?: SplunkReport; headingId: string; close: () => void };
@@ -44,7 +52,7 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
     const summary = useSummary(`/api/ai/explain/${slug}`);
     const { report, error } = useReport(slug, given);
 
-    const unusual = report ? findUnusualRun(report.history) : null;
+    const unusual = report ? findUnusualRun(report.history, report.modelRun) : null;
     const trend = report && unusual ? unusualTrend(report.history, unusual) : null;
     const profile = report ? profileResults(report.columns, report.rows, report.resultCount) : null;
     // The summary may name the report as [[slug]], which shows as its chip.
@@ -86,9 +94,10 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
                         {unusual && trend && (
                             <div className="explain-unusual">
                                 <Sparkline values={trend.values} usual={unusual.usual} highlightLast label={trend.label} />
-                                <p><strong>Unusual run.</strong> {unusual.message}</p>
+                                <p><strong>Unusual run.</strong> {unusual.message}{unusual.flaggedBy === 'model' && ' (Noticed by the ML model.)'}</p>
                             </div>
                         )}
+                        {report.modelRun && <p className="text-sm text-light-200">{modelSentence(report.modelRun, report.attention)}</p>}
                         {report.statusMessage && <p className={`status-callout status-${report.status}`}>{report.statusMessage}</p>}
                         {profile ? (
                             <>

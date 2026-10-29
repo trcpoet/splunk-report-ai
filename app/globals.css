@@ -1153,6 +1153,10 @@
             p {
                 @apply text-sm text-light-100;
             }
+
+            .briefing-model {
+                @apply text-xs text-light-200;
+            }
         }
 
         .briefing-item-head {
