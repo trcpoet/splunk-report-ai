@@ -13,6 +13,7 @@ import argparse
 import math
 import os
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,8 @@ FLAG_MODEL = "logistic-regression-v1"
 CONTAMINATION = 0.05
 # The supervised model waits for this many votes, with at least one of each kind.
 MIN_VOTES = 20
+# Seconds between the two cache refreshes (refresh_app).
+SECOND_REFRESH_SECONDS = 3
 
 
 def score_runs(features: pd.DataFrame) -> pd.DataFrame:
@@ -164,15 +167,23 @@ def plot(scored: pd.DataFrame, titles: dict[str, str], path: Path) -> None:
 
 
 def refresh_app() -> None:
-    """Tells the app to drop its cached report data, like the sync worker does."""
+    """Tells the app to drop its cached report data, like the sync worker does:
+    twice, a few seconds apart, because a page that was still reading the old
+    data when the cache was dropped can put that old data back."""
     app_url, secret = os.environ.get("APP_URL"), os.environ.get("REVALIDATE_SECRET")
     if not app_url or not secret:
         print("APP_URL or REVALIDATE_SECRET is not set, so the app shows the new scores when its cache expires.")
         return
     request = urllib.request.Request(app_url.rstrip("/") + "/api/revalidate", method="POST", headers={"Authorization": f"Bearer {secret}"})
     try:
-        with urllib.request.urlopen(request, timeout=5) as response:
-            print("Refreshed the app cache." if response.status == 200 else f"The app refused the cache refresh ({response.status}).")
+        for attempt in range(2):
+            if attempt:
+                time.sleep(SECOND_REFRESH_SECONDS)
+            with urllib.request.urlopen(request, timeout=5) as response:
+                if response.status != 200:
+                    print(f"The app refused the cache refresh ({response.status}).")
+                    return
+        print("Refreshed the app cache.")
     except Exception:
         print(f"The app isn't reachable at {app_url}. It shows the new scores when its cache expires.")
 
