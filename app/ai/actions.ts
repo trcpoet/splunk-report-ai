@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CHAT_ID, deleteChat, renameChat } from "@/lib/chats";
 import { getViewer } from "@/lib/dal";
 import { saveVote, type VoteInput } from "@/lib/feedback";
+import { removeExample, saveExample } from "@/lib/spl-examples";
 
 // Changes to saved chats (from the History tab) and 👍 / 👎 votes. Anyone can post to a
 // Server Action, so each one checks its input here, and lib/chats.ts checks
@@ -50,4 +51,15 @@ export async function voteAction(input: VoteInput): Promise<Result> {
 
     const saved = await saveVote(await getViewer(), vote.data);
     return saved ? { ok: true } : { ok: false, message: "That vote couldn't be saved." };
+}
+
+// Saves a Write SPL answer as an example for later requests, or takes it back.
+// lib/spl-examples.ts checks that the answer is in one of the viewer's chats.
+export async function saveExampleAction(messageId: string, save: boolean): Promise<Result> {
+    const input = ChatId.safeParse(messageId);
+    if (!input.success) return { ok: false, message: "That search couldn't be saved." };
+
+    const viewer = await getViewer();
+    const done = save ? await saveExample(viewer, input.data) : await removeExample(viewer, input.data);
+    return done ? { ok: true } : { ok: false, message: "Only searches that only read data, and that parse, can be examples." };
 }

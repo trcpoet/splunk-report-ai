@@ -8,6 +8,8 @@ export { default as AiUsage } from './ai-usage.model';
 export { default as AiSummary } from './ai-summary.model';
 export { default as AiFeedback } from './ai-feedback.model';
 export { MlReportScore, MlRunScore } from './ml-score.model';
+export { default as AiEmbedding } from './ai-embedding.model';
+export { default as SavedSplExample } from './spl-example.model';
 
 // TypeScript interfaces exports
 export type { IReport, IRunSummary } from './report.model';
@@ -19,3 +21,5 @@ export type { IAiUsage } from './ai-usage.model';
 export type { IAiSummary } from './ai-summary.model';
 export type { FeedbackKind, FlagDetails, IAiFeedback, Vote } from './ai-feedback.model';
 export type { IMlReportScore, IMlRunScore } from './ml-score.model';
+export type { IAiEmbedding } from './ai-embedding.model';
+export type { ISavedSplExample } from './spl-example.model';

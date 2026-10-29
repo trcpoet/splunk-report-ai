@@ -9,6 +9,7 @@ import { aboutQuestion, explainRequest, reportQuestions, splRequests } from "@/l
 import { getChat, type ChatKind } from "@/lib/chats";
 import { getSyncInfo, getViewer, getVisibleReports } from "@/lib/dal";
 import { getVotes } from "@/lib/feedback";
+import { savedExampleIds } from "@/lib/spl-examples";
 import type { ReportListItem } from "@/lib/reports";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -81,7 +82,11 @@ const AiChat = async ({ kind, searchParams }: { kind: ChatKind; searchParams: Se
     const linked = reports.find(({ slug }) => slug === one(kind === 'reports' ? params.about : params.explain));
     const prefill = !chat && linked ? (kind === 'reports' ? aboutQuestion(linked) : explainRequest(linked)) : '';
     const chips = Object.fromEntries(reports.map(({ slug, title, status }) => [slug, { slug, title, status }]));
-    const votes = chat ? await getVotes(viewer, 'answer', chat.messages.filter(({ role }) => role === 'assistant').map(({ id }) => id)) : {};
+    const answerIds = chat ? chat.messages.filter(({ role }) => role === 'assistant').map(({ id }) => id) : [];
+    const [votes, savedExamples] = await Promise.all([
+        getVotes(viewer, 'answer', answerIds),
+        kind === 'spl' ? savedExampleIds(viewer, answerIds) : {},
+    ]);
 
     return (
         <div className="ai-workspace">
@@ -98,6 +103,7 @@ const AiChat = async ({ kind, searchParams }: { kind: ChatKind; searchParams: Se
                 splunkWebUrl={splunkWebUrl()}
                 demo={process.env.DEMO_MODE === 'true'}
                 votes={votes}
+                savedExamples={savedExamples}
             />
             {reports.length > 0 && (kind === 'reports' ? <ReportsAside reports={reports} /> : <SplAside reports={reports} />)}
         </div>

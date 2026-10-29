@@ -2,7 +2,8 @@ import 'server-only';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { ApiError, FinishReason, GoogleGenAI, ThinkingLevel, type Content, type GenerateContentResponseUsageMetadata } from '@google/genai';
 import { z } from 'zod';
-import { aiModel } from '@/lib/ai/config';
+import { aiModel, embeddingModel } from '@/lib/ai/config';
+import { hashedEmbedding } from '@/lib/ai/retrieval';
 
 // The only file that talks to the AI provider (Google Gemini). The rest of the
 // app passes plain text in and gets plain text, or checked JSON, back. To use
@@ -158,6 +159,56 @@ export async function generateJson<T>(options: AskOptions & { schema: z.ZodType<
     if (!parsed.success) throw new AiError('invalid', "Gemini's answer wasn't in the expected shape. Try asking again.");
 
     return { value: parsed.data, usage: toUsage(response.usageMetadata) };
+}
+
+// ---------------------------------------------------------------------------
+// Embeddings: a vector per text, for finding past searches like a Write SPL
+// request (lib/spl-examples.ts).
+
+export type EmbedInput = { text: string; title?: string };
+
+// Short vectors are plenty for comparing searches, and cheaper to keep.
+export const EMBEDDING_DIMENSIONS = 768;
+
+// The model whose vectors embed() returns now. Saved vectors are kept per
+// model, since vectors from different models can't be compared.
+export const embeddingModelInUse = () => (process.env.AI_PROVIDER === 'fake' ? 'fake-hashed' : embeddingModel());
+
+// gemini-embedding-001 takes the task as a setting. gemini-embedding-2 reads it
+// from the text, and needs each text in its own Content to return one vector each.
+const takesTaskType = (model: string) => model.startsWith('gemini-embedding-001');
+
+const embeddingText = (model: string, purpose: 'query' | 'document', { text, title }: EmbedInput) => {
+    if (takesTaskType(model)) return text;
+    return purpose === 'query' ? `task: search result | query: ${text}` : `title: ${title ?? 'none'} | text: ${text}`;
+};
+
+// One vector per input: 'query' for the request, 'document' for what it's compared with.
+export async function embed(inputs: EmbedInput[], purpose: 'query' | 'document'): Promise<number[][]> {
+    if (inputs.length === 0) return [];
+    if (process.env.AI_PROVIDER === 'fake') return inputs.map(({ text, title }) => hashedEmbedding(`${title ?? ''} ${text}`));
+
+    const model = embeddingModel();
+    const vectors: number[][] = [];
+    for (let start = 0; start < inputs.length; start += 100) {
+        const batch = inputs.slice(start, start + 100);
+        try {
+            const response = await gemini().models.embedContent({
+                model,
+                contents: batch.map((input) => ({ role: 'user', parts: [{ text: embeddingText(model, purpose, input) }] })),
+                config: {
+                    outputDimensionality: EMBEDDING_DIMENSIONS,
+                    ...(takesTaskType(model) ? { taskType: purpose === 'query' ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT' } : {}),
+                },
+            });
+            const values = response.embeddings?.map((embedding) => embedding.values ?? []) ?? [];
+            if (values.length !== batch.length) throw new AiError('invalid', `Gemini returned ${values.length} embeddings for ${batch.length} texts.`);
+            vectors.push(...values);
+        } catch (error) {
+            throw toAiError(error);
+        }
+    }
+    return vectors;
 }
 
 // ---------------------------------------------------------------------------

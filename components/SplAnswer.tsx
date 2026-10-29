@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, type CSSProperties } from "react";
-import { CircleX, ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
+import { useState, useTransition, type CSSProperties } from "react";
+import { BookmarkCheck, BookmarkPlus, CircleX, ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
+import { saveExampleAction } from "@/app/ai/actions";
 import CopyButton from "@/components/CopyButton";
 import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type StoredSplAnswer as Answer } from "@/lib/ai/spl";
 
@@ -14,12 +15,47 @@ type Props = {
     // Sends one of the suggested follow-ups as the next request.
     onFollowUp?: (request: string) => void;
     busy?: boolean;
+    // The saved answer's id, for "Save as example", and whether it's saved.
+    messageId?: string;
+    saved?: boolean;
 };
+
+// "Save as example": later requests like this one get it as an example
+// (lib/spl-examples.ts). The new state shows at once and is saved in the
+// background; if saving fails, it goes back and says why.
+function SaveExample({ messageId, initial }: { messageId: string; initial: boolean }) {
+    const [saved, setSaved] = useState(initial);
+    const [problem, setProblem] = useState<string | null>(null);
+    const [, startTransition] = useTransition();
+
+    const toggle = () => {
+        const next = !saved;
+        setSaved(next);
+        setProblem(null);
+        startTransition(async () => {
+            const result = await saveExampleAction(messageId, next).catch(() => null);
+            if (!result?.ok) {
+                setSaved(!next);
+                setProblem(result?.message ?? 'Not saved. Try again.');
+            }
+        });
+    };
+
+    return (
+        <>
+            <button type="button" className="btn-secondary" aria-pressed={saved} onClick={toggle}>
+                {saved ? <BookmarkCheck aria-hidden="true" /> : <BookmarkPlus aria-hidden="true" />}
+                {saved ? 'Saved as an example' : 'Save as example'}
+            </button>
+            {problem && <span className="feedback-error" role="alert">{problem}</span>}
+        </>
+    )
+}
 
 // A search from Write SPL, as a pipeline: the full query, then each step in
 // order with what it does. Pointing at a step (or pressing its number)
 // highlights its line in the query.
-const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = false }: Props) => {
+const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = false, messageId, saved = false }: Props) => {
     const [hovered, setHovered] = useState<number | null>(null);
     const [pinned, setPinned] = useState<number | null>(null);
     const highlighted = hovered ?? pinned;
@@ -34,6 +70,8 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
     const parseError = validation && !validation.ok ? validation.message ?? "the search doesn't parse." : null;
     const warnings = [...(parseError ? [`${parser}: ${parseError}`] : []), ...check.warnings];
     const fix = parseError ? `Fix this search. ${parser} says: ${parseError}` : null;
+    // Good examples only read data and parse.
+    const canBeExample = Boolean(messageId) && check.readOnly && validation?.ok !== false;
 
     return (
         <article className="spl-card">
@@ -59,6 +97,10 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 )}
                 {answer.timeRange && <span className="pill">{answer.timeRange}</span>}
             </div>
+
+            {answer.basedOn && answer.basedOn.length > 0 && (
+                <p className="spl-check">Based on similar searches: {answer.basedOn.join('; ')}.</p>
+            )}
 
             {validation?.ok && (
                 <p className="spl-check">
@@ -86,6 +128,7 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
 
             <div className="spl-actions">
                 <CopyButton text={query} label="Copy SPL" />
+                {canBeExample && messageId && <SaveExample messageId={messageId} initial={saved} />}
                 {openUrl && (
                     <a href={openUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
                         <ExternalLink aria-hidden="true" />

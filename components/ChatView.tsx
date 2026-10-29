@@ -36,6 +36,8 @@ type Props = {
     demo?: boolean;
     // The viewer's 👍 / 👎 on the answers already saved, by message id.
     votes?: Record<string, 'up' | 'down'>;
+    // Write SPL answers the viewer saved as examples, by message id.
+    savedExamples?: Record<string, true>;
 };
 
 const PLACEHOLDERS: Record<ChatKind, string> = {
@@ -51,7 +53,7 @@ const MAX_QUESTION = 2000;
 // /ai/reports?chat=<id> is that saved chat. A new chat gets its address once
 // its first answer is saved. Each question and answer are saved together by
 // the server, so an answer that is stopped or fails isn't saved.
-const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWebUrl, demo = false, votes = {} }: Props) => {
+const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWebUrl, demo = false, votes = {}, savedExamples = {} }: Props) => {
     const router = useRouter();
     const pathname = usePathname();
     // Next keeps recently visited pages, hidden, so ids must be unique per view.
@@ -273,7 +275,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                         )}
 
                         {message.spl ? (
-                            <SplAnswer answer={message.spl} splunkWebUrl={splunkWebUrl} reveal={message.fresh} onFollowUp={send} busy={busy || !ai.enabled} />
+                            <SplAnswer answer={message.spl} splunkWebUrl={splunkWebUrl} reveal={message.fresh} onFollowUp={send} busy={busy || !ai.enabled} messageId={message.id} saved={Boolean(savedExamples[message.id])} />
                         ) : message.text ? (
                             <ChatAnswer text={message.text} reports={reports} streaming={message.state === 'streaming'} />
                         ) : null}

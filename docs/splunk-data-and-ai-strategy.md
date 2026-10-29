@@ -130,7 +130,7 @@ Keep PostHog for how people use the app, such as which reports they open and whe
 ## The order to build in
 
 1. **Done:** each Write SPL search is checked with a parser before it's shown.
-2. **Next:** RAG for Write SPL, with "Save as example".
+2. **Done:** RAG for Write SPL, with "Save as example", and `npm run eval:spl` to measure it ([ai.md](ai.md#how-write-spl-learns-from-your-searches)).
 3. Real field names from `| fieldsummary`, in live mode.
 4. The evaluation set, scored with a real key on a schedule.
 5. Agent tools behind a person's approval, at work only.
