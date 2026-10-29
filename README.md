@@ -34,7 +34,7 @@ Splunk REST API (:8089) ─┐
 - **Ask AI** (`lib/ai/`, `app/ai/`, `app/api/ai/`): one file talks to Gemini (`lib/ai/llm.ts`), and the AI only gets the reports the data access layer allows you. Chats live in MongoDB (`lib/chats.ts`), and each account has a daily limit.
 - **ML job** (`ml/`): Python, run after a sync. It reads the runs and votes from MongoDB, and writes its scores back for the app to read (`ml_run_scores`, `ml_report_scores`).
 
-New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
+New to the code? [docs/codebase-guide.md](docs/codebase-guide.md) explains what every file does and how the pieces connect. New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
 
 ## Running with Docker (no other setup)
 

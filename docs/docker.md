@@ -20,7 +20,7 @@ The first build takes a few minutes. When the log says the app is ready, open [h
 
 | Service | What it does |
 |---|---|
-| `mongo` | MongoDB 8.0. Its data lives in the `mongo-data` volume, and it isn't exposed outside Docker. |
+| `mongo` | MongoDB 7.0. Its data lives in the `mongo-data` volume, and it isn't exposed outside Docker. It's 7.0 rather than 8.0 because MongoDB 8.0 won't start on Linux kernels 6.19 to 7.0.13 ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which some Docker setups use. |
 | `setup` | Runs once and exits: creates the demo users (`npm run seed`) and loads the dummy reports (`npm run sync`). Running it again changes nothing. |
 | `app` | The web app on port 3000. It's Next.js's standalone production server, built from the `Dockerfile`. |
 | `ml` | Optional: the Python ML job ([ml.md](ml.md)). It runs only when you ask for it (below). |

@@ -24,7 +24,10 @@ x-auth: &auth
 
 services:
   mongo:
-    image: mongo:8.0
+    # 7.0, not 8.0: MongoDB 8.0 refuses to start on Linux kernels 6.19 to 7.0.13
+    # (SERVER-121912), which GitHub's runners and recent Docker setups use. The
+    # app needs nothing from 8.0; move to it once those kernels are gone.
+    image: mongo:7.0
     volumes:
       - mongo-data:/data/db
     healthcheck:
