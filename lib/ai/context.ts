@@ -1,5 +1,6 @@
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { findUnusualRun } from '@/lib/insights';
+import type { SplExample } from '@/lib/ai/retrieval';
 import type { Cell, SplunkReport, SyncInfo } from '@/lib/reports';
 
 // What the model is told about the reports. Two rules:
@@ -72,19 +73,52 @@ export function reportsContext(reports: SplunkReport[], sync: SyncInfo | null): 
 
 // The searches behind the reports, for the Write SPL tab: what's in which
 // index, which fields the reports use, and their SPL as examples.
-export function splContext(reports: SplunkReport[]): string {
-    if (reports.length === 0) return 'This person cannot see any reports, so there are no example searches.';
+//
+// With examples (lib/spl-examples.ts: the searches most like the request), the
+// reports become a short catalog of indexes and columns, and only those
+// examples are written out in full, closest first. Without them (no examples
+// found, or the AI couldn't compare), every report's search is written out.
+export function splContext(reports: SplunkReport[], examples?: SplExample[]): string {
+    if (reports.length === 0 && !examples?.length) return 'This person cannot see any reports, so there are no example searches.';
 
-    return [...reports]
+    if (!examples) {
+        return [...reports]
+            .sort(bySlug)
+            .map((report) => [
+                `<report id="${report.slug}">`,
+                `Title: ${clean(report.title)}`,
+                `Index: ${clean(report.index)}`,
+                `Columns: ${report.columns.map(clean).join(', ') || 'none stored yet'}`,
+                'SPL:',
+                report.spl,
+                '</report>',
+            ].join('\n'))
+            .join('\n\n');
+    }
+
+    const catalog = [...reports]
         .sort(bySlug)
-        .map((report) => [
-            `<report id="${report.slug}">`,
-            `Title: ${clean(report.title)}`,
-            `Index: ${clean(report.index)}`,
-            `Columns: ${report.columns.map(clean).join(', ') || 'none stored yet'}`,
+        .map((report) => `- ${clean(report.title)}: index ${clean(report.index)}; columns ${report.columns.map(clean).join(', ') || 'none stored yet'}`)
+        .join('\n');
+    const similar = examples
+        .map((example) => [
+            `<search id="${example.id}">`,
+            `${example.source === 'report' ? 'Report' : 'Saved request'}: ${clean(example.title)}`,
+            `What it does: ${clean(example.description)}`,
+            ...(example.index ? [`Index: ${clean(example.index)}`] : []),
             'SPL:',
-            report.spl,
-            '</report>',
+            // Saved searches come from people, so they mustn't be able to close the tag.
+            example.spl.replace(/<\/?search/gi, ''),
+            '</search>',
         ].join('\n'))
         .join('\n\n');
+
+    return [
+        'Their reports (indexes and columns):',
+        catalog || 'none',
+        '',
+        'The searches most like this request, closest first (their reports, and searches people saved as good examples):',
+        '',
+        similar || 'none',
+    ].join('\n');
 }

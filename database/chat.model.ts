@@ -47,6 +47,7 @@ const SplAnswerSchema = new Schema<StoredSplAnswer>(
         assumptions: { type: [String], default: [] },
         followUps: { type: [String], default: [] },
         validation: { type: SplValidationSchema, default: undefined },
+        basedOn: { type: [String], default: undefined },
     },
     { _id: false },
 );

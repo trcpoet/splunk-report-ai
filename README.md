@@ -84,6 +84,7 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run lint` | ESLint |
 | `npm run ml` / `ml:plot` | Score the runs with the ML job (`ml:plot` also draws a chart). Set up its Python environment first: [ml/README.md](ml/README.md) |
 | `npm run test:ml` | The ML job's tests |
+| `npm run eval:spl` | Score Write SPL on 10 requests over the demo reports (needs a Gemini key; see [docs/ai.md](docs/ai.md#how-write-spl-learns-from-your-searches)) |
 
 ## Hosted demo
 

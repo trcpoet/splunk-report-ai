@@ -6,13 +6,15 @@ import { conversation, jsonError, prepareTurn } from "@/lib/ai/turn";
 import { recordTokens } from "@/lib/ai/usage";
 import { validateSpl } from "@/lib/ai/validate";
 import { saveTurn, type ChatMessage } from "@/lib/chats";
+import { findSimilarExamples } from "@/lib/spl-examples";
 
 export const maxDuration = 60;
 
 /**
  * POST /api/ai/spl  { chatId?, message }
  * Writes or explains a Splunk search, using the indexes, fields and searches
- * of the reports the signed-in person can see. Answers with
+ * of the reports the signed-in person can see, and the past searches most
+ * like the request (lib/spl-examples.ts). Answers with
  * { chatId, message }, where message.spl holds the search step by step and
  * what a parser said about it (lib/ai/validate.ts). The app never runs the
  * search.
@@ -23,9 +25,18 @@ export async function POST(request: Request) {
 
     const { viewer, chatId, question } = turn;
 
+    // The searches most like the request. For a follow-up such as "Only the last
+    // 7 days", the request before it says more. Without them (the AI can't
+    // compare right now), the prompt has every report's search instead.
+    const lastAsked = turn.chat?.messages.findLast(({ role }) => role === 'user')?.text;
+    const examples = await findSimilarExamples(viewer, lastAsked ? `${lastAsked}\n${question}` : question, turn.reports).catch((error) => {
+        console.error("Couldn't find similar searches, so Write SPL shows the AI every report's search:", error);
+        return undefined;
+    });
+
     try {
         const { value: answer, usage } = await generateJson({
-            system: `${SPL_PROMPT}\n\n${splContext(turn.reports)}`,
+            system: `${SPL_PROMPT}\n\n${splContext(turn.reports, examples)}`,
             turns: conversation(turn),
             // Writing a correct search is worth a little more thinking than chat.
             thinking: 'medium',
@@ -34,7 +45,11 @@ export async function POST(request: Request) {
         });
 
         // Checked before it's shown, so a search that won't parse says so.
-        const spl: StoredSplAnswer = { ...answer, validation: await validateSpl(queryFromSteps(answer.steps)) };
+        const spl: StoredSplAnswer = {
+            ...answer,
+            validation: await validateSpl(queryFromSteps(answer.steps)),
+            ...(examples && examples.length > 0 ? { basedOn: examples.map(({ title }) => title) } : {}),
+        };
 
         const messageId = await saveTurn(viewer, { chatId, kind: 'spl', question, answer: { text: spl.summary, spl } });
         await recordTokens(viewer.id, usage);

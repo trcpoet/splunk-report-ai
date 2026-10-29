@@ -32,6 +32,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 |---|---|---|
 | `GEMINI_API_KEY` | none | Turns AI answers on |
 | `AI_MODEL` | `gemini-3.8-flash` | Which Gemini model answers. `gemini-3.1-flash-lite` is cheaper. (`gemini-3.5-flash` is deprecated: Google sends it to 3.6.) |
+| `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | The model that turns searches into vectors, for Write SPL's examples (below). `gemini-embedding-001` also works. |
 | `AI_PROVIDER` | `gemini` | `fake` for canned answers |
 | `AI_ENABLED` | on | `false` turns answers off, even with a key |
 | `AI_DAILY_LIMIT` | 50 | AI requests per account per day (UTC) |
@@ -87,6 +88,25 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 
 **👍 / 👎** appear under AI answers, under summaries, and on briefing flags ("Worth flagging?"). Votes go in `ai_feedback`, one per person per item; pressing the same thumb again takes the vote back. The flag votes, with what was flagged, are the training labels for the ML job in `ml/` (see [ml.md](ml.md)).
 
+## How Write SPL learns from your searches
+
+Write SPL shows the AI the searches **most like your request**, instead of every report's search. This is called RAG: retrieval-augmented generation. It works like this:
+
+1. **Examples.** These are your reports' searches, plus searches people saved with **Save as example**.
+   - A saved search is shared with the groups of the person who saved it, like a report. Admins see them all.
+   - Only searches that only read data, and that parse, can be saved.
+2. **Comparing.** Each example and each request becomes a vector (an *embedding*, from `AI_EMBEDDING_MODEL`). The 5 closest examples go into the prompt in full. Every report you can see is listed too, with its index and columns.
+   - Example vectors are saved in `ai_embeddings`, so each search is sent once.
+   - Embeddings cost a fraction of a cent, and are free on the free tier.
+3. **Showing what was used.** The answer says which searches it was **based on**.
+4. **Falling back.** If the examples can't be compared (no key, a quota, the network), the AI gets every report's search instead, as before.
+
+`lib/ai/retrieval.ts` holds the comparing, and `lib/spl-examples.ts` the examples. Over time, saved searches teach Write SPL your team's style and field names, with no training.
+
+**Measuring it:** `npm run eval:spl` runs Write SPL on 10 requests over the demo reports (`scripts/spl-eval-set.json`).
+- It scores each answer: does it parse, does it only read data, does it use the expected index and fields.
+- Run it with a real key before and after changing the prompt, the examples or the model. With `AI_PROVIDER=fake` it only shows that the steps work.
+
 ## What the AI can see, and what it can't
 
 - **Only your reports.** For each one: its status and message, highlights, the last 7 runs, its SPL, and up to 20 rows of its latest results, plus the time of the last sync. It gets exactly what `lib/dal.ts` lets you see, so it can't mention a report you can't open.
@@ -140,6 +160,8 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 | `ai_usage` | Requests and tokens per account per day | 7 days |
 | `ai_summaries` | Explain summaries and briefings, under a key that changes with the data or the prompt (`PROMPT_VERSION`) | 30 days |
 | `ai_feedback` | 👍 / 👎, one per person per answer, summary or briefing flag | Kept (the ML job's training labels) |
+| `spl_examples` | Write SPL answers saved with **Save as example**, shared with the saver's groups | Until the saver takes them back |
+| `ai_embeddings` | The vectors of searches Write SPL compares requests with, per embedding model | 90 days |
 
 - A question and its answer are saved together, once the answer is complete.
 - An answer you stop, or one that fails, isn't saved. Ask again with **Try again**.
