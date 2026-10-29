@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    // The Docker image (Dockerfile) runs Next's minimal standalone server. Vercel
+    // builds without it, as before.
+    output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
     cacheComponents: true,
     partialPrefetching: true,
   async rewrites() {

@@ -1,7 +1,8 @@
 # Checks every pull request and every push to main: lint, unit tests and a
-# production build, plus the ML job's Python tests. Branch protection on main
-# requires the "Lint, test and build" job to pass, so keep that name in sync
-# with the ruleset. "ML (Python)" isn't required.
+# production build, plus the ML job's Python tests and the Docker setup.
+# Branch protection on main requires the "Lint, test and build" job to pass,
+# so keep that name in sync with the ruleset. "ML (Python)" and "Docker"
+# aren't required.
 name: CI
 
 on:
@@ -55,3 +56,36 @@ jobs:
       - run: pip install -r ml/requirements.txt
       # The tests need no database: they build their runs in memory.
       - run: python -m pytest ml
+
+  # docker compose up from a fresh checkout, as a teammate would (docs/docker.md).
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose --profile ml build
+      - name: Start MongoDB, load the demo data and start the app
+        run: docker compose up -d
+      - name: Wait for the app
+        run: |
+          for attempt in $(seq 1 60); do
+            curl -fsS -o /dev/null http://localhost:3000/login && exit 0
+            sleep 3
+          done
+          docker compose ps
+          exit 1
+      - name: Sign in and read the reports
+        run: |
+          curl -fsS -c cookies.txt -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' \
+            -d '{"email":"admin@example.com","password":"splunk-demo-2026"}' \
+            http://localhost:3000/api/auth/sign-in/email > /dev/null
+          curl -fsS -b cookies.txt http://localhost:3000/api/reports | grep -q '"failed-logins-by-user"'
+      - name: Run the ML job
+        run: docker compose --profile ml run --rm ml
+      - name: Show the logs
+        if: failure()
+        run: docker compose --profile ml logs
+      - name: Stop
+        if: always()
+        run: docker compose --profile ml down -v
