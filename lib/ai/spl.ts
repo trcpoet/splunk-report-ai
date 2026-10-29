@@ -27,6 +27,13 @@ export const SplAnswerSchema = z.object({
 export type SplAnswer = z.infer<typeof SplAnswerSchema>;
 export type SplStep = SplAnswer['steps'][number];
 
+// What a parser said about a search, checked before it's shown (lib/ai/validate.ts):
+// Splunk's own parser when the app can reach it, otherwise the demo parser.
+export type SplValidation = { ok: boolean; by: 'splunk' | 'demo'; message?: string };
+
+// An answer as the app stores and shows it: Gemini's answer, plus what the app adds.
+export type StoredSplAnswer = SplAnswer & { validation?: SplValidation };
+
 // One step as a line of the search: the first is the base search, the rest
 // start with a pipe. Used both for what's shown and what's copied, so they match.
 export const stepLine = ({ code }: SplStep, index: number) => {

@@ -51,6 +51,10 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - The answer is the search as a pipeline: the whole query, then each pipe command with one sentence on what it does.
 - Point at a step, or press its number, to highlight it in the query.
 - A badge says whether the search only reads events, or changes data or does something outside the search (for example `outputlookup` writes a lookup, `sendemail` sends mail). Searches that name no index get a warning too.
+- **Each search is parsed before you see it**, without running it (`lib/ai/validate.ts`):
+  - with Splunk's own parser, when the web app has `SPLUNK_BASE_URL` and `SPLUNK_PARSER_TOKEN`, a token for a parse-only role that can't read any index;
+  - otherwise with a small built-in parser, which catches unknown commands and quotes or brackets that never close. It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
+  A line under the badges says which parser checked it. A search that doesn't parse says why, and offers **Fix the error**, which asks again with the parser's message.
 - **Copy SPL** copies the search. **Open in Splunk** (when `SPLUNK_WEB_URL` is set) opens it in Splunk's search page, where it runs only when you press Enter there.
 - Follow-up suggestions such as "Only the last 7 days" change the search in the same chat.
 - The side panel lists the searches behind your reports. Pick one to have it explained.
@@ -98,6 +102,7 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 | `lib/ai/prompts.ts` | What the AI is told, in plain English |
 | `lib/ai/context.ts` | Your reports as text for the AI |
 | `lib/ai/spl.ts` | The shape of a Write SPL answer, and the safety check |
+| `lib/ai/validate.ts`, `lib/splunk/parser.ts` | Parsing each Write SPL search: Splunk's parser with a parse-only token, else the demo parser |
 | `lib/ai/stream.ts` | How streamed answers reach the browser (one JSON event per line) |
 | `lib/ai/turn.ts` | The checks before each question: signed in, AI on, your chat, today's limit |
 | `lib/ai/usage.ts` | Daily limits |
@@ -176,6 +181,8 @@ Some companies already sign people in to Splunk with their company login (Active
 3. For questions the stored reports can't answer, the approved LLM can search Splunk live, as you, through its existing connection.
 
 Ask your Splunk admin which integration the company uses before building on it.
+
+The full recommendation is in [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md). It covers how to collect the data with AD sign-in, RAG over past searches, supervised and unsupervised learning, an agent with guardrails, and anomaly detection.
 
 ## Splunk's JavaScript SDK, or Python?
 

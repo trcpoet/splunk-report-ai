@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model, type Types } from 'mongoose';
-import type { SplAnswer } from '@/lib/ai/spl';
+import type { StoredSplAnswer } from '@/lib/ai/spl';
 
 // One saved conversation from the Ask AI page. The messages live inside the
 // chat because they're always read together, and there are at most
@@ -13,7 +13,7 @@ export interface IChatMessage {
     role: 'user' | 'assistant';
     text: string;
     // Write SPL answers only: the search, one step per pipe command.
-    spl?: SplAnswer;
+    spl?: StoredSplAnswer;
     createdAt: Date;
 }
 
@@ -36,7 +36,9 @@ export const MAX_CHAT_MESSAGES = 100;
 
 const SplStepSchema = new Schema({ code: String, explanation: String }, { _id: false });
 
-const SplAnswerSchema = new Schema<SplAnswer>(
+const SplValidationSchema = new Schema({ ok: Boolean, by: { type: String, enum: ['splunk', 'demo'] }, message: String }, { _id: false });
+
+const SplAnswerSchema = new Schema<StoredSplAnswer>(
     {
         summary: String,
         steps: { type: [SplStepSchema], default: [] },
@@ -44,6 +46,7 @@ const SplAnswerSchema = new Schema<SplAnswer>(
         fields: { type: [String], default: [] },
         assumptions: { type: [String], default: [] },
         followUps: { type: [String], default: [] },
+        validation: { type: SplValidationSchema, default: undefined },
     },
     { _id: false },
 );
