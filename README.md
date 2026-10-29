@@ -96,7 +96,7 @@ The live demo runs on Vercel with a free MongoDB Atlas cluster (M0). To host you
 
 3. Import the repo in Vercel and set `MONGODB_URI`, `RUN_RETENTION_DAYS=3650`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (the site's URL), `DEMO_MODE=true`, `DEMO_PASSWORD`, `REVALIDATE_SECRET` and `APP_URL` (the site's URL).
 
-Vercel builds only the production branch (`vercel.json`'s `ignoreCommand`). Pull requests are checked by CI instead, and preview builds would fail anyway: the Preview environment has no settings, such as `MONGODB_URI`.
+Vercel deploys only `main` (`vercel.json`'s `git.deploymentEnabled`); other branches get no deployment. Pull requests are checked by CI instead, and preview builds would fail anyway: the Preview environment has no settings, such as `MONGODB_URI`. (An `ignoreCommand` that checks `VERCEL_ENV` skipped production too, because the variable was empty in that step.)
 
 `DEMO_MODE=true` lists the demo accounts on the sign-in page with one-click sign-in and shows their password, so use it only with dummy data. The sign-in form is built into the page when the app is built, so after changing `DEMO_MODE` or `DEMO_PASSWORD`, redeploy (Vercel applies new settings only to new deployments anyway). Because visitors share those accounts, `/api/auth` only serves sign-in, sign-out and session lookups ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)): nobody can change a demo account's password or see who else is signed in to it.
 
