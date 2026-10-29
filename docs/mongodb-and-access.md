@@ -46,6 +46,8 @@ Locally, MongoDB runs through Homebrew (`brew services start mongodb-community@8
 | `sync_state` | when the last sync ran and whether it worked | the sync |
 | `user_access` | each user's role (`admin` / `viewer`) and groups | `npm run seed`, or by hand |
 | `user`, `account`, `session` | logins, password hashes and sessions | Better Auth |
+| `chats` | Ask AI conversations, one document per chat with its questions and answers inside, owned by the user who started it | the Ask AI page ([ai.md](ai.md)) |
+| `ai_usage` | AI requests and tokens per user per day, for the daily limits (deleted after a week) | the Ask AI page |
 
 ## Looking at the data
 

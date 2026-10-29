@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.7.7",
+    "@google/genai": "^2.31.0",
     "@tanstack/react-table": "^9.2.4",
     "better-auth": "^1.7.7",
     "class-variance-authority": "^0.7.1",
@@ -29,9 +30,12 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.8.0",
+    "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

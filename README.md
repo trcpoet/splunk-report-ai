@@ -11,6 +11,7 @@
 - **Sign-in and per-team access:** each user sees only the reports their groups used to receive by email. Admins see everything.
 - **Overview:** headline numbers for the reports you can see, scheduled runs per day by outcome, and the report list with search and status/category filters.
 - **Report page (`/reports/[slug]`):** status and alert message, key numbers, a chart of the latest results (the chart type saved in Splunk), the results table, the SPL query, a results-per-run trend and the run history, schedule details, the distribution lists that used to receive the email, and **Download CSV** / **Copy SPL** buttons.
+- **Ask AI (`/ai`):** ask questions about your reports and get answers that link to the reports they use, or describe a search and get the SPL explained step by step (never run). Every chat is saved, and the History tab lists them all. Answers come from Google Gemini and see only your reports. Without a `GEMINI_API_KEY` the page says AI is off. See [docs/ai.md](docs/ai.md).
 - **JSON API:** `GET /api/reports` and `GET /api/reports/[slug]` return only what the signed-in user may see (401 when signed out, 404 for reports that are missing or hidden).
 
 ## How it works
@@ -27,6 +28,8 @@ Splunk REST API (:8089) ─┐
 - **Access** (`lib/dal.ts`, `lib/access.ts`): every page and API route reads data through the data access layer, which checks the signed-in user's groups. `proxy.ts` only redirects signed-out visitors to `/login`.
 - **Login** (Better Auth, email and password for the demo): public sign-up is off; accounts come from `npm run seed`. Report access lives in its own `user_access` collection, so moving to company SSO later doesn't change the access code.
 - **Caching and loading** (`lib/dal.ts`, `components/Skeletons.tsx`, `components/Transitions.tsx`): report data is cached on the server until the next sync, each user's own pages in their browser for 5 minutes, and a report card loads its report when you point at it. Placeholders keep their content's size, so nothing jumps.
+
+- **Ask AI** (`lib/ai/`, `app/ai/`, `app/api/ai/`): one file talks to Gemini (`lib/ai/llm.ts`), and the AI only gets the reports the data access layer allows you. Chats live in MongoDB (`lib/chats.ts`), and each account has a daily limit.
 
 New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
 
@@ -132,4 +135,4 @@ The MongoDB server connects to the local `splunkevents` database by default. To 
 
 ## Tech stack
 
-Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tailwind CSS 4, MongoDB with Mongoose, Better Auth, shadcn/ui charts (Recharts), and optionally PostHog.
+Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tailwind CSS 4, MongoDB with Mongoose, Better Auth, shadcn/ui charts (Recharts), Google Gemini through `@google/genai` (Ask AI), and optionally PostHog.

@@ -150,6 +150,63 @@ export const ReportSkeleton = () => (
     </Loading>
 )
 
+// An Ask AI tab: the chat's heading, its intro and suggestions, the box to
+// type in, and the side panel.
+export const ChatSkeleton = () => (
+    <Loading label="Loading the chat…" className="ai-workspace">
+        <div className="chat">
+            <div className="chat-head">
+                <span className="chat-title"><Line className="w-28" /></span>
+            </div>
+            <div className="chat-intro">
+                <p><Line className="w-full" /><br /><Line className="w-2/3" /></p>
+                <div className="chips">
+                    {['w-56', 'w-64', 'w-48'].map((width, i) => <span key={i} className={`skeleton-block h-[34px] rounded-full ${width}`} />)}
+                </div>
+            </div>
+            <div className="composer">
+                <div className="skeleton-block h-[58px] rounded-[10px]" />
+                <p className="composer-notes"><Line className="w-72" /></p>
+            </div>
+        </div>
+        <div className="ai-side">
+            <span className="text-lg font-semibold"><Line className="w-40" /></span>
+            <p><Line className="w-full" /><br /><Line className="w-1/2" /></p>
+            <ul>
+                {range(6).map((i) => <li key={i} className="text-sm py-2"><Line className="w-4/5" /></li>)}
+            </ul>
+        </div>
+    </Loading>
+)
+
+// The History tab: the search box, the filter chips, the count and a few rows.
+export const HistorySkeleton = () => (
+    <Loading label="Loading your chats…" className="history">
+        <div className="filters">
+            <div className="skeleton-block h-[46px] w-full md:max-w-md" />
+            <div className="chips">
+                {['w-24', 'w-36', 'w-24'].map((width, i) => <span key={i} className={`skeleton-block h-[34px] rounded-full ${width}`} />)}
+            </div>
+        </div>
+        <p className="text-light-200 text-sm"><Line className="w-36" /></p>
+        <section className="history-group">
+            <h2><Line className="w-16" /></h2>
+            <ul>
+                {range(4).map((i) => (
+                    <li key={i} className="history-row">
+                        <span className="history-icon skeleton-block" />
+                        <span className="history-link">
+                            <span className="history-title"><Line className="w-2/3" /></span>
+                            <span className="history-preview"><Line className="w-full" /></span>
+                            <span className="history-meta"><Line className="w-40" /></span>
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    </Loading>
+)
+
 // Holds the user menu's place in the navbar while the session is read, so the
 // links next to it don't jump. Hidden on the sign-in page, which has no menu.
 export const UserMenuSkeleton = () => (
