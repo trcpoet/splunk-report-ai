@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, type CSSProperties } from "react";
-import { ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
+import { CircleX, ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
 import CopyButton from "@/components/CopyButton";
-import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type SplAnswer as Answer } from "@/lib/ai/spl";
+import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type StoredSplAnswer as Answer } from "@/lib/ai/spl";
 
 type Props = {
     answer: Answer;
@@ -28,6 +28,13 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
     const check = checkSpl(query);
     const openUrl = splunkSearchUrl(splunkWebUrl, query);
 
+    // What a parser said before the answer was shown. Older answers have no check.
+    const { validation } = answer;
+    const parser = validation?.by === 'splunk' ? "Splunk's parser" : 'The demo parser';
+    const parseError = validation && !validation.ok ? validation.message ?? "the search doesn't parse." : null;
+    const warnings = [...(parseError ? [`${parser}: ${parseError}`] : []), ...check.warnings];
+    const fix = parseError ? `Fix this search. ${parser} says: ${parseError}` : null;
+
     return (
         <article className="spl-card">
             <p className="spl-summary">{answer.summary}</p>
@@ -44,12 +51,26 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                         Changes data or acts outside the search
                     </span>
                 )}
+                {parseError && (
+                    <span className="spl-safety risky">
+                        <CircleX aria-hidden="true" />
+                        Doesn&apos;t parse
+                    </span>
+                )}
                 {answer.timeRange && <span className="pill">{answer.timeRange}</span>}
             </div>
 
-            {check.warnings.length > 0 && (
+            {validation?.ok && (
+                <p className="spl-check">
+                    {validation.by === 'splunk'
+                        ? "Checked with Splunk's parser: no errors."
+                        : "Checked with the demo parser (Splunk isn't connected): no errors."}
+                </p>
+            )}
+
+            {warnings.length > 0 && (
                 <ul className="spl-warnings">
-                    {check.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                    {warnings.map((warning) => <li key={warning}>{warning}</li>)}
                 </ul>
             )}
 
@@ -117,8 +138,13 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 </dl>
             )}
 
-            {onFollowUp && answer.followUps.length > 0 && (
+            {onFollowUp && (fix || answer.followUps.length > 0) && (
                 <div className="chips" role="group" aria-label="Try next">
+                    {fix && (
+                        <button type="button" className="chip" disabled={busy} onClick={() => onFollowUp(fix)}>
+                            Fix the error
+                        </button>
+                    )}
                     {answer.followUps.map((request) => (
                         <button key={request} type="button" className="chip" disabled={busy} onClick={() => onFollowUp(request)}>
                             {request}

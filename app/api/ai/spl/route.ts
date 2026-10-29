@@ -1,9 +1,10 @@
 import { splContext } from "@/lib/ai/context";
 import { AiError, generateJson } from "@/lib/ai/llm";
 import { SPL_PROMPT } from "@/lib/ai/prompts";
-import { SplAnswerSchema } from "@/lib/ai/spl";
+import { queryFromSteps, SplAnswerSchema, type StoredSplAnswer } from "@/lib/ai/spl";
 import { conversation, jsonError, prepareTurn } from "@/lib/ai/turn";
 import { recordTokens } from "@/lib/ai/usage";
+import { validateSpl } from "@/lib/ai/validate";
 import { saveTurn, type ChatMessage } from "@/lib/chats";
 
 export const maxDuration = 60;
@@ -12,8 +13,9 @@ export const maxDuration = 60;
  * POST /api/ai/spl  { chatId?, message }
  * Writes or explains a Splunk search, using the indexes, fields and searches
  * of the reports the signed-in person can see. Answers with
- * { chatId, message }, where message.spl holds the search step by step. The
- * app never runs the search.
+ * { chatId, message }, where message.spl holds the search step by step and
+ * what a parser said about it (lib/ai/validate.ts). The app never runs the
+ * search.
  */
 export async function POST(request: Request) {
     const turn = await prepareTurn(request, 'spl');
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
     const { viewer, chatId, question } = turn;
 
     try {
-        const { value: spl, usage } = await generateJson({
+        const { value: answer, usage } = await generateJson({
             system: `${SPL_PROMPT}\n\n${splContext(turn.reports)}`,
             turns: conversation(turn),
             // Writing a correct search is worth a little more thinking than chat.
@@ -30,6 +32,9 @@ export async function POST(request: Request) {
             signal: request.signal,
             schema: SplAnswerSchema,
         });
+
+        // Checked before it's shown, so a search that won't parse says so.
+        const spl: StoredSplAnswer = { ...answer, validation: await validateSpl(queryFromSteps(answer.steps)) };
 
         const messageId = await saveTurn(viewer, { chatId, kind: 'spl', question, answer: { text: spl.summary, spl } });
         await recordTokens(viewer.id, usage);
