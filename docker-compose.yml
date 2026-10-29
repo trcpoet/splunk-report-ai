@@ -1,0 +1,91 @@
+# SplunkEvents with dummy data, in one command:
+#
+#   docker compose up --build
+#
+# then open http://localhost:3000 and pick a demo account. See docs/docker.md.
+# Optional settings (an AI key, another password) go in a .env file next to
+# this one; every value below has a default, so none are required.
+
+name: splunk-events
+
+x-database: &database
+  MONGODB_URI: mongodb://mongo:27017/splunkevents
+  # The dummy runs have fixed dates in October 2026, so keep them for years.
+  RUN_RETENTION_DAYS: "3650"
+
+# Sign-in settings, shared by the app and the seed script.
+x-auth: &auth
+  # A fixed secret is fine on your own machine. Set your own (openssl rand
+  # -base64 32) before anyone else can reach the app.
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-docker-only-change-me-0000000000000}
+  # Sign-in only works from this address.
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-splunk-demo-2026}
+
+services:
+  mongo:
+    image: mongo:8.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Runs once: creates the demo users and loads the dummy reports, then exits.
+  setup:
+    build:
+      context: .
+      target: tools
+    command: ["sh", "-c", "npm run seed && npm run sync"]
+    environment:
+      <<: [*database, *auth]
+      SPLUNK_MODE: fixture
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: app
+      args:
+        DEMO_MODE: ${DEMO_MODE:-true}
+        DEMO_PASSWORD: ${DEMO_PASSWORD:-splunk-demo-2026}
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      <<: [*database, *auth]
+      DEMO_MODE: ${DEMO_MODE:-true}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-docker-revalidate-secret}
+      # Ask AI is off without a key (docs/ai.md). AI_PROVIDER=fake gives canned answers.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_MODEL: ${AI_MODEL:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+
+  # Optional: the Python ML job (docs/ml.md).
+  #   docker compose --profile ml run --rm ml
+  #   docker compose --profile ml run --rm ml python ml/score.py --plot
+  ml:
+    profiles: [ml]
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    environment:
+      <<: *database
+      APP_URL: http://app:3000
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-docker-revalidate-secret}
+    volumes:
+      - ./ml/out:/app/ml/out
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

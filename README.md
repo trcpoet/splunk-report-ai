@@ -36,6 +36,14 @@ Splunk REST API (:8089) ─┐
 
 New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
 
+## Running with Docker (no other setup)
+
+```bash
+docker compose up --build
+```
+
+Then open [http://localhost:3000](http://localhost:3000) and pick a demo account (password `splunk-demo-2026`). This starts MongoDB, loads the dummy reports and runs the app, with nothing else to install or configure. Settings, the ML job and sharing it with a team: [docs/docker.md](docs/docker.md).
+
 ## Running locally
 
 Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and MongoDB 8.
