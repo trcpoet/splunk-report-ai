@@ -1,10 +1,9 @@
 import { splContext } from "@/lib/ai/context";
 import { AiError, generateJson } from "@/lib/ai/llm";
 import { SPL_PROMPT } from "@/lib/ai/prompts";
-import { queryFromSteps, SplAnswerSchema, type StoredSplAnswer } from "@/lib/ai/spl";
+import { SplAnswerSchema, type StoredSplAnswer } from "@/lib/ai/spl";
 import { conversation, jsonError, prepareTurn } from "@/lib/ai/turn";
 import { recordTokens } from "@/lib/ai/usage";
-import { validateSpl } from "@/lib/ai/validate";
 import { saveTurn, type ChatMessage } from "@/lib/chats";
 import { findSimilarExamples } from "@/lib/spl-examples";
 
@@ -15,9 +14,8 @@ export const maxDuration = 60;
  * Writes or explains a Splunk search, using the indexes, fields and searches
  * of the reports the signed-in person can see, and the past searches most
  * like the request (lib/spl-examples.ts). Answers with
- * { chatId, message }, where message.spl holds the search step by step and
- * what the built-in SPL checker said about it (lib/ai/validate.ts). The app never runs the
- * search.
+ * { chatId, message }, where message.spl holds the search step by step. The
+ * app never runs the search.
  */
 export async function POST(request: Request) {
     const turn = await prepareTurn(request, 'spl');
@@ -44,10 +42,8 @@ export async function POST(request: Request) {
             schema: SplAnswerSchema,
         });
 
-        // Checked before it's shown, so a search that won't parse says so.
         const spl: StoredSplAnswer = {
             ...answer,
-            validation: validateSpl(queryFromSteps(answer.steps)),
             ...(examples && examples.length > 0 ? { basedOn: examples.map(({ title }) => title) } : {}),
         };
 

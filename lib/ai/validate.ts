@@ -28,31 +28,33 @@ const SPL_COMMANDS = new Set([
 ]);
 
 // Quotes, brackets and parentheses that never close (or close too early).
+// Macros (`name(args)`) count as quoted: their arguments are Splunk's to check.
 function unbalanced(query: string): string | null {
-    let quoted = false;
+    let quote: '"' | '`' | null = null;
     const open: string[] = [];
     const closes: Record<string, string> = { ')': '(', ']': '[' };
 
     for (let i = 0; i < query.length; i++) {
         const char = query[i];
-        if (quoted) {
-            if (char === '\\') i++;
-            else if (char === '"') quoted = false;
+        if (quote) {
+            if (char === '\\' && quote === '"') i++;
+            else if (char === quote) quote = null;
             continue;
         }
-        if (char === '"') quoted = true;
+        if (char === '"' || char === '`') quote = char;
         else if (char === '(' || char === '[') open.push(char);
         else if (char in closes) {
             if (open.pop() !== closes[char]) return `Unbalanced ${char === ')' ? 'parentheses' : 'square brackets'}.`;
         }
     }
-    if (quoted) return 'Unbalanced quotes.';
+    if (quote === '"') return 'Unbalanced quotes.';
+    if (quote === '`') return 'A macro is missing its closing backtick.';
     if (open.length > 0) return `Unbalanced ${open.at(-1) === '(' ? 'parentheses' : 'square brackets'}.`;
     return null;
 }
 
-// The built-in SPL checker. Write SPL stores its result with each answer, and
-// the page shows it (components/SplAnswer.tsx).
+// The built-in SPL checker. It's quick and needs nothing else, so the page runs
+// it each time it shows an answer (components/SplAnswer.tsx).
 export function validateSpl(query: string): SplValidation {
     const text = query.trim();
     if (!text) return { ok: false, message: 'The search is empty.' };
@@ -60,12 +62,19 @@ export function validateSpl(query: string): SplValidation {
     const balance = unbalanced(text);
     if (balance) return { ok: false, message: balance };
 
+    // Quoted text and macros are left out of the checks below: a pipe there is
+    // just a character.
+    const unquoted = text.replace(/"(?:\\.|[^"\\])*"/g, '""').replace(/`[^`]*`/g, '``');
+
     // A pipe with nothing after it, such as "index=web | | stats count" or a
-    // trailing pipe. Quoted text is left out: a pipe there is just a character.
-    const unquoted = text.replace(/"(?:\\.|[^"\\])*"/g, '""');
+    // trailing pipe.
     if (/\|\s*(\||\]|$)/.test(unquoted)) return { ok: false, message: "Missing a search command after '|'." };
 
-    const unknown = pipeCommands(text).find((command) => !SPL_COMMANDS.has(command));
+    // After a pipe comes a command name or a macro, never something like "123abc".
+    const odd = unquoted.match(/\|\s*([^a-zA-Z_`\s][^\s|]*)/);
+    if (odd) return { ok: false, message: `Unknown search command '${odd[1]}'.` };
+
+    const unknown = pipeCommands(unquoted).find((command) => !SPL_COMMANDS.has(command));
     if (unknown) return { ok: false, message: `Unknown search command '${unknown}'.` };
 
     return { ok: true };

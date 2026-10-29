@@ -25,4 +25,14 @@ describe('validateSpl', () => {
         assert.deepEqual(validateSpl('index=web | stats count |'), { ok: false, message: "Missing a search command after '|'." });
         assert.deepEqual(validateSpl(''), { ok: false, message: 'The search is empty.' });
     });
+
+    test('flags what comes after a pipe when it can\'t be a command', () => {
+        assert.deepEqual(validateSpl('index=web | 123abc'), { ok: false, message: "Unknown search command '123abc'." });
+    });
+
+    test('leaves macros to Splunk, but notices one that never closes', () => {
+        assert.deepEqual(validateSpl('index=web | `my_macro(1, "a)")` | stats count'), { ok: true });
+        assert.deepEqual(validateSpl('`web_base(prod|staging)` | stats count BY host'), { ok: true });
+        assert.deepEqual(validateSpl('index=web | `my_macro(1) | stats count'), { ok: false, message: 'A macro is missing its closing backtick.' });
+    });
 });
