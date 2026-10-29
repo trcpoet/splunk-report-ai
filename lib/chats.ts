@@ -164,3 +164,12 @@ export async function deleteChat(id: string): Promise<boolean> {
     const result = await Chat.deleteOne({ _id: id, userId: viewer.id });
     return result.deletedCount === 1;
 }
+
+// Whether an AI answer with this message id is in one of the signed-in person's chats.
+export async function isOwnAnswer(messageId: string): Promise<boolean> {
+    // Message ids look like chat ids: both are ObjectIds.
+    if (!isChatId(messageId)) return false;
+    const viewer = await getViewer();
+    await connectDB();
+    return (await Chat.exists({ userId: viewer.id, messages: { $elemMatch: { _id: messageId, role: 'assistant' } } })) !== null;
+}

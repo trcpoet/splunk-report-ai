@@ -4,7 +4,7 @@ import { briefingKey } from "@/lib/ai/keys";
 import { BRIEFING_PROMPT } from "@/lib/ai/prompts";
 import { streamSummary } from "@/lib/ai/summaries";
 import { jsonError } from "@/lib/ai/turn";
-import { getSyncInfo, getViewerOrNull, getVisibleReportsWithResults } from "@/lib/dal";
+import { getSyncInfo, getViewerOrNull, getVisibleReports, getVisibleReportsWithResults } from "@/lib/dal";
 
 export const maxDuration = 60;
 
@@ -14,22 +14,22 @@ export const maxDuration = 60;
  * person can see, streamed as NDJSON. Written once per set of reports and
  * run (lib/ai/keys.ts), and shared by everyone who sees the same reports.
  */
-export async function POST(request: Request) {
+export async function POST() {
     const viewer = await getViewerOrNull();
     if (!viewer) return jsonError(401, 'Sign in to see reports.');
 
-    const [reports, sync] = await Promise.all([getVisibleReportsWithResults(), getSyncInfo()]);
+    const [reports, sync] = await Promise.all([getVisibleReports(), getSyncInfo()]);
     if (reports.length === 0) return jsonError(404, 'There are no reports to summarize yet.');
 
     const status = aiStatus(sync?.mode);
     if (!status.enabled) return jsonError(503, aiOffMessage(status.reason));
 
     return streamSummary({
-        request,
         viewer,
         key: briefingKey(reports),
         kind: 'briefing',
-        system: `${BRIEFING_PROMPT}\n\n${reportsContext(reports, sync)}`,
+        // The results load only when a new briefing is written.
+        system: async () => `${BRIEFING_PROMPT}\n\n${reportsContext(await getVisibleReportsWithResults(), sync)}`,
         question: 'Write my briefing.',
     });
 }

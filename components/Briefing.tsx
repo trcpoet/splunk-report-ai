@@ -8,8 +8,8 @@ import { aiStatus } from "@/lib/ai/config";
 import { briefingKey, flagId } from "@/lib/ai/keys";
 import { getSyncInfo, getViewer, getVisibleReports } from "@/lib/dal";
 import { getVotes } from "@/lib/feedback";
-import { formatDuration, formatNumber } from "@/lib/format";
-import { findUnusualRun } from "@/lib/insights";
+import { formatDateTime } from "@/lib/format";
+import { findUnusualRun, unusualTrend } from "@/lib/insights";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
@@ -46,7 +46,11 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
 
     return (
         <section className={`briefing briefing-${variant}`} aria-label="Briefing">
-            <h2 className="briefing-headline">{headline}</h2>
+            <div className="briefing-head">
+                <h2 className="briefing-headline">{headline}</h2>
+                {/* The home page says this above the briefing already. */}
+                {variant === 'side' && sync && <p className="briefing-asof">Data as of {formatDateTime(sync.lastSuccessAt)}</p>}
+            </div>
 
             {attention.length > 0 && (
                 <div className="briefing-group">
@@ -67,8 +71,6 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                                         question="Worth flagging?"
                                         targetId={flagId(report.slug, report.lastRun, 'status')}
                                         initial={votes[flagId(report.slug, report.lastRun, 'status')]}
-                                        reportSlug={report.slug}
-                                        flag={{ reason: 'status', status: report.status, runAt: report.lastRun }}
                                     />
                                 </div>
                             </li>
@@ -82,21 +84,13 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                     <h3>Unusual runs</h3>
                     <ul>
                         {unusual.map(({ report, run }) => {
-                            const values = report.history
-                                .filter((record) => record.status !== 'failed')
-                                .map((record) => (run.measure === 'results' ? record.resultCount : record.durationSec));
-                            const usual = run.measure === 'results' ? formatNumber(Math.round(run.usual)) : formatDuration(Math.round(run.usual));
+                            const trend = unusualTrend(report.history, run);
 
                             return (
                                 <li key={report.slug}>
                                     <div className="briefing-item-head">
                                         <Link href={`/reports/${report.slug}`} transitionTypes={PAGE_TRANSITION}>{report.title}</Link>
-                                        <Sparkline
-                                            values={values}
-                                            usual={run.usual}
-                                            highlightLast
-                                            label={`${run.measure === 'results' ? 'Results' : 'Search time'} in the last ${values.length} runs; the newest stands out against the usual ${usual}.`}
-                                        />
+                                        <Sparkline values={trend.values} usual={run.usual} highlightLast label={trend.label} />
                                     </div>
                                     <p>{run.message}</p>
                                     <div className="briefing-item-actions">
@@ -107,8 +101,6 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                                             question="Worth flagging?"
                                             targetId={flagId(report.slug, run.runAt, 'unusual')}
                                             initial={votes[flagId(report.slug, run.runAt, 'unusual')]}
-                                            reportSlug={report.slug}
-                                            flag={{ reason: 'unusual', measure: run.measure, score: run.score, runAt: run.runAt }}
                                         />
                                     </div>
                                 </li>

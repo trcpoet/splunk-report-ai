@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { voteAction } from "@/app/ai/actions";
-import type { FlagDetails } from "@/database";
 import { track } from "@/lib/analytics";
 
 type Props = {
@@ -12,15 +11,13 @@ type Props = {
     initial?: 'up' | 'down';
     // Shown next to the thumbs (unless compact) and read out with them.
     question?: string;
-    reportSlug?: string;
-    // For briefing flags: what was flagged, so the ML job can learn from the vote.
-    flag?: FlagDetails;
     compact?: boolean;
 };
 
 // 👍 / 👎. Pressing the same thumb again takes the vote back. The vote shows at
-// once and is saved in the background; if saving fails, it goes back.
-const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful?', reportSlug, flag, compact = false }: Props) => {
+// once and is saved in the background; if saving fails, it goes back. The
+// server works out what the vote is about from targetId (lib/feedback.ts).
+const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful?', compact = false }: Props) => {
     const [vote, setVote] = useState<'up' | 'down' | null>(initial ?? null);
     const [failed, setFailed] = useState(false);
     const [, startTransition] = useTransition();
@@ -32,8 +29,9 @@ const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful
         setFailed(false);
 
         startTransition(async () => {
-            const result = await voteAction({ kind, targetId, value: next, reportSlug, flag });
-            if (result.ok) {
+            // A failed request counts as not saved, rather than breaking the page.
+            const result = await voteAction({ kind, targetId, value: next }).catch(() => null);
+            if (result?.ok) {
                 track('ai_vote', { kind, value: next });
             } else {
                 setVote(previous);

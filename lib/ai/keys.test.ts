@@ -27,6 +27,6 @@ describe('reportSummaryKey and flagId', () => {
             reportSummaryKey({ slug: 'web-5xx-error-rate', lastRun: '2026-10-02T09:00:00.000Z', resultsRunAt: '2026-10-02T09:00:00.000Z' }),
             `report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z:v${PROMPT_VERSION}`,
         );
-        assert.equal(flagId('firewall-denied-top-sources', '2026-10-02T12:00:00.000Z', 'unusual'), 'firewall-denied-top-sources:2026-10-02T12:00:00.000Z:unusual');
+        assert.equal(flagId('failed-logins-by-user', '2026-10-03T06:00:00.000Z', 'unusual'), 'failed-logins-by-user:2026-10-03T06:00:00.000Z:unusual');
     });
 });

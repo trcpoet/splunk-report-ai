@@ -9,7 +9,7 @@ How SplunkEvents spots runs worth a look, and how it learns from what people tel
 - A run is flagged at 3.5 robust z-scores or more.
 - [ai.md](ai.md#the-briefing-explain-and-unusual-runs) explains it in more detail.
 
-It needs no training and no extra software, and it explains itself: "61 results, about 2.4× the usual 25".
+It needs no training and no extra software, and it explains itself: "117 results, about 3× the usual 40".
 
 ## Collecting labels
 

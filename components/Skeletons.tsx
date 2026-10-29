@@ -12,6 +12,16 @@ const Line = ({ className = '' }: { className?: string }) => (
     <span className={`skeleton-line ${className}`}>&nbsp;</span>
 )
 
+// A paragraph that's still being written: `count` lines, the last one shorter.
+// Give it the text size of the paragraph it stands for.
+export const SkeletonParagraph = ({ count, className = '' }: { count: number; className?: string }) => (
+    <p className={className}>
+        {range(count).map((i) => (
+            <span key={i}><Line className={i === count - 1 ? 'w-2/3' : 'w-full'} /><br /></span>
+        ))}
+    </p>
+)
+
 // Screen readers hear the label; the bars have no text for them to read.
 const Loading = ({ label, className, children }: { label: string; className?: string; children: ReactNode }) => (
     <div role="status" className={className}>
@@ -210,7 +220,10 @@ export const HistorySkeleton = () => (
 // The briefing: its headline, a few flagged reports and the summary.
 export const BriefingSkeleton = ({ variant = 'home' }: { variant?: 'home' | 'side' }) => (
     <Loading label="Loading the briefing…" className={`briefing briefing-${variant}`}>
-        <span className="briefing-headline"><Line className="w-64" /></span>
+        <div className="briefing-head">
+            <span className="briefing-headline"><Line className="w-64" /></span>
+            {variant === 'side' && <span className="briefing-asof"><Line className="w-40" /></span>}
+        </div>
         <div className="briefing-group">
             <span className="text-sm"><Line className="w-28" /></span>
             <ul>

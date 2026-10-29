@@ -169,9 +169,12 @@ const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
 async function fakeStream(options: AskOptions, onText: (text: string) => void) {
     const question = options.turns.at(-1)?.text ?? '';
     const ids = [...options.system.matchAll(/<report id="([a-z0-9-]+)">/g)].map(([, id]) => id).slice(0, 2);
-    const summary = question === 'Explain this report.' || question === 'Write my briefing.';
-    const text = summary ? [
-        `**Test mode:** a canned ${question === 'Write my briefing.' ? 'briefing' : 'summary'}, not written by an AI.`,
+    const text = question === 'Explain this report.' ? [
+        '**Test mode:** a canned summary, not written by an AI.',
+        '',
+        'A real one would say what the latest run found, quote its numbers, compare them with the recent runs, and say what to do next.',
+    ].join('\n') : question === 'Write my briefing.' ? [
+        '**Test mode:** a canned briefing, not written by an AI.',
         '',
         ids.length > 0 ? `A real one would start with what needs attention in ${ids.map((id) => `[[${id}]]`).join(' and ')}, quote its numbers, and say what to do next.` : 'A real one would start with what needs attention.',
     ].join('\n') : [

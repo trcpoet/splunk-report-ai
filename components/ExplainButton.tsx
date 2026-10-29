@@ -5,51 +5,50 @@ import { useEffect, useId, useRef, useState } from "react";
 import { MessageCircleQuestion, X } from "lucide-react";
 import ChatAnswer from "@/components/ChatAnswer";
 import FeedbackButtons from "@/components/FeedbackButtons";
+import { SkeletonParagraph } from "@/components/Skeletons";
 import Sparkline from "@/components/Sparkline";
 import StatusBadge from "@/components/StatusBadge";
 import { useSummary } from "@/components/useSummary";
 import { track } from "@/lib/analytics";
-import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
-import { describeColumn, findUnusualRun, profileResults } from "@/lib/insights";
+import { formatDateTime, formatNumber } from "@/lib/format";
+import { describeColumn, findUnusualRun, profileResults, unusualTrend } from "@/lib/insights";
 import type { SplunkReport } from "@/lib/reports";
 
-// The report with its result rows, from the same JSON API the app offers.
-function useReport(slug: string) {
-    const [state, setState] = useState<{ report?: SplunkReport; error?: string }>({});
+// The report with its result rows: the one the page already has (a report
+// page), or else from the same JSON API the app offers (a report card).
+function useReport(slug: string, given?: SplunkReport) {
+    const [fetched, setFetched] = useState<{ report?: SplunkReport; error?: string }>({});
 
     useEffect(() => {
+        if (given) return;
         const controller = new AbortController();
         fetch(`/api/reports/${slug}`, { signal: controller.signal })
             .then(async (response) => {
                 const body = await response.json().catch(() => ({}));
-                setState(response.ok ? { report: body.report } : { error: body.message ?? "Couldn't load the report." });
+                setFetched(response.ok ? { report: body.report } : { error: body.message ?? "Couldn't load the report." });
             })
             .catch(() => {
-                if (!controller.signal.aborted) setState({ error: "Couldn't load the report. Check your connection." });
+                if (!controller.signal.aborted) setFetched({ error: "Couldn't load the report. Check your connection." });
             });
         return () => controller.abort();
-    }, [slug]);
+    }, [slug, given]);
 
-    return state;
+    return given ? { report: given } : fetched;
 }
-
-const Lines = ({ count }: { count: number }) => (
-    <p className="text-sm">
-        {Array.from({ length: count }, (_, i) => (
-            <span key={i}><span className={`skeleton-line ${i === count - 1 ? 'w-2/3' : 'w-full'}`}>&nbsp;</span><br /></span>
-        ))}
-    </p>
-)
 
 // What's inside the panel. It mounts when the panel opens, so nothing loads
 // for the cards nobody opens.
-function ExplainContent({ slug, title, headingId, close }: { slug: string; title: string; headingId: string; close: () => void }) {
+type ContentProps = { slug: string; title: string; given?: SplunkReport; headingId: string; close: () => void };
+
+function ExplainContent({ slug, title, given, headingId, close }: ContentProps) {
     const summary = useSummary(`/api/ai/explain/${slug}`);
-    const { report, error } = useReport(slug);
+    const { report, error } = useReport(slug, given);
 
     const unusual = report ? findUnusualRun(report.history) : null;
-    const profile = report && report.columns.length > 0 ? profileResults(report.columns, report.rows, report.resultCount) : null;
-    const trend = report?.history.filter((run) => run.status !== 'failed').map((run) => (unusual?.measure === 'duration' ? run.durationSec : run.resultCount)) ?? [];
+    const trend = report && unusual ? unusualTrend(report.history, unusual) : null;
+    const profile = report ? profileResults(report.columns, report.rows, report.resultCount) : null;
+    // The summary may name the report as [[slug]], which shows as its chip.
+    const chips = report ? { [report.slug]: { slug: report.slug, title: report.title, status: report.status } } : {};
 
     return (
         <div className="explain-content">
@@ -66,13 +65,14 @@ function ExplainContent({ slug, title, headingId, close }: { slug: string; title
             <section className="explain-section" aria-busy={summary.status === 'loading' || summary.status === 'streaming'}>
                 <h3>In plain words</h3>
                 {summary.status === 'loading' ? (
-                    <Lines count={4} />
+                    <SkeletonParagraph count={4} className="text-sm" />
                 ) : summary.status === 'failed' && !summary.text ? (
                     <p className="ai-notice">{summary.error}</p>
                 ) : (
-                    <ChatAnswer text={summary.text} reports={{}} streaming={summary.status === 'streaming'} />
+                    <ChatAnswer text={summary.text} reports={chips} streaming={summary.status === 'streaming'} />
                 )}
-                {summary.status === 'done' && summary.id && <FeedbackButtons kind="summary" targetId={summary.id} initial={summary.vote} reportSlug={slug} />}
+                {summary.cutOff && <p className="answer-note">This summary was cut off because it got too long.</p>}
+                {summary.status === 'done' && summary.id && <FeedbackButtons kind="summary" targetId={summary.id} initial={summary.vote} />}
             </section>
 
             <section className="explain-section">
@@ -80,17 +80,12 @@ function ExplainContent({ slug, title, headingId, close }: { slug: string; title
                 {error ? (
                     <p className="answer-note">{error}</p>
                 ) : !report ? (
-                    <Lines count={5} />
+                    <SkeletonParagraph count={5} className="text-sm" />
                 ) : (
                     <>
-                        {unusual && (
+                        {unusual && trend && (
                             <div className="explain-unusual">
-                                <Sparkline
-                                    values={trend}
-                                    usual={unusual.usual}
-                                    highlightLast
-                                    label={`${unusual.measure === 'results' ? 'Results' : 'Search time'} in the last ${trend.length} runs; the newest stands out against the usual ${unusual.measure === 'results' ? formatNumber(Math.round(unusual.usual)) : formatDuration(Math.round(unusual.usual))}.`}
-                                />
+                                <Sparkline values={trend.values} usual={unusual.usual} highlightLast label={trend.label} />
                                 <p><strong>Unusual run.</strong> {unusual.message}</p>
                             </div>
                         )}
@@ -111,7 +106,11 @@ function ExplainContent({ slug, title, headingId, close }: { slug: string; title
                                 </dl>
                             </>
                         ) : (
-                            <p className="text-sm text-light-200">No results are stored for this report yet.</p>
+                            <p className="text-sm text-light-200">
+                                {report.resultsRunAt && report.resultCount === 0
+                                    ? `The run at ${formatDateTime(report.resultsRunAt)} found no results.`
+                                    : 'No results are stored for this report yet.'}
+                            </p>
                         )}
                     </>
                 )}
@@ -130,11 +129,19 @@ function ExplainContent({ slug, title, headingId, close }: { slug: string; title
     )
 }
 
+type Props = {
+    slug: string;
+    title: string;
+    // The report with its results, when the page has it already (a report page).
+    report?: SplunkReport;
+    className?: string;
+};
+
 // "Explain" on a report card or a report page: opens a side panel (a bottom
 // sheet on phones) with an AI summary of the latest run, a plain-statistics
 // look at the results, and ways to dig further. It's a native <dialog>, so
 // focus moves into it, Esc closes it, and focus returns to the button.
-const ExplainButton = ({ slug, title, className = 'explain-trigger' }: { slug: string; title: string; className?: string }) => {
+const ExplainButton = ({ slug, title, report, className = 'explain-trigger' }: Props) => {
     const dialog = useRef<HTMLDialogElement>(null);
     const [open, setOpen] = useState(false);
     const headingId = useId();
@@ -164,12 +171,15 @@ const ExplainButton = ({ slug, title, className = 'explain-trigger' }: { slug: s
                 className="explain-panel"
                 aria-labelledby={headingId}
                 onClose={() => setOpen(false)}
-                // A click on the dimmed backdrop lands on the dialog itself.
+                // A click on the dimmed backdrop lands on the dialog itself, outside
+                // its box. (A click on the panel's own padding lands on it too, inside.)
                 onClick={(event) => {
-                    if (event.target === event.currentTarget) close();
+                    const box = event.currentTarget.getBoundingClientRect();
+                    const outside = event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+                    if (event.target === event.currentTarget && outside) close();
                 }}
             >
-                {open && <ExplainContent slug={slug} title={title} headingId={headingId} close={close} />}
+                {open && <ExplainContent slug={slug} title={title} given={report} headingId={headingId} close={close} />}
             </dialog>
         </>
     )

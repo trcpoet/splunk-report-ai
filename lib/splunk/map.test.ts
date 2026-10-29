@@ -268,7 +268,7 @@ describe('fixture pipeline', () => {
 
         const logins = bySlug('failed-logins-by-user');
         assert.deepEqual(logins.derived.highlights, [
-            { label: 'Results', value: '42', note: '+12 vs. previous run', trend: [30, 38, 46, 34, 42, 30, 42] },
+            { label: 'Results', value: '117', note: '+87 vs. previous run', trend: [30, 38, 46, 34, 42, 30, 117] },
             { label: 'Top user', value: 'svc_backup', note: 'Failures: 312' },
             { label: 'Search time', value: '41s' },
         ]);

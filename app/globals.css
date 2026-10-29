@@ -698,19 +698,22 @@
     .ai-side {
         @apply flex flex-col gap-3 rounded-[10px] border border-dark-200 bg-dark-100/80 px-5 py-5 card-shadow lg:sticky lg:top-24;
 
-        h2 {
+        > h2 {
             @apply font-schibsted-grotesk text-lg font-semibold;
         }
 
-        p {
+        > p {
             @apply text-sm text-light-200;
         }
 
-        ul {
+        /* The lists of reports to pick from. The briefing above them has its own styles. */
+        > ul,
+        .side-reports ul {
             @apply -mx-2 flex list-none flex-col;
         }
 
-        a {
+        > ul a,
+        .side-reports a {
             @apply flex flex-row items-start gap-2.5 rounded-[6px] px-2 py-2 text-sm text-light-100 transition-colors hover:bg-dark-200;
         }
 
@@ -1120,8 +1123,16 @@
     .briefing {
         @apply flex flex-col gap-5;
 
+        .briefing-head {
+            @apply flex flex-col gap-1;
+        }
+
         .briefing-headline {
             @apply font-schibsted-grotesk text-xl font-semibold;
+        }
+
+        .briefing-asof {
+            @apply text-xs text-light-200;
         }
 
         .briefing-group {

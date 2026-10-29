@@ -20,13 +20,18 @@ const add = (id: string, amounts: Partial<Record<'requests' | 'inputTokens' | 'o
 // over the limit, or null when it may go ahead. A request counts when it
 // starts, so one that fails still uses it up. Someone already over their own
 // limit isn't counted for the site, so they can't use up everyone's.
-export async function countRequest(userId: string): Promise<string | null> {
+//
+// With no userId it counts only for the site: for the briefing, which loads by
+// itself with the page, so just opening the home page uses up nobody's requests.
+export async function countRequest(userId: string | null): Promise<string | null> {
     await connectDB();
     const day = today();
 
-    const user = await add(`${userId}:${day}`, { requests: 1 });
-    if ((user?.requests ?? 0) > dailyLimit()) {
-        return `You've used today's ${dailyLimit()} AI requests. More are available after midnight UTC.`;
+    if (userId) {
+        const user = await add(`${userId}:${day}`, { requests: 1 });
+        if ((user?.requests ?? 0) > dailyLimit()) {
+            return `You've used today's ${dailyLimit()} AI requests. More are available after midnight UTC.`;
+        }
     }
 
     const site = await add(`site:${day}`, { requests: 1 });
@@ -36,15 +41,16 @@ export async function countRequest(userId: string): Promise<string | null> {
     return null;
 }
 
-// Adds an answer's tokens to today's totals, for a rough idea of the cost.
+// Adds an answer's tokens to today's totals, for a rough idea of the cost: the
+// person's (unless userId is null, as for the briefing) and the site's.
 // Best effort: the answer is already saved, so a failure here is only logged.
-export async function recordTokens(userId: string, usage: Usage) {
+export async function recordTokens(userId: string | null, usage: Usage) {
     if (usage.inputTokens === 0 && usage.outputTokens === 0) return;
 
     const day = today();
     const tokens = { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens };
     try {
-        await Promise.all([add(`${userId}:${day}`, tokens), add(`site:${day}`, tokens)]);
+        await Promise.all([...(userId ? [add(`${userId}:${day}`, tokens)] : []), add(`site:${day}`, tokens)]);
     } catch (error) {
         console.error('Could not record AI token usage:', error);
     }

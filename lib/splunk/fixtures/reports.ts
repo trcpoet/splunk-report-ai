@@ -67,10 +67,14 @@ export const reports: FixtureReport[] = [
         runsPerWeek: 7,
         timeRange: 'Last 24 hours',
         index: 'wineventlog, linux_secure',
-        lastRun: '2026-10-02T06:00:00Z',
-        nextRun: '2026-10-03T06:00:00Z',
+        lastRun: '2026-10-03T06:00:00Z',
+        nextRun: '2026-10-04T06:00:00Z',
         status: 'success',
-        resultCount: 42,
+        // A spike in the Oct 3 run: a password-spraying burst pushed 117 accounts
+        // over the threshold, against about 38 usually. The briefing and the
+        // Explain panel flag it as unusual (lib/insights.ts). It's one run later
+        // than the others, so a sync adds it as a new run.
+        resultCount: 117,
         recipients: ['secops@example.com', 'soc-tier1@example.com', 'it-director@example.com'],
         tags: ['security', 'authentication', 'daily'],
         spl: `index=wineventlog EventCode=4625 OR (index=linux_secure "Failed password")
@@ -80,20 +84,20 @@ export const reports: FixtureReport[] = [
 | sort - failures
 | convert ctime(last_attempt)`,
         highlights: [
-            { label: 'Accounts over threshold', value: '42', note: '+9 vs. previous day' },
-            { label: 'Failed logins', value: '4,918', note: 'Last 24 hours' },
+            { label: 'Accounts over threshold', value: '117', note: '+87 vs. previous day' },
+            { label: 'Failed logins', value: '6,342', note: 'Last 24 hours' },
             { label: 'Top source IP', value: '203.0.113.47', note: '1,204 attempts' },
         ],
         columns: ['User', 'Failures', 'Distinct sources', 'Last attempt (UTC)'],
         rows: [
-            ['svc_backup', 312, 4, '2026-10-02 05:41'],
-            ['admin', 264, 23, '2026-10-02 05:58'],
-            ['jsmith', 87, 1, '2026-10-01 22:13'],
-            ['oracle', 71, 6, '2026-10-02 03:27'],
-            ['mlopez', 38, 2, '2026-10-01 18:05'],
-            ['test', 29, 11, '2026-10-02 04:49'],
+            ['svc_backup', 312, 4, '2026-10-03 05:41'],
+            ['admin', 264, 23, '2026-10-03 05:58'],
+            ['jsmith', 87, 1, '2026-10-02 22:13'],
+            ['oracle', 71, 6, '2026-10-03 03:27'],
+            ['mlopez', 38, 2, '2026-10-02 18:05'],
+            ['test', 29, 11, '2026-10-03 04:49'],
         ],
-        history: buildHistory('2026-10-02T06:00:00Z', 24, 'ssswsss', 38, 41),
+        history: buildHistory('2026-10-03T06:00:00Z', 24, 'sswssss', 38, 41),
     },
     {
         slug: 'web-5xx-error-rate',
@@ -147,13 +151,10 @@ export const reports: FixtureReport[] = [
         runsPerWeek: 42,
         timeRange: 'Last 4 hours',
         index: 'firewall (pan:traffic)',
-        lastRun: '2026-10-02T12:00:00Z',
-        nextRun: '2026-10-02T16:00:00Z',
+        lastRun: '2026-10-02T08:00:00Z',
+        nextRun: '2026-10-02T12:00:00Z',
         status: 'success',
-        // A spike in the 12:00 run: about 25 sources usually cross the threshold.
-        // The Explain panel and the briefing flag it as unusual (lib/insights.ts).
-        // It's one run later than before, so a sync adds it as a new run.
-        resultCount: 61,
+        resultCount: 25,
         recipients: ['netsec@example.com', 'soc-tier1@example.com'],
         tags: ['security', 'network', 'firewall'],
         spl: `index=firewall sourcetype=pan:traffic action=denied
@@ -174,7 +175,7 @@ export const reports: FixtureReport[] = [
             ['203.0.113.12', 4407, 12, 'dmz'],
             ['192.0.2.58', 3981, 245, 'dmz, guest'],
         ],
-        history: buildHistory('2026-10-02T12:00:00Z', 4, 'sssssss', 25, 64),
+        history: buildHistory('2026-10-02T08:00:00Z', 4, 'sssssss', 25, 64),
     },
     {
         slug: 'license-usage-by-index',

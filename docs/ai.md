@@ -65,7 +65,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - **Headline**, such as "3 reports need attention, 1 run looks unusual".
 - **Needs attention:** reports whose latest run warns or failed, with their message and an **Ask about it** link.
 - **Unusual runs:** reports whose newest run stands out from their recent runs (below), with a sparkline that marks the odd run.
-- **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports.
+- **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports. Since the briefing loads by itself, writing one counts toward the site's daily limit only, not yours.
 
 **Explain** is on every report card and at the top of each report page. It opens a side panel (a bottom sheet on phones):
 - **In plain words:** an AI summary of the latest run and of how the search works, written once per run and then reused.
@@ -79,7 +79,7 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 - The median of those runs is what's usual, and the median absolute deviation is how much they normally vary. Both ignore one odd run in the history, unlike the average.
 - A run 3.5 or more of those spreads away from usual is flagged, with a floor so a perfectly steady history doesn't flag small changes.
 - The bar is strict on purpose: with about 6 runs to compare and two measures per report, a looser one would flag ordinary noise.
-- The demo's firewall report has a spike (61 sources against about 25 usually), so there's always one to see.
+- The demo's failed-logins report has a spike (117 accounts over the threshold against about 38 usually), so there's always one to see.
 
 **👍 / 👎** appear under AI answers, under summaries, and on briefing flags ("Worth flagging?"). Votes go in `ai_feedback`, one per person per item; pressing the same thumb again takes the vote back. The flag votes, with what was flagged, are the training labels for the ML job in `ml/` (see [ml.md](ml.md)).
 
@@ -120,7 +120,7 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 - **One answer costs about half a cent to a cent.** The AI reads roughly 4,000 tokens about your reports and writes a few hundred. On the free tier it costs nothing.
 - **Follow-ups cost less.** Gemini caches the start of a prompt once it's over 4,096 tokens, so the reports go first and stay the same from one question to the next.
 - **Each answer is capped** at 8,192 tokens, which also caps what one question can cost. A long answer that hits the cap says so.
-- **Daily limits:** 50 requests per account per day, and 1,000 for everyone together (`AI_DAILY_LIMIT`, `AI_SITE_DAILY_LIMIT`). The `ai_usage` collection keeps a week of requests and tokens per account, for a rough idea of the cost:
+- **Daily limits:** 50 requests per account per day, and 1,000 for everyone together (`AI_DAILY_LIMIT`, `AI_SITE_DAILY_LIMIT`). A saved summary or briefing costs nothing; writing a new one counts once, however many people are waiting for it. The `ai_usage` collection keeps a week of requests and tokens per account, for a rough idea of the cost:
 
   ```js
   // mongosh splunkevents
@@ -138,6 +138,8 @@ Each report page's SPL section also has **Explain it step by step**, which opens
 
 - A question and its answer are saved together, once the answer is complete.
 - An answer you stop, or one that fails, isn't saved. Ask again with **Try again**.
+- A summary is finished and saved even if you close the panel, so the next look is instant. One that was cut off isn't saved, so the next look writes a whole one.
+- A 👍 / 👎 is checked on the server: it must be about an answer in your own chats, a saved summary of a report you can see, or a flag the briefing shows you. What a flag was about (its reason, measure and score) is worked out there too, not taken from the page.
 - A chat holds 50 questions; after that, start a new one.
 - A chat keeps the report data it was answered with, even if your access to those reports changes later. Delete it from History if that matters.
 

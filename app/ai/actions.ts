@@ -38,22 +38,16 @@ const VoteSchema = z.object({
     kind: z.enum(['answer', 'summary', 'flag']),
     targetId: z.string().min(1).max(200),
     value: z.enum(['up', 'down']).nullable(),
-    reportSlug: z.string().regex(/^[a-z0-9-]{1,100}$/).optional(),
-    flag: z.object({
-        reason: z.enum(['status', 'unusual']),
-        status: z.enum(['success', 'warning', 'failed']).optional(),
-        measure: z.enum(['results', 'duration']).optional(),
-        score: z.number().finite().optional(),
-        runAt: z.string().max(40).optional(),
-    }).optional(),
 });
 
-// Saves, changes or takes back the viewer's vote. It doesn't redraw the page:
-// the buttons already show the vote, and a chat on screen must not reset.
+// Saves, changes or takes back the viewer's vote. lib/feedback.ts checks that
+// it's about something they were shown, and works out what that was. It
+// doesn't redraw the page: the buttons already show the vote, and a chat on
+// screen must not reset.
 export async function voteAction(input: VoteInput): Promise<Result> {
     const vote = VoteSchema.safeParse(input);
     if (!vote.success) return { ok: false, message: "That vote couldn't be saved." };
 
-    await saveVote(await getViewer(), vote.data);
-    return { ok: true };
+    const saved = await saveVote(await getViewer(), vote.data);
+    return saved ? { ok: true } : { ok: false, message: "That vote couldn't be saved." };
 }

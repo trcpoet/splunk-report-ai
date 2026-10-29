@@ -90,6 +90,16 @@ export function findUnusualRun(history: RunRecord[]): UnusualRun | null {
     };
 }
 
+// What the sparkline next to an unusual run draws: the measure that stood out,
+// for every run that didn't fail, oldest first. The label says the same in
+// words, for screen readers.
+export function unusualTrend(history: RunRecord[], unusual: UnusualRun) {
+    const results = unusual.measure === 'results';
+    const values = history.filter((run) => run.status !== 'failed').map((run) => (results ? run.resultCount : run.durationSec));
+    const usual = results ? formatNumber(round(unusual.usual)) : formatDuration(Math.round(unusual.usual));
+    return { values, label: `${results ? 'Results' : 'Search time'} in the last ${values.length} runs; the newest stands out against the usual ${usual}.` };
+}
+
 // ---------------------------------------------------------------------------
 // A quick profile of a results table, for the Explain panel's "At a glance".
 
@@ -108,7 +118,10 @@ export type ResultsProfile = {
 const TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/;
 const isEmpty = (cell: Cell) => cell === '' || cell === null || cell === undefined;
 
-export function profileResults(columns: string[], rows: Cell[][], total = rows.length): ResultsProfile {
+// Null when there are no rows to profile.
+export function profileResults(columns: string[], rows: Cell[][], total = rows.length): ResultsProfile | null {
+    if (rows.length === 0 || columns.length === 0) return null;
+
     const profiles = columns.map((name, index): ColumnProfile => {
         const cells = rows.map((row) => row[index]);
         const filled = cells.filter((cell) => !isEmpty(cell));
@@ -148,6 +161,7 @@ export function profileResults(columns: string[], rows: Cell[][], total = rows.l
 
 // One plain sentence per column, for people who don't read tables for fun.
 export function describeColumn(column: ColumnProfile, rows: number): string {
+    if (column.empty >= rows) return 'Empty in every row.';
     const empty = column.empty > 0 ? ` ${column.empty} empty.` : '';
 
     if (column.kind === 'number') {

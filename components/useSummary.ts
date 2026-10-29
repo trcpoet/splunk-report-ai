@@ -6,7 +6,7 @@ import { readEvents } from "@/lib/ai/stream";
 export type Summary = {
     status: 'loading' | 'streaming' | 'done' | 'failed';
     text: string;
-    // The summary's key, for its 👍 / 👎, once it's complete.
+    // The summary's key, for its 👍 / 👎, once it's complete and saved.
     id?: string;
     vote?: 'up' | 'down';
     cutOff?: boolean;
@@ -38,7 +38,8 @@ export function useSummary(url: string): Summary {
                         setSummary({ status: 'streaming', text });
                     } else if (event.type === 'done') {
                         finished = true;
-                        setSummary({ status: 'done', text, id: event.messageId, vote: event.vote, cutOff: event.cutOff });
+                        // A cut-off summary isn't saved, so there's nothing to vote on.
+                        setSummary({ status: 'done', text, id: event.cutOff ? undefined : event.messageId, vote: event.vote, cutOff: event.cutOff });
                     } else if (event.type === 'error') {
                         finished = true;
                         setSummary({ status: 'failed', text, error: event.message });

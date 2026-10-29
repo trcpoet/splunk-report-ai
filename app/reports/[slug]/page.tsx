@@ -89,7 +89,7 @@ async function ReportDetails({ params }: Props) {
                 </div>
                 <h1 className="text-4xl max-sm:text-3xl">{report.title}</h1>
                 <p>{report.description}</p>
-                <ExplainButton slug={report.slug} title={report.title} className="btn-secondary btn-small" />
+                <ExplainButton slug={report.slug} title={report.title} report={report} className="btn-secondary btn-small" />
             </div>
 
             {report.statusMessage && (

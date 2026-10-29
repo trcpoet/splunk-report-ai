@@ -2,6 +2,7 @@
 
 import ChatAnswer, { type ReportChipData } from "@/components/ChatAnswer";
 import FeedbackButtons from "@/components/FeedbackButtons";
+import { SkeletonParagraph } from "@/components/Skeletons";
 import { useSummary } from "@/components/useSummary";
 
 // The briefing's "In short": two or three AI sentences, written once per set
@@ -15,12 +16,13 @@ const BriefingSummary = ({ reports }: { reports: Record<string, ReportChipData> 
         <div className="briefing-summary" aria-busy={busy}>
             <h3>In short</h3>
             {summary.status === 'loading' ? (
-                <p className="text-[15px]"><span className="skeleton-line w-full">&nbsp;</span><br /><span className="skeleton-line w-2/3">&nbsp;</span></p>
+                <SkeletonParagraph count={2} className="text-[15px]" />
             ) : summary.status === 'failed' && !summary.text ? (
                 <p className="answer-note">{summary.error}</p>
             ) : (
                 <ChatAnswer text={summary.text} reports={reports} streaming={summary.status === 'streaming'} />
             )}
+            {summary.cutOff && <p className="answer-note">This summary was cut off because it got too long.</p>}
             {summary.status === 'done' && summary.id && <FeedbackButtons kind="summary" targetId={summary.id} initial={summary.vote} />}
         </div>
     )
