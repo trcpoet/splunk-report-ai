@@ -87,7 +87,7 @@ Splunk REST API (:8089)  ─┐
    - **Ask about reports:** streams back line by line as NDJSON (`lib/ai/stream.ts`). Reports named as `[[slug]]` become links (`lib/ai/report-links.ts`).
    - **Write SPL:** returns checked JSON, with the steps, a safety check and the time range (`lib/ai/spl.ts`). The app never runs the search.
 6. **Saving.** `lib/chats.ts` saves each question with its answer.
-   - The History tab lists chats (`components/ChatHistory.tsx`).
+   - The sidebar lists chats (`components/ChatSidebar.tsx`), and so does the chats page, with search (`components/ChatHistory.tsx`).
    - Rename and delete are Server Actions in `app/ai/actions.ts`.
 
 ### 5. Briefing, Explain and votes
@@ -149,10 +149,10 @@ Splunk REST API (:8089)  ─┐
 | `login/page.tsx` | Sign-in. In `DEMO_MODE` it lists the demo accounts with one-click sign-in. It's built ahead of time, so `DEMO_MODE` and `DEMO_PASSWORD` are read at build time. |
 | `reports/[slug]/page.tsx` | One report: status, highlights, charts, the results table, SPL, the results trend, run history and Explain. |
 | `reports/[slug]/not-found.tsx` | "Report not found", for missing and hidden reports alike. |
-| `ai/layout.tsx` | The Ask AI heading and its three tabs. |
+| `ai/layout.tsx` | Ask AI, laid out like ChatGPT: the chat sidebar, and the bar with the mode switch and its panels. |
 | `ai/page.tsx` | `/ai` redirects to `/ai/reports`. |
-| `ai/reports/page.tsx`, `ai/spl/page.tsx` | The two chat tabs: `AiChat` with `kind` set to `reports` or `spl`. |
-| `ai/history/page.tsx` | Every saved chat. |
+| `ai/reports/page.tsx`, `ai/spl/page.tsx` | The two modes: `AiChat` with `kind` set to `reports` or `spl`. |
+| `ai/history/page.tsx` | The chats page (Search chats): every saved chat. |
 | `ai/actions.ts` | Server Actions: rename a chat, delete a chat, vote. Each checks its input. |
 | `api/reports/route.ts`, `api/reports/[slug]/route.ts` | The JSON API: 401 when signed out, 404 for missing or hidden reports. |
 | `api/revalidate/route.ts` | Drops the cached report data. Needs `REVALIDATE_SECRET`. |
@@ -187,11 +187,13 @@ Splunk REST API (:8089)  ─┐
 | `Briefing.tsx`, `BriefingSummary.tsx`, `useSummary.ts` | The briefing, its AI "In short", and the hook that streams a summary. |
 | `ExplainButton.tsx` | The Explain button and its side panel: AI summary, "At a glance" statistics, and links into Ask AI. |
 | `FeedbackButtons.tsx` | 👍 / 👎 for answers, summaries and briefing flags. |
-| `AiChat.tsx`, `AiTabs.tsx` | Ask AI: one tab's server part (chat, votes, side panel), and the tab bar. |
-| `ChatView.tsx` | The conversation: messages, the box to type in, streaming, Stop and Retry. |
+| `AiChat.tsx` | Ask AI: one mode's server part (the chat and its votes). |
+| `AiTopBar.tsx`, `SidePanel.tsx`, `AiPanels.tsx` | The bar above the chat: the mode switch, New chat on phones, and the Reports or Searches panel. |
+| `ChatSidebar.tsx` | The chat sidebar: New chat, Search chats, and every chat grouped by day. |
+| `ChatView.tsx` | The conversation: the new-chat screen, messages, the box to type in, streaming, Stop, Retry and the ↓ button. |
 | `ChatAnswer.tsx` | An answer as Markdown, with report chips. |
-| `SplAnswer.tsx` | A Write SPL answer: the numbered steps, the full query, safety warnings, and Open in Splunk. |
-| `ChatHistory.tsx` | The History tab: filter, search, rename and delete. |
+| `SplAnswer.tsx` | A Write SPL answer: the query in a code block with Copy, the numbered steps, safety warnings, and Open in Splunk. |
+| `ChatHistory.tsx` | The chats page (filter, search, rename and delete), and the rows the sidebar reuses. |
 
 ### `lib/`: logic shared by pages, routes, the worker and tests
 
@@ -320,7 +322,7 @@ Better Auth keeps its own `user`, `session`, `account` and `verification` collec
 | Highlight | A headline number on a report, such as results with their change since the previous run. |
 | Unusual run | A newest run that stands out from its earlier runs (`lib/insights.ts`), or that the ML job flags. |
 | Flag | An entry in the briefing, either "Needs attention" or "Unusual runs", with a "Worth flagging?" vote. |
-| Briefing | The summary box on the home page and in Ask AI's side panel. |
+| Briefing | The summary box on the home page and in Ask AI's Reports panel. |
 | Turn | One question and its answer in a chat. |
 | Revalidate | Telling the app to drop its cached report data (`/api/revalidate`). |
 

@@ -1,26 +1,47 @@
 import { Suspense } from "react";
-import AiTabs, { AiTabList } from "@/components/AiTabs";
+import { AttentionCount, ReportsPanel, SearchesPanel } from "@/components/AiPanels";
+import AiTopBar, { AiTopBarFallback } from "@/components/AiTopBar";
+import ChatSidebar from "@/components/ChatSidebar";
+import { BriefingSkeleton, ChatListSkeleton, PanelListSkeleton } from "@/components/Skeletons";
 import { PageTransition } from "@/components/Transitions";
+import { listChats } from "@/lib/chats";
 
-// The Ask AI page: a heading and three tabs, each with its own address
-// (/ai/reports, /ai/spl, /ai/history). The tabs stay put while their content
-// changes, and remember each tab's open chat.
+// The Ask AI page, laid out like ChatGPT: your chats down the left, and beside
+// them a bar with the mode switch (Ask about reports or Write SPL, each with
+// its own address) above the chat. The sidebar and the bar stay put while the
+// chat changes.
 const AiLayout = ({ children }: { children: React.ReactNode }) => (
     <PageTransition>
         <section id="ai">
-            <div className="ai-header">
-                <h1>Ask AI</h1>
-                <p>Ask about your reports, answered from their latest runs, or describe a search and get the SPL, explained step by step.</p>
-            </div>
+            <h1 className="sr-only">Ask AI</h1>
 
-            {/* The current tab needs the address, which the prerendered shell doesn't know yet. */}
-            <Suspense fallback={<AiTabList />}>
-                <AiTabs />
+            <Suspense fallback={<ChatListSkeleton />}>
+                <Sidebar />
             </Suspense>
 
-            {children}
+            {/* The sidebar's "Skip the list of chats" lands here. */}
+            <div id="ai-main" className="ai-main">
+                {/* The mode switch needs the address, which the prerendered shell doesn't know yet. */}
+                <Suspense fallback={<AiTopBarFallback />}>
+                    <AiTopBar
+                        panels={{
+                            reports: <Suspense fallback={<BriefingSkeleton variant="side" />}><ReportsPanel /></Suspense>,
+                            spl: <Suspense fallback={<PanelListSkeleton />}><SearchesPanel /></Suspense>,
+                        }}
+                        attention={<Suspense fallback={null}><AttentionCount /></Suspense>}
+                    />
+                </Suspense>
+
+                {children}
+            </div>
         </section>
     </PageTransition>
 )
+
+// Only the signed-in person's chats.
+async function Sidebar() {
+    const chats = await listChats();
+    return <ChatSidebar chats={chats} />;
+}
 
 export default AiLayout

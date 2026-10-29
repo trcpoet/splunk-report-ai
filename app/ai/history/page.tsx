@@ -4,12 +4,17 @@ import { HistorySkeleton } from "@/components/Skeletons";
 import { Reveal } from "@/components/Transitions";
 import { listChats } from "@/lib/chats";
 
-export const metadata: Metadata = { title: 'Chat history | SplunkEvents' };
+export const metadata: Metadata = { title: 'Your chats | SplunkEvents' };
 
+// The chats page, which Search chats in the sidebar opens (and Chats in the
+// top bar on phones).
 const HistoryPage = () => (
-    <Reveal fallback={<HistorySkeleton />}>
-        <History />
-    </Reveal>
+    <div className="chats-page">
+        <h2>Your chats</h2>
+        <Reveal fallback={<HistorySkeleton />}>
+            <History />
+        </Reveal>
+    </div>
 )
 
 // Only the signed-in person's chats.

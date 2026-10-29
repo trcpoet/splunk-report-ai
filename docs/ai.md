@@ -4,10 +4,9 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 
 ## The short version
 
-- **Ask AI** (navbar) has three tabs:
+- **Ask AI** (navbar) is laid out like ChatGPT. Your chats run down the left, and a switch at the top picks one of two modes:
   - **Ask about reports:** questions about your reports, answered from their latest runs.
   - **Write SPL:** describe a search, or paste one, and get the SPL step by step.
-  - **History:** every chat from both tabs, to reopen, rename or delete.
 - **The AI is Google Gemini** (`gemini-3.8-flash` by default), through Google's `@google/genai` SDK. One file, `lib/ai/llm.ts`, talks to it.
 - **It only sees the reports you can see**, the same ones the rest of the app shows you.
 - **It never runs a search.** Write SPL gives you a search to copy into Splunk.
@@ -40,12 +39,24 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 | `AI_ALLOW_LIVE_DATA` | off | With `SPLUNK_MODE=live`, AI stays off until this is `true` |
 | `SPLUNK_WEB_URL` | none | Splunk Web's address (e.g. `https://splunk.example.com/en-US`), for **Open in Splunk** on generated searches |
 
-## What each tab does
+## What's on the page
+
+**The layout**
+- **The sidebar** has **New chat**, **Search chats** and every chat from both modes, newest first and grouped by day. The open chat is marked.
+  - Point at a chat, or tab to it, to rename or delete it. Deleting asks once more, so a slip doesn't lose a chat.
+  - Deleting the chat that's open starts a new one.
+  - On phones there's no sidebar. The bar at the top has **Your chats** (the chats page) and **New chat** instead.
+- **The bar at the top** has the switch between the two modes. Each mode remembers its open chat, so switching to Write SPL and back returns to the same chat.
+- **A new chat** asks its question in the middle of the page, with the box to type in under it and suggested questions below. Once you ask, the box moves to the bottom of the window.
+- **In a chat**, your questions are bubbles on the right and answers are plain text.
+  - Under each answer are **Copy** and 👍 / 👎. They always show under the newest answer; under older ones, point at the answer to see them.
+  - Scrolled up, a round ↓ button takes you back to the newest message.
+- **Search chats** opens the chats page: every chat, with search and a filter by mode, plus rename and delete.
 
 **Ask about reports**
 - Answers stream in as they're written.
 - Reports an answer uses appear as links with their status, so you can open the report and check.
-- The side panel lists what the AI can see. Pick a report there to ask about it.
+- **Reports** (top right, with how many reports need attention) opens a panel with the briefing (below) and every report the AI can see. Pick a report there to start a chat about it.
 - Suggested questions come from your own reports, such as "Why is Web Server 5xx Error Rate warning?".
 
 **Write SPL**
@@ -56,21 +67,17 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
   - with Splunk's own parser, when the web app has `SPLUNK_BASE_URL` and `SPLUNK_PARSER_TOKEN`, a token for a parse-only role that can't read any index;
   - otherwise with a small built-in parser, which catches unknown commands and quotes or brackets that never close. It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
   A line under the badges says which parser checked it. A search that doesn't parse says why, and offers **Fix the error**, which asks again with the parser's message.
-- **Copy SPL** copies the search. **Open in Splunk** (when `SPLUNK_WEB_URL` is set) opens it in Splunk's search page, where it runs only when you press Enter there.
+- **Copy SPL** (above the search, like a code block in ChatGPT) copies the search. **Open in Splunk** (when `SPLUNK_WEB_URL` is set) opens it in Splunk's search page, where it runs only when you press Enter there.
 - Follow-up suggestions such as "Only the last 7 days" change the search in the same chat.
-- The side panel lists the searches behind your reports. Pick one to have it explained.
-
-**History**
-- Your chats from both tabs, newest first, grouped by day. You can search them and filter by tab.
-- Rename a chat or delete it. Deleting asks once more, so a slip doesn't lose a chat.
+- **Searches** (top right) lists the searches behind your reports. Pick one to have it explained.
 
 ## The briefing, Explain and unusual runs
 
-**The briefing** sits on the home page, between the headline numbers and the runs-per-day chart, and at the top of the Ask about reports side panel. Most of it needs no AI:
+**The briefing** sits on the home page, between the headline numbers and the runs-per-day chart, and in the **Reports** panel on Ask about reports. Most of it needs no AI:
 - **Headline**, such as "3 reports need attention, 1 run looks unusual".
 - **Needs attention:** reports whose latest run warns or failed, with their message and an **Ask about it** link.
 - **Unusual runs:** reports whose newest run stands out from their recent runs (below), or that the ML job flags ([ml.md](ml.md)), with a sparkline that marks the odd run.
-- **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports. Since the briefing loads by itself, writing one counts toward the site's daily limit only, not yours.
+- **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports. Since the briefing loads without a question (on the home page, or when the Reports panel opens), writing one counts toward the site's daily limit only, not yours.
 
 **Explain** is on every report card and at the top of each report page. It opens a side panel (a bottom sheet on phones):
 - **In plain words:** an AI summary of the latest run and of how the search works, written once per run and then reused.
@@ -135,7 +142,10 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 | `app/api/ai/chat`, `app/api/ai/spl` | The two chat endpoints |
 | `app/api/ai/explain/[slug]`, `app/api/ai/briefing` | The two summary endpoints |
 | `app/ai/` | The pages, and the rename and delete actions |
-| `components/ChatView.tsx`, `ChatAnswer.tsx`, `SplAnswer.tsx`, `ChatHistory.tsx`, `AiTabs.tsx` | The page's parts |
+| `components/ChatView.tsx`, `ChatAnswer.tsx`, `SplAnswer.tsx` | The chat, an answer, and a Write SPL answer |
+| `components/ChatSidebar.tsx`, `ChatHistory.tsx`, `lib/chat-list.ts` | The sidebar and the chats page; chats saved since the page loaded join the sidebar's list |
+| `components/AiTopBar.tsx`, `SidePanel.tsx`, `AiPanels.tsx` | The bar with the mode switch, and the Reports and Searches panels |
+| `lib/ai/chat-events.ts` | The events the chat, the sidebar and the bar send each other |
 | `components/Briefing.tsx`, `BriefingSummary.tsx`, `ExplainButton.tsx`, `FeedbackButtons.tsx` | The briefing, the Explain panel and the thumbs |
 
 ## What it costs
@@ -168,7 +178,7 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 - A summary is finished and saved even if you close the panel, so the next look is instant. One that was cut off isn't saved, so the next look writes a whole one.
 - A 👍 / 👎 is checked on the server: it must be about an answer in your own chats, a saved summary of a report you can see, or a flag the briefing shows you. What a flag was about (its reason, measure and score) is worked out there too, not taken from the page.
 - A chat holds 50 questions; after that, start a new one.
-- A chat keeps the report data it was answered with, even if your access to those reports changes later. Delete it from History if that matters.
+- A chat keeps the report data it was answered with, even if your access to those reports changes later. Delete it from the sidebar or the chats page if that matters.
 
 ## Privacy and safety
 
@@ -217,3 +227,7 @@ The full recommendation is in [splunk-data-and-ai-strategy.md](splunk-data-and-a
 - **Running the ML job on a schedule**, right after each sync (see [ml.md](ml.md)).
 - **Showing the AI's reasoning:** Gemini can return a summary of its thinking, which could open under an answer.
 - **A summary in the report email's place:** the briefing, sent on a schedule to people who still want email.
+- **More of ChatGPT's page:**
+  - collapsing the sidebar on wide screens;
+  - a sidebar that slides in on phones, instead of the chats page;
+  - editing a question you sent, and asking for another answer.

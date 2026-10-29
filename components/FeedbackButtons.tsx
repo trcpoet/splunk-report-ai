@@ -12,12 +12,14 @@ type Props = {
     // Shown next to the thumbs (unless compact) and read out with them.
     question?: string;
     compact?: boolean;
+    // Tooltips for the two thumbs, such as under answers.
+    tips?: { up: string; down: string };
 };
 
 // 👍 / 👎. Pressing the same thumb again takes the vote back. The vote shows at
 // once and is saved in the background; if saving fails, it goes back. The
 // server works out what the vote is about from targetId (lib/feedback.ts).
-const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful?', compact = false }: Props) => {
+const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful?', compact = false, tips }: Props) => {
     const [vote, setVote] = useState<'up' | 'down' | null>(initial ?? null);
     const [failed, setFailed] = useState(false);
     const [, startTransition] = useTransition();
@@ -43,10 +45,10 @@ const FeedbackButtons = ({ kind, targetId, initial, question = 'Was this helpful
     return (
         <div className={compact ? 'feedback compact' : 'feedback'} role="group" aria-label={question}>
             {!compact && <span>{question}</span>}
-            <button type="button" aria-pressed={vote === 'up'} aria-label={`${question} Yes`} onClick={() => cast('up')}>
+            <button type="button" aria-pressed={vote === 'up'} aria-label={`${question} Yes`} data-tip={tips?.up} onClick={() => cast('up')}>
                 <ThumbsUp aria-hidden="true" />
             </button>
-            <button type="button" aria-pressed={vote === 'down'} aria-label={`${question} No`} onClick={() => cast('down')}>
+            <button type="button" aria-pressed={vote === 'down'} aria-label={`${question} No`} data-tip={tips?.down} onClick={() => cast('down')}>
                 <ThumbsDown aria-hidden="true" />
             </button>
             {failed && <span className="feedback-error" role="alert">Not saved. Try again.</span>}
