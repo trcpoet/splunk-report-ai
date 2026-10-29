@@ -698,19 +698,22 @@
     .ai-side {
         @apply flex flex-col gap-3 rounded-[10px] border border-dark-200 bg-dark-100/80 px-5 py-5 card-shadow lg:sticky lg:top-24;
 
-        h2 {
+        > h2 {
             @apply font-schibsted-grotesk text-lg font-semibold;
         }
 
-        p {
+        > p {
             @apply text-sm text-light-200;
         }
 
-        ul {
+        /* The lists of reports to pick from. The briefing above them has its own styles. */
+        > ul,
+        .side-reports ul {
             @apply -mx-2 flex list-none flex-col;
         }
 
-        a {
+        > ul a,
+        .side-reports a {
             @apply flex flex-row items-start gap-2.5 rounded-[6px] px-2 py-2 text-sm text-light-100 transition-colors hover:bg-dark-200;
         }
 
@@ -1031,6 +1034,209 @@
         }
     }
 
+    /* Explain (components/ExplainButton.tsx): on a report card it sits on top
+       of the card's bottom-right corner, since a button can't go inside the link. */
+    .report-card-wrap {
+        @apply relative h-full;
+    }
+
+    .explain-trigger {
+        @apply absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-3 py-1.5 text-xs text-light-100 cursor-pointer transition-colors hover:border-primary/60 hover:text-primary;
+
+        svg {
+            @apply size-3.5;
+        }
+    }
+
+    /* A side panel on wide screens, a bottom sheet on phones. */
+    .explain-panel {
+        @apply fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-dvh w-full max-w-lg overflow-y-auto border-0 border-l border-dark-200 bg-dark-100 p-0 text-light-100 card-shadow max-sm:inset-x-0 max-sm:top-auto max-sm:h-auto max-sm:max-h-[85dvh] max-sm:max-w-none max-sm:rounded-t-[16px] max-sm:border-l-0 max-sm:border-t;
+
+        &::backdrop {
+            background: color-mix(in srgb, var(--background) 75%, transparent);
+        }
+
+        &[open] {
+            animation: panel-in 200ms ease-out;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: none;
+            }
+        }
+    }
+
+    /* The page behind an open panel stays put. */
+    html:has(.explain-panel[open]) {
+        @apply overflow-hidden;
+    }
+
+    .explain-content {
+        @apply flex flex-col gap-6 px-6 py-6 max-sm:px-5;
+    }
+
+    .explain-head {
+        @apply flex flex-row items-start justify-between gap-4;
+
+        h2 {
+            @apply font-schibsted-grotesk text-2xl font-bold;
+        }
+    }
+
+    .explain-section {
+        @apply flex flex-col gap-3;
+
+        h3 {
+            @apply font-schibsted-grotesk text-base font-semibold;
+        }
+
+        .status-callout {
+            @apply rounded-[10px] border px-4 py-3 text-sm;
+        }
+    }
+
+    .explain-unusual {
+        @apply flex flex-row items-center gap-3 rounded-[10px] border border-dark-200 bg-dark-200/40 px-4 py-3 text-sm;
+
+        .sparkline {
+            @apply shrink-0;
+        }
+    }
+
+    .explain-profile {
+        @apply flex flex-col gap-2 text-sm;
+
+        div {
+            @apply flex flex-col gap-0.5 border-b border-dark-200 pb-2 last:border-none last:pb-0;
+        }
+
+        dt {
+            @apply font-medium text-light-100;
+        }
+
+        dd {
+            @apply text-light-200;
+        }
+    }
+
+    /* The briefing (components/Briefing.tsx): on the home page a card, on Ask
+       about reports the top of the side panel. */
+    .briefing {
+        @apply flex flex-col gap-5;
+
+        .briefing-head {
+            @apply flex flex-col gap-1;
+        }
+
+        .briefing-headline {
+            @apply font-schibsted-grotesk text-xl font-semibold;
+        }
+
+        .briefing-asof {
+            @apply text-xs text-light-200;
+        }
+
+        .briefing-group {
+            @apply flex flex-col gap-2;
+
+            h3 {
+                @apply text-sm text-light-200;
+            }
+
+            ul {
+                @apply flex list-none flex-col gap-3;
+            }
+
+            li {
+                @apply flex flex-col gap-1.5;
+            }
+
+            p {
+                @apply text-sm text-light-100;
+            }
+        }
+
+        .briefing-item-head {
+            @apply flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1;
+
+            a {
+                @apply font-medium text-light-100 transition-colors hover:text-primary;
+            }
+        }
+
+        .briefing-item-actions {
+            @apply flex flex-row flex-wrap items-center justify-between gap-3;
+
+            > a {
+                @apply text-sm text-primary hover:underline;
+            }
+        }
+
+        .briefing-calm {
+            @apply text-sm text-light-200;
+        }
+
+        .briefing-summary {
+            @apply flex flex-col gap-2 border-t border-dark-200 pt-4;
+
+            h3 {
+                @apply text-sm text-light-200;
+            }
+        }
+    }
+
+    .briefing-home {
+        @apply rounded-[10px] border border-dark-200 bg-dark-100/80 px-6 py-5 card-shadow;
+
+        .briefing-group ul {
+            @apply grid gap-4 md:grid-cols-2;
+        }
+    }
+
+    .briefing-side {
+        @apply gap-4;
+
+        .briefing-headline {
+            @apply text-lg;
+        }
+    }
+
+    .side-reports {
+        @apply border-t border-dark-200 pt-3 text-sm;
+
+        summary {
+            @apply cursor-pointer text-light-200 hover:text-light-100;
+        }
+
+        ul {
+            @apply mt-2;
+        }
+    }
+
+    /* 👍 / 👎 (components/FeedbackButtons.tsx). */
+    .feedback {
+        @apply inline-flex items-center gap-1 text-xs text-light-200;
+
+        > span:first-child {
+            @apply mr-1;
+        }
+
+        button {
+            @apply inline-flex size-7 items-center justify-center rounded-[6px] cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100 aria-pressed:bg-primary/15 aria-pressed:text-primary;
+
+            svg {
+                @apply size-3.5;
+            }
+        }
+
+        .feedback-error {
+            @apply ml-1 text-amber-300;
+        }
+    }
+
+    .answer-actions {
+        @apply flex flex-row flex-wrap items-center gap-3;
+    }
+
     #login {
         @apply flex flex-col items-center gap-8 pt-10;
 
@@ -1105,6 +1311,13 @@
         .sign-out {
             @apply inline-flex items-center gap-1.5 rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer transition-colors hover:border-primary/60 disabled:opacity-60 aria-busy:cursor-wait;
         }
+    }
+}
+
+@keyframes panel-in {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
     }
 }
 

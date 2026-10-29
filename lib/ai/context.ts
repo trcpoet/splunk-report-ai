@@ -1,4 +1,5 @@
 import { formatDateTime, formatDuration } from '@/lib/format';
+import { findUnusualRun } from '@/lib/insights';
 import type { Cell, SplunkReport, SyncInfo } from '@/lib/reports';
 
 // What the model is told about the reports. Two rules:
@@ -31,6 +32,7 @@ function resultsTable(report: SplunkReport): string[] {
 }
 
 function describeReport(report: SplunkReport): string {
+    const unusual = findUnusualRun(report.history);
     const lines = [
         `<report id="${report.slug}">`,
         `Title: ${clean(report.title)}`,
@@ -43,6 +45,7 @@ function describeReport(report: SplunkReport): string {
         ...(report.highlights.length > 0
             ? [`Highlights: ${report.highlights.map(({ label, value, note }) => `${clean(label)} ${clean(value)}${note ? ` (${clean(note)})` : ''}`).join('; ')}`]
             : []),
+        ...(unusual ? [`Unusual newest run: ${unusual.message}`] : []),
         `Recent runs, oldest first: ${report.history
             .map((run) => `${formatDateTime(run.runAt)} ${run.status}, ${run.resultCount} results, ${run.status === 'failed' ? 'skipped' : formatDuration(run.durationSec)}`)
             .join('; ')}`,

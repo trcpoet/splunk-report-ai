@@ -3,8 +3,10 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { CHAT_ID, deleteChat, renameChat } from "@/lib/chats";
+import { getViewer } from "@/lib/dal";
+import { saveVote, type VoteInput } from "@/lib/feedback";
 
-// Changes to saved chats, called from the History tab. Anyone can post to a
+// Changes to saved chats (from the History tab) and 👍 / 👎 votes. Anyone can post to a
 // Server Action, so each one checks its input here, and lib/chats.ts checks
 // that the chat belongs to whoever is signed in (signed-out visitors go to
 // /login). refresh() then redraws the list with the change.
@@ -30,4 +32,22 @@ export async function deleteChatAction(id: string): Promise<Result> {
     const deleted = await deleteChat(input.data);
     refresh();
     return deleted ? { ok: true } : NOT_FOUND;
+}
+
+const VoteSchema = z.object({
+    kind: z.enum(['answer', 'summary', 'flag']),
+    targetId: z.string().min(1).max(200),
+    value: z.enum(['up', 'down']).nullable(),
+});
+
+// Saves, changes or takes back the viewer's vote. lib/feedback.ts checks that
+// it's about something they were shown, and works out what that was. It
+// doesn't redraw the page: the buttons already show the vote, and a chat on
+// screen must not reset.
+export async function voteAction(input: VoteInput): Promise<Result> {
+    const vote = VoteSchema.safeParse(input);
+    if (!vote.success) return { ok: false, message: "That vote couldn't be saved." };
+
+    const saved = await saveVote(await getViewer(), vote.data);
+    return saved ? { ok: true } : { ok: false, message: "That vote couldn't be saved." };
 }

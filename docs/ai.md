@@ -59,6 +59,30 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - Your chats from both tabs, newest first, grouped by day. You can search them and filter by tab.
 - Rename a chat or delete it. Deleting asks once more, so a slip doesn't lose a chat.
 
+## The briefing, Explain and unusual runs
+
+**The briefing** sits on the home page, between the headline numbers and the runs-per-day chart, and at the top of the Ask about reports side panel. Most of it needs no AI:
+- **Headline**, such as "3 reports need attention, 1 run looks unusual".
+- **Needs attention:** reports whose latest run warns or failed, with their message and an **Ask about it** link.
+- **Unusual runs:** reports whose newest run stands out from their recent runs (below), with a sparkline that marks the odd run.
+- **In short:** two or three AI sentences, only when AI is on. They're written once for each set of reports and runs, and shared by everyone who sees the same reports. Since the briefing loads by itself, writing one counts toward the site's daily limit only, not yours.
+
+**Explain** is on every report card and at the top of each report page. It opens a side panel (a bottom sheet on phones):
+- **In plain words:** an AI summary of the latest run and of how the search works, written once per run and then reused.
+- **At a glance:** plain statistics. These are the unusual run if there is one, the status message, and one sentence per results column (its range, its highest row, or its most common value).
+- **Ask more:** links into Ask about reports and Write SPL, with the question filled in.
+
+Each report page's SPL section also has **Explain it step by step**, which opens Write SPL with that search.
+
+**Unusual runs, in plain statistics** (`lib/insights.ts`):
+- The newest run's result count and search time are compared with the earlier successful runs (at least 4).
+- The median of those runs is what's usual, and the median absolute deviation is how much they normally vary. Both ignore one odd run in the history, unlike the average.
+- A run 3.5 or more of those spreads away from usual is flagged, with a floor so a perfectly steady history doesn't flag small changes.
+- The bar is strict on purpose: with about 6 runs to compare and two measures per report, a looser one would flag ordinary noise.
+- The demo's failed-logins report has a spike (117 accounts over the threshold against about 38 usually), so there's always one to see.
+
+**👍 / 👎** appear under AI answers, under summaries, and on briefing flags ("Worth flagging?"). Votes go in `ai_feedback`, one per person per item; pressing the same thumb again takes the vote back. The flag votes, with what was flagged, are the training labels for the ML job in `ml/` (see [ml.md](ml.md)).
+
 ## What the AI can see, and what it can't
 
 - **Only your reports.** For each one: its status and message, highlights, the last 7 runs, its SPL, and up to 20 rows of its latest results, plus the time of the last sync. It gets exactly what `lib/dal.ts` lets you see, so it can't mention a report you can't open.
@@ -79,10 +103,15 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 | `lib/ai/usage.ts` | Daily limits |
 | `lib/ai/report-links.ts` | Turns `[[report-id]]` in answers into report links |
 | `lib/ai/suggestions.ts` | Suggested questions |
+| `lib/ai/summaries.ts`, `lib/ai/keys.ts` | Explain summaries and briefings: written once, saved under a key that changes with the data |
+| `lib/insights.ts` | Unusual runs and the results profile (plain statistics, no AI) |
+| `lib/feedback.ts` | 👍 / 👎 votes |
 | `lib/chats.ts` | Saved chats (each function checks the owner) |
-| `app/api/ai/chat`, `app/api/ai/spl` | The two endpoints the page calls |
+| `app/api/ai/chat`, `app/api/ai/spl` | The two chat endpoints |
+| `app/api/ai/explain/[slug]`, `app/api/ai/briefing` | The two summary endpoints |
 | `app/ai/` | The pages, and the rename and delete actions |
 | `components/ChatView.tsx`, `ChatAnswer.tsx`, `SplAnswer.tsx`, `ChatHistory.tsx`, `AiTabs.tsx` | The page's parts |
+| `components/Briefing.tsx`, `BriefingSummary.tsx`, `ExplainButton.tsx`, `FeedbackButtons.tsx` | The briefing, the Explain panel and the thumbs |
 
 ## What it costs
 
@@ -91,7 +120,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - **One answer costs about half a cent to a cent.** The AI reads roughly 4,000 tokens about your reports and writes a few hundred. On the free tier it costs nothing.
 - **Follow-ups cost less.** Gemini caches the start of a prompt once it's over 4,096 tokens, so the reports go first and stay the same from one question to the next.
 - **Each answer is capped** at 8,192 tokens, which also caps what one question can cost. A long answer that hits the cap says so.
-- **Daily limits:** 50 requests per account per day, and 1,000 for everyone together (`AI_DAILY_LIMIT`, `AI_SITE_DAILY_LIMIT`). The `ai_usage` collection keeps a week of requests and tokens per account, for a rough idea of the cost:
+- **Daily limits:** 50 requests per account per day, and 1,000 for everyone together (`AI_DAILY_LIMIT`, `AI_SITE_DAILY_LIMIT`). A saved summary or briefing costs nothing; writing a new one counts once, however many people are waiting for it. The `ai_usage` collection keeps a week of requests and tokens per account, for a rough idea of the cost:
 
   ```js
   // mongosh splunkevents
@@ -104,9 +133,13 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 |---|---|---|
 | `chats` | One document per chat, with its questions and answers | Until you delete it. In `DEMO_MODE`, 24 hours, because visitors share the demo accounts |
 | `ai_usage` | Requests and tokens per account per day | 7 days |
+| `ai_summaries` | Explain summaries and briefings, under a key that changes with the data or the prompt (`PROMPT_VERSION`) | 30 days |
+| `ai_feedback` | 👍 / 👎, one per person per answer, summary or briefing flag | Kept (the ML job's training labels) |
 
 - A question and its answer are saved together, once the answer is complete.
 - An answer you stop, or one that fails, isn't saved. Ask again with **Try again**.
+- A summary is finished and saved even if you close the panel, so the next look is instant. One that was cut off isn't saved, so the next look writes a whole one.
+- A 👍 / 👎 is checked on the server: it must be about an answer in your own chats, a saved summary of a report you can see, or a flag the briefing shows you. What a flag was about (its reason, measure and score) is worked out there too, not taken from the page.
 - A chat holds 50 questions; after that, start a new one.
 - A chat keeps the report data it was answered with, even if your access to those reports changes later. Delete it from History if that matters.
 
@@ -152,8 +185,6 @@ Ask your Splunk admin which integration the company uses before building on it.
 
 ## Ideas for later
 
-- **A briefing box** on the home page and here: what needs attention, which runs look unusual, and a two-sentence AI summary, cached per sync.
-- **An Explain button** on every report card: a plain-words summary of the report, plus a quick profile of its results.
-- **Spotting unusual runs:** simple statistics in TypeScript first, then a Python job (pandas, scikit-learn) that learns from 👍 / 👎 votes which flags are worth showing.
-- **Thumbs up and down** on answers, to see which ones help.
+- **A Python ML job** that learns from the "Worth flagging?" votes which flags people find useful, and scores runs with an Isolation Forest (see [ml.md](ml.md)).
 - **Showing the AI's reasoning:** Gemini can return a summary of its thinking, which could open under an answer.
+- **A summary in the report email's place:** the briefing, sent on a schedule to people who still want email.

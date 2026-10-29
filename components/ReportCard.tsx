@@ -3,6 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import ExplainButton from "@/components/ExplainButton";
 import StatusBadge from "@/components/StatusBadge";
 import RunHistory from "@/components/RunHistory";
 import { PAGE_TRANSITION } from "@/components/Transitions";
@@ -24,7 +25,10 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
     const [intent, setIntent] = useState(false);
     const prefetchContent = () => setIntent(true);
 
+    // The card is one link, and Explain sits on top of its corner: a button
+    // can't go inside a link.
     return (
+        <div className="report-card-wrap">
         <Link
             href={`/reports/${report.slug}`}
             prefetch={intent ? true : 'auto'}
@@ -63,6 +67,8 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
 
             <RunHistory runs={report.history} />
         </Link>
+        <ExplainButton slug={report.slug} title={report.title} />
+        </div>
     )
 }
 

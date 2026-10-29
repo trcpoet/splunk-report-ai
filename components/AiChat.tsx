@@ -1,39 +1,40 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import Briefing from "@/components/Briefing";
 import ChatView from "@/components/ChatView";
+import { BriefingSkeleton } from "@/components/Skeletons";
 import { aiOffMessage, aiStatus, splunkWebUrl } from "@/lib/ai/config";
 import { aboutQuestion, explainRequest, reportQuestions, splRequests } from "@/lib/ai/suggestions";
 import { getChat, type ChatKind } from "@/lib/chats";
-import { getSyncInfo, getVisibleReports } from "@/lib/dal";
-import { formatDateTime } from "@/lib/format";
+import { getSyncInfo, getViewer, getVisibleReports } from "@/lib/dal";
+import { getVotes } from "@/lib/feedback";
 import type { ReportListItem } from "@/lib/reports";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (value: string | string[] | undefined) => (typeof value === 'string' ? value : undefined);
 
-// The side panel on Ask about reports: what the AI knows about, and a quick
-// way to ask about one report.
-const ReportsAside = ({ reports, asOf }: { reports: ReportListItem[]; asOf?: string }) => (
-    <aside className="ai-side" aria-label="What the AI can see">
-        <h2>What the AI can see</h2>
-        <p>
-            Your {reports.length} report{reports.length === 1 ? '' : 's'}
-            {asOf ? `, as of ${formatDateTime(asOf)}` : ''}. Pick one to ask about it.
-        </p>
-        <ul>
-            {reports.map((report) => (
-                <li key={report.slug}>
-                    <Link href={`/ai/reports?about=${report.slug}`}>
-                        <span className={`dot dot-${report.status}`} aria-hidden="true" />
-                        <span className="flex min-w-0 flex-col">
+// The side panel on Ask about reports: the briefing (what needs attention),
+// then every report the AI can see, to ask about one.
+const ReportsAside = ({ reports }: { reports: ReportListItem[] }) => (
+    <aside className="ai-side" aria-label="Your reports right now">
+        <Suspense fallback={<BriefingSkeleton variant="side" />}>
+            <Briefing variant="side" />
+        </Suspense>
+        <details className="side-reports">
+            <summary>Ask about any of your {reports.length} report{reports.length === 1 ? '' : 's'}</summary>
+            <ul>
+                {reports.map((report) => (
+                    <li key={report.slug}>
+                        <Link href={`/ai/reports?about=${report.slug}`}>
+                            <span className={`dot dot-${report.status}`} aria-hidden="true" />
                             <span className="truncate">{report.title}</span>
-                            {report.statusMessage && <span className="side-note">{report.statusMessage}</span>}
-                        </span>
-                    </Link>
-                </li>
-            ))}
-        </ul>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </details>
     </aside>
 )
 
@@ -63,7 +64,7 @@ const SplAside = ({ reports }: { reports: ReportListItem[] }) => (
 const AiChat = async ({ kind, searchParams }: { kind: ChatKind; searchParams: SearchParams }) => {
     const params = await searchParams;
     const chatId = one(params.chat);
-    const [reports, sync, chat] = await Promise.all([getVisibleReports(), getSyncInfo(), chatId ? getChat(chatId) : null]);
+    const [viewer, reports, sync, chat] = await Promise.all([getViewer(), getVisibleReports(), getSyncInfo(), chatId ? getChat(chatId) : null]);
 
     // A chat from the other tab opens there.
     if (chat && chat.kind !== kind) redirect(`/ai/${chat.kind}?chat=${chat.id}`);
@@ -80,6 +81,7 @@ const AiChat = async ({ kind, searchParams }: { kind: ChatKind; searchParams: Se
     const linked = reports.find(({ slug }) => slug === one(kind === 'reports' ? params.about : params.explain));
     const prefill = !chat && linked ? (kind === 'reports' ? aboutQuestion(linked) : explainRequest(linked)) : '';
     const chips = Object.fromEntries(reports.map(({ slug, title, status }) => [slug, { slug, title, status }]));
+    const votes = chat ? await getVotes(viewer, 'answer', chat.messages.filter(({ role }) => role === 'assistant').map(({ id }) => id)) : {};
 
     return (
         <div className="ai-workspace">
@@ -95,8 +97,9 @@ const AiChat = async ({ kind, searchParams }: { kind: ChatKind; searchParams: Se
                 prefill={prefill}
                 splunkWebUrl={splunkWebUrl()}
                 demo={process.env.DEMO_MODE === 'true'}
+                votes={votes}
             />
-            {reports.length > 0 && (kind === 'reports' ? <ReportsAside reports={reports} asOf={sync?.lastSuccessAt} /> : <SplAside reports={reports} />)}
+            {reports.length > 0 && (kind === 'reports' ? <ReportsAside reports={reports} /> : <SplAside reports={reports} />)}
         </div>
     )
 }

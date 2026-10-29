@@ -11,6 +11,7 @@
 - **Sign-in and per-team access:** each user sees only the reports their groups used to receive by email. Admins see everything.
 - **Overview:** headline numbers for the reports you can see, scheduled runs per day by outcome, and the report list with search and status/category filters.
 - **Report page (`/reports/[slug]`):** status and alert message, key numbers, a chart of the latest results (the chart type saved in Splunk), the results table, the SPL query, a results-per-run trend and the run history, schedule details, the distribution lists that used to receive the email, and **Download CSV** / **Copy SPL** buttons.
+- **Briefing and Explain:** the home page says what needs attention and which runs look unusual (plain statistics, `lib/insights.ts`), with a short AI summary. Every report card has **Explain**: an AI summary of the latest run plus a quick look at its results.
 - **Ask AI (`/ai`):** ask questions about your reports and get answers that link to the reports they use, or describe a search and get the SPL explained step by step (never run). Every chat is saved, and the History tab lists them all. Answers come from Google Gemini and see only your reports. Without a `GEMINI_API_KEY` the page says AI is off. See [docs/ai.md](docs/ai.md).
 - **JSON API:** `GET /api/reports` and `GET /api/reports/[slug]` return only what the signed-in user may see (401 when signed out, 404 for reports that are missing or hidden).
 
@@ -94,6 +95,8 @@ The live demo runs on Vercel with a free MongoDB Atlas cluster (M0). To host you
    ```
 
 3. Import the repo in Vercel and set `MONGODB_URI`, `RUN_RETENTION_DAYS=3650`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (the site's URL), `DEMO_MODE=true`, `DEMO_PASSWORD`, `REVALIDATE_SECRET` and `APP_URL` (the site's URL).
+
+Vercel builds only the production branch (`vercel.json`'s `ignoreCommand`). Pull requests are checked by CI instead, and preview builds would fail anyway: the Preview environment has no settings, such as `MONGODB_URI`.
 
 `DEMO_MODE=true` lists the demo accounts on the sign-in page with one-click sign-in and shows their password, so use it only with dummy data. The sign-in form is built into the page when the app is built, so after changing `DEMO_MODE` or `DEMO_PASSWORD`, redeploy (Vercel applies new settings only to new deployments anyway). Because visitors share those accounts, `/api/auth` only serves sign-in, sign-out and session lookups ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)): nobody can change a demo account's password or see who else is signed in to it.
 
