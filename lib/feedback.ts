@@ -1,4 +1,5 @@
 import 'server-only';
+import { connection } from 'next/server';
 import { AiFeedback, AiSummary, type FeedbackKind, type FlagDetails, type Vote } from '@/database';
 import type { Viewer } from '@/lib/access';
 import { isOwnAnswer } from '@/lib/chats';
@@ -73,10 +74,14 @@ export async function saveVote(viewer: Pick<Viewer, 'id'>, { kind, targetId, val
     return true;
 }
 
-// The viewer's votes on these things, by target id.
+// The viewer's votes on these things, by target id. Votes change whenever
+// someone presses a thumb, so they're read for each request: connection()
+// keeps the read out of the page shells Next prerenders and prefetches, and
+// the part of the page that needs it streams in behind its <Suspense>.
 export async function getVotes(viewer: Pick<Viewer, 'id'>, kind: FeedbackKind, targetIds: string[]): Promise<Record<string, Vote>> {
     if (targetIds.length === 0) return {};
 
+    await connection();
     await connectDB();
     const votes = await AiFeedback.find({ userId: viewer.id, kind, targetId: { $in: targetIds } }, { targetId: 1, value: 1 }).lean();
     return Object.fromEntries(votes.map(({ targetId, value }) => [targetId, value]));

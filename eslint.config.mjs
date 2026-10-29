@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The ML job's Python environment (ml/README.md), which holds its
+    // packages' own JavaScript.
+    "ml/.venv/**",
   ]),
 ]);
 

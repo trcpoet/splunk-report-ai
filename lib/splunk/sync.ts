@@ -129,6 +129,11 @@ async function syncReport(transport: SplunkTransport, report: ScheduledReport, n
     return runs.length;
 }
 
+// A page that was still reading the old data when the app dropped its cache
+// can put that old data back. So the app is asked twice: now, and again a
+// moment later, once any such reads have finished.
+const SECOND_REFRESH_MS = 3_000;
+
 // Tells the web app to drop its cached report data. Skipped if the app isn't running.
 async function refreshAppCache(log: (message: string) => void) {
     const appUrl = process.env.APP_URL;
@@ -138,13 +143,21 @@ async function refreshAppCache(log: (message: string) => void) {
         return;
     }
 
+    const refresh = () => fetch(new URL('/api/revalidate', appUrl), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${secret}` },
+        signal: AbortSignal.timeout(5_000),
+    });
+
     try {
-        const response = await fetch(new URL('/api/revalidate', appUrl), {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${secret}` },
-            signal: AbortSignal.timeout(5_000),
-        });
-        log(response.ok ? 'Refreshed the app cache.' : `The app refused the cache refresh (${response.status}).`);
+        const response = await refresh();
+        if (!response.ok) {
+            log(`The app refused the cache refresh (${response.status}).`);
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, SECOND_REFRESH_MS));
+        await refresh();
+        log('Refreshed the app cache.');
     } catch {
         log(`The app isn't reachable at ${appUrl}. It will show the new data when its cache expires.`);
     }

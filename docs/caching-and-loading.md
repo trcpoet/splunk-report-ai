@@ -18,8 +18,13 @@ A plain-language guide to what SplunkEvents keeps ready ahead of time, what you 
 | Who you are and your groups | Your browser only (`'use cache: private'` in `lib/dal.ts`), never the server | 5 minutes | Signing in or out (both reload the page), and the automatic refresh once a minute |
 | Pages you visited | Your browser: Next keeps the last 3 pages, with their filters and scroll position | While the tab is open | Leaving the app or reloading |
 | Pages a link leads to | Your browser (prefetched before you click) | 5 minutes | Same as above |
+| Your chats and 👍 / 👎 votes | Not cached: read from MongoDB for every request (`connection()` in `lib/chats.ts` and `lib/feedback.ts`) | — | — |
 
 Each server instance on Vercel has its own memory, so a freshly started one reads MongoDB once before its cache is warm.
+
+The sync and the ML job ask the app to refresh twice, 3 seconds apart. A page that was still reading the old data when the first request arrived would otherwise put that old data back into the cache, and people would see it for up to a minute.
+
+For developers: a page that reads MongoDB without `'use cache'` must call `await connection()` (from `next/server`) before the read, inside a `<Suspense>` or `<Reveal>` boundary, as `getVotes()` and `listChats()` do. Next prerenders each page's shell for the signed-in person, and the database driver reads the clock, so without it `next dev` reports "Next.js encountered the unstable value `Date.now()` while prerendering".
 
 **When access changes or a session ends:**
 - Signing in or out reloads every other open tab of the app in that browser, so no tab keeps showing the previous person's reports.

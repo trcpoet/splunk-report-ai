@@ -1,5 +1,6 @@
 import 'server-only';
 import { Types } from 'mongoose';
+import { connection } from 'next/server';
 import { Chat, MAX_CHAT_MESSAGES, type ChatKind, type IChat, type IChatMessage } from '@/database';
 import type { Viewer } from '@/lib/access';
 import { replaceReportMarkers } from '@/lib/ai/report-links';
@@ -11,6 +12,10 @@ import connectDB from '@/lib/mongodb';
 // Saved chats from the Ask AI page. Like lib/dal.ts, every function checks who
 // is asking: a chat belongs to the person who started it, and for anyone else
 // it doesn't exist (the same answer as for a missing chat).
+//
+// Chats aren't cached, so the functions pages call start with connection():
+// they're read for each request, never while Next prerenders or prefetches a
+// page shell, and the page shows its <Suspense> fallback until they arrive.
 
 export type { ChatKind };
 
@@ -68,6 +73,7 @@ const toMessage = ({ _id, role, text, spl, createdAt }: IChatMessage): ChatMessa
 
 // The signed-in person's chats, newest first, with the start of the last message.
 export async function listChats(limit = 200): Promise<ChatSummary[]> {
+    await connection();
     const viewer = await getViewer();
     await connectDB();
     const chats = await Chat.find({ userId: viewer.id }, { kind: 1, title: 1, updatedAt: 1, messages: { $slice: -1 } })
@@ -90,6 +96,7 @@ export async function listChats(limit = 200): Promise<ChatSummary[]> {
 export async function getChat(id: string): Promise<ChatDetail | null> {
     if (!isChatId(id)) return null;
 
+    await connection();
     const viewer = await getViewer();
     await connectDB();
     const chat = await Chat.findOne({ _id: id, userId: viewer.id }).lean<IChat>();
