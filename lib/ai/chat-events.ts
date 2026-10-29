@@ -12,7 +12,10 @@ export const CHAT_SAVED = 'ai:chat-saved';
 
 export type SavedChat = { id: string; kind: ChatKind; title: string; updatedAt: string };
 
-// New chat was pressed while the address already shows a new chat (after a
-// first question that failed, say). Following the link would change nothing,
-// so the chat on screen clears itself.
+// New chat was pressed in the mode that's open. The chat on screen clears
+// itself, and an answer on its way stops.
 export const NEW_CHAT = 'ai:new-chat';
+
+// The open chat is about to be deleted. An answer on its way stops, so saving
+// it can't bring the chat back. The chat stays on screen, in case the delete fails.
+export const STOP_ANSWER = 'ai:stop-answer';

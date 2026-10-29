@@ -1437,9 +1437,10 @@
         }
     }
 
-    /* On screens that can point, older answers show their buttons on hover or focus. */
+    /* On screens that can point, older answers show their buttons on hover or
+       focus, and always while a vote there says it wasn't saved. */
     @media (hover: hover) {
-        .msg-answer:not(.is-newest, :hover, :focus-within) .answer-actions {
+        .msg-answer:not(.is-newest, :hover, :focus-within) .answer-actions:not(:has(.feedback-error)) {
             @apply opacity-0;
         }
     }

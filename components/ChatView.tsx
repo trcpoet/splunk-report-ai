@@ -8,11 +8,12 @@ import CopyButton from "@/components/CopyButton";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import SplAnswer from "@/components/SplAnswer";
 import { track } from "@/lib/analytics";
-import { CHAT_SAVED, NEW_CHAT, type SavedChat } from "@/lib/ai/chat-events";
+import { CHAT_SAVED, NEW_CHAT, STOP_ANSWER, type SavedChat } from "@/lib/ai/chat-events";
 import { replaceReportMarkers } from "@/lib/ai/report-links";
 import { readEvents } from "@/lib/ai/stream";
+import { idTime } from "@/lib/chat-list";
 import type { ChatDetail, ChatKind, ChatMessage } from "@/lib/chats";
-import { firstLine } from "@/lib/format";
+import { firstLine, plural } from "@/lib/format";
 
 // A message on screen. An answer on its way, or one that didn't finish, has a state.
 type Shown = ChatMessage & {
@@ -109,12 +110,14 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
     };
 
     // When the address stops naming a chat (New chat, or the navbar's Ask AI
-    // link), show a new one. This adjusts state while rendering, as React
-    // suggests for state that follows a changing value: https://react.dev/learn/you-might-not-need-an-effect
+    // link), show a new one, even while an answer comes in: the chat on screen
+    // must match the address. (New chat stops that answer first, through
+    // NEW_CHAT below.) This adjusts state while rendering, as React suggests
+    // for state that follows a changing value: https://react.dev/learn/you-might-not-need-an-effect
     const [seenUrlChat, setSeenUrlChat] = useState(urlChat);
     if (urlChat !== seenUrlChat) {
         setSeenUrlChat(urlChat);
-        if (!urlChat && chatId && !busy) startNewChat();
+        if (!urlChat && chatId) startNewChat();
     }
 
     // When the address names a chat this view isn't showing (Back or Forward
@@ -148,8 +151,9 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         };
     }, []);
 
-    // New chat in the sidebar or the top bar, while this new chat is already
-    // open: clear it. An answer still on its way stops, as with Stop.
+    // New chat in the sidebar or the top bar, in this chat's mode: clear it.
+    // An answer still on its way stops, as with Stop, so it can't be saved
+    // into a chat that's no longer on screen (or one being deleted).
     const onNewChat = useEffectEvent(() => {
         abort.current?.abort();
         startNewChat();
@@ -157,13 +161,18 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
     });
     useEffect(() => {
         const listener = () => onNewChat();
+        const stop = () => abort.current?.abort();
         window.addEventListener(NEW_CHAT, listener);
-        return () => window.removeEventListener(NEW_CHAT, listener);
+        window.addEventListener(STOP_ANSWER, stop);
+        return () => {
+            window.removeEventListener(NEW_CHAT, listener);
+            window.removeEventListener(STOP_ANSWER, stop);
+        };
     }, []);
 
-    // An answer was saved. A new chat gets its address, and the sidebar puts
-    // the chat at the top of its list.
-    const saved = (id: string, question: string) => {
+    // An answer was saved, at `when` by the server's clock. A new chat gets its
+    // address, and the sidebar puts the chat at the top of its list.
+    const saved = (id: string, question: string, when: string) => {
         const name = title ?? firstLine(question);
         if (!chatId) {
             setChatId(id);
@@ -171,7 +180,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
             setTitle(name);
             window.history.replaceState(null, '', `${pathname}?chat=${id}`);
         }
-        window.dispatchEvent(new CustomEvent<SavedChat>(CHAT_SAVED, { detail: { id, kind, title: name, updatedAt: new Date().toISOString() } }));
+        window.dispatchEvent(new CustomEvent<SavedChat>(CHAT_SAVED, { detail: { id, kind, title: name, updatedAt: when } }));
     };
 
     const send = async (question: string) => {
@@ -219,7 +228,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
             if (kind === 'spl') {
                 const { chatId: id, message } = await response.json() as { chatId: string; message: ChatMessage };
                 update({ ...message, state: undefined, fresh: true });
-                saved(id, text);
+                saved(id, text, message.createdAt);
                 setAnnouncement('Search ready.');
                 return;
             }
@@ -240,7 +249,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                         state: undefined,
                         note: event.cutOff ? 'This answer was cut off because it got too long. Ask for less detail, or a narrower question.' : undefined,
                     });
-                    if (id) saved(id, text);
+                    if (id) saved(id, text, idTime(event.messageId));
                     setAnnouncement('Answer ready.');
                 } else {
                     finished = true;
@@ -298,7 +307,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                     <h2 className="chat-greeting-title">{GREETINGS[kind]}</h2>
                     <p>
                         {kind === 'reports'
-                            ? `Answers come from the latest runs of the ${count} report${count === 1 ? '' : 's'} you can see, and name the reports they use.`
+                            ? `Answers come from the latest runs of the ${plural(count, 'report', 'reports')} you can see, and name the reports they use.`
                             : 'Describe what you want to find, or paste a search to have it explained. You get it step by step, ready to copy. Nothing runs from here.'}
                     </p>
                 </div>

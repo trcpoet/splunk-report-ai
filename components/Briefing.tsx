@@ -8,11 +8,9 @@ import { aiStatus } from "@/lib/ai/config";
 import { briefingKey, flagId } from "@/lib/ai/keys";
 import { getSyncInfo, getViewer, getVisibleReports } from "@/lib/dal";
 import { getVotes } from "@/lib/feedback";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, plural } from "@/lib/format";
 import { findUnusualRun, unusualTrend } from "@/lib/insights";
-import type { ReportListItem } from "@/lib/reports";
-
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+import { needsAttention, type ReportListItem } from "@/lib/reports";
 
 // Once the ML job has learned from enough votes which flags are worth
 // attention (docs/ml.md), those come first. Until then, title order.
@@ -26,12 +24,12 @@ const mostWorthAttention = (a: ReportListItem, b: ReportListItem) => (b.attentio
 // learned, those come first.
 //
 // On the home page it's a card ('home'); on Ask about reports it sits in the
-// side panel ('side').
+// Reports panel ('side').
 const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
     const [viewer, reports, sync] = await Promise.all([getViewer(), getVisibleReports(), getSyncInfo()]);
     if (reports.length === 0) return null;
 
-    const attention = reports.filter((report) => report.status !== 'success').sort(mostWorthAttention);
+    const attention = reports.filter(needsAttention).sort(mostWorthAttention);
     const unusual = [...reports].sort(mostWorthAttention).flatMap((report) => {
         const run = findUnusualRun(report.history, report.modelRun);
         return run ? [{ report, run }] : [];

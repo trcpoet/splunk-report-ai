@@ -3,12 +3,14 @@ import { Suspense } from "react";
 import Briefing from "@/components/Briefing";
 import { BriefingSkeleton } from "@/components/Skeletons";
 import { getVisibleReports } from "@/lib/dal";
+import { plural } from "@/lib/format";
+import { needsAttention } from "@/lib/reports";
 
 // What the Ask AI top bar's panels hold (components/AiTopBar.tsx), and the
-// count on its Reports button. They're rendered on the server with the page;
-// a panel shows its part when someone opens it.
-
-const plural = (count: number) => `${count} report${count === 1 ? '' : 's'}`;
+// count on its Reports button. The layout renders them on the server with the
+// page, from cached report data; a panel shows its part, and loads what's
+// inside it in the browser (such as the briefing's AI summary), only when
+// someone opens it.
 
 const NO_REPORTS = <p className="answer-note">You can&apos;t see any reports yet, so there&apos;s nothing to ask about.</p>;
 
@@ -24,7 +26,7 @@ export async function ReportsPanel() {
                 <Briefing variant="side" />
             </Suspense>
             <section className="ai-panel-list">
-                <h3>Ask about any of your {plural(reports.length)}</h3>
+                <h3>Ask about any of your {plural(reports.length, 'report', 'reports')}</h3>
                 <ul>
                     {reports.map((report) => (
                         <li key={report.slug}>
@@ -66,7 +68,7 @@ export async function SearchesPanel() {
 
 // How many reports need attention, on the Reports button. None shows nothing.
 export async function AttentionCount() {
-    const count = (await getVisibleReports()).filter(({ status }) => status !== 'success').length;
+    const count = (await getVisibleReports()).filter(needsAttention).length;
     if (count === 0) return null;
 
     return (

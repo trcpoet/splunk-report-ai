@@ -61,6 +61,9 @@ export const formatTime = (iso: string) => {
 export const formatDuration = (seconds: number) =>
     seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
 
+// "1 report", "3 reports".
+export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
 // The first line of some text, shortened to `max` characters, for titles.
 export const firstLine = (text: string, max = 80) => {
     const line = text.trim().split('\n')[0].replace(/\s+/g, ' ');

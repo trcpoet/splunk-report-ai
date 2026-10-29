@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { MessagesSquare, Pencil, SquareTerminal, Trash2 } from "lucide-react";
 import { deleteChatAction, renameChatAction } from "@/app/ai/actions";
-import { CHAT_DELETED } from "@/lib/ai/chat-events";
+import { CHAT_DELETED, STOP_ANSWER } from "@/lib/ai/chat-events";
 import type { ChatGroup, ChatKind, ChatSummary } from "@/lib/chats";
 import { formatDateTime, formatTime } from "@/lib/format";
 
@@ -18,6 +18,8 @@ const FILTERS: { label: string; value: ChatKind | 'all' }[] = [
 export const GROUPS: ChatGroup[] = ['Today', 'Yesterday', 'Last 7 days', 'Older'];
 
 const TAB_LABELS: Record<ChatKind, string> = { reports: 'Ask about reports', spl: 'Write SPL' };
+
+const NO_CONNECTION = "Couldn't reach the app. Check your connection and try again.";
 
 type RowProps = {
     chat: ChatSummary;
@@ -49,12 +51,13 @@ export const HistoryRow = ({ chat, compact = false, current = false }: RowProps)
     const rename = (event: FormEvent) => {
         event.preventDefault();
         startTransition(async () => {
-            const result = await renameChatAction(chat.id, name);
-            if (result.ok) {
+            // A request that fails counts as not renamed, rather than breaking the page.
+            const result = await renameChatAction(chat.id, name).catch(() => null);
+            if (result?.ok) {
                 setMode('view');
                 setError('');
             } else {
-                setError(result.message);
+                setError(result?.message ?? NO_CONNECTION);
             }
         });
     };
@@ -62,12 +65,27 @@ export const HistoryRow = ({ chat, compact = false, current = false }: RowProps)
     const remove = () => {
         startTransition(async () => {
             // Deleting the open chat opens a new one first, so the page never
-            // says "Chat not found" about it.
-            if (current) router.replace(`/ai/${chat.kind}`);
-            const result = await deleteChatAction(chat.id);
-            if (result.ok) window.dispatchEvent(new CustomEvent(CHAT_DELETED, { detail: chat.id }));
-            else setError(result.message);
+            // says "Chat not found" about it. An answer still on its way stops
+            // first, so it can't save the chat again.
+            if (current) {
+                window.dispatchEvent(new Event(STOP_ANSWER));
+                router.replace(`/ai/${chat.kind}`);
+            }
+            const result = await deleteChatAction(chat.id).catch(() => null);
+            if (result?.ok) {
+                window.dispatchEvent(new CustomEvent(CHAT_DELETED, { detail: chat.id }));
+            } else {
+                setError(result?.message ?? NO_CONNECTION);
+                // It's still there, so it opens again.
+                if (current) router.replace(`/ai/${chat.kind}?chat=${chat.id}`);
+            }
         });
+    };
+
+    const startRename = () => {
+        // The same chat can be renamed in the other list meanwhile.
+        setName(chat.title);
+        setMode('rename');
     };
 
     const Icon = chat.kind === 'spl' ? SquareTerminal : MessagesSquare;
@@ -115,7 +133,7 @@ export const HistoryRow = ({ chat, compact = false, current = false }: RowProps)
 
             {mode === 'view' && (
                 <div className="history-actions">
-                    <button type="button" className="icon-button" onClick={() => setMode('rename')} aria-label={`Rename "${chat.title}"`}>
+                    <button type="button" className="icon-button" onClick={startRename} aria-label={`Rename "${chat.title}"`}>
                         <Pencil aria-hidden="true" />
                     </button>
                     <button type="button" className="icon-button" onClick={() => setMode('confirm')} aria-label={`Delete "${chat.title}"`}>

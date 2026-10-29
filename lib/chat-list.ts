@@ -1,6 +1,11 @@
 import type { SavedChat } from '@/lib/ai/chat-events';
 import type { ChatSummary } from '@/lib/chats';
 
+// When the server made a MongoDB id (its first 8 hex digits are the seconds
+// since 1970), as an ISO time. A saved answer's id says when it was saved by
+// the server's clock, which the browser's may not match.
+export const idTime = (id: string) => new Date(parseInt(id.slice(0, 8), 16) * 1000).toISOString();
+
 // The sidebar's list of chats: the ones the server sent with the page, plus
 // answers saved since then (lib/ai/chat-events.ts), newest first.
 //

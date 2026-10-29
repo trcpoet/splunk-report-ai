@@ -39,9 +39,10 @@ const ChatsLink = ({ current = false }: { current?: boolean }) => (
     </Link>
 )
 
-// New chat: a link to the mode's address. When that address is already open
-// with nothing after it (after a first question that failed, say), following
-// the link would change nothing, so the chat on screen clears itself instead.
+// New chat: a link to the mode's address. In the mode that's open, the chat
+// on screen also clears itself (and stops an answer on its way). When the
+// address has nothing after it (after a first question that failed, say),
+// following the link would change nothing, so that's all that happens.
 export const NewChatLink = ({ className, label, children }: { className: string; label?: string; children: ReactNode }) => {
     const pathname = usePathname();
     const search = useSearchParams().toString();
@@ -53,10 +54,9 @@ export const NewChatLink = ({ className, label, children }: { className: string;
             className={className}
             aria-label={label}
             onNavigate={(event) => {
-                if (pathname === href && !search) {
-                    event.preventDefault();
-                    window.dispatchEvent(new Event(NEW_CHAT));
-                }
+                if (pathname !== href) return;
+                window.dispatchEvent(new Event(NEW_CHAT));
+                if (!search) event.preventDefault();
             }}
         >
             {children}

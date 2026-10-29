@@ -1,4 +1,4 @@
-import type { ReportListItem } from '@/lib/reports';
+import { needsAttention, type ReportListItem } from '@/lib/reports';
 
 // Questions to start a chat with, built from the reports the person can see,
 // so the first click already says something about their own data. Pure: no
@@ -10,7 +10,7 @@ type Report = Pick<ReportListItem, 'slug' | 'title' | 'status' | 'index'>;
 export function reportQuestions(reports: Report[]): string[] {
     if (reports.length === 0) return [];
 
-    const attention = reports.filter((report) => report.status !== 'success');
+    const attention = reports.filter(needsAttention);
     const questions = attention
         .slice(0, 2)
         .map((report) => `Why is ${report.title} ${report.status === 'failed' ? 'failing' : 'warning'}?`);

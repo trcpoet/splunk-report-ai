@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import type { ChatSummary } from '@/lib/chats';
-import { mergeChats } from '@/lib/chat-list';
+import { idTime, mergeChats } from '@/lib/chat-list';
+
+describe('idTime', () => {
+    test("reads the server's time out of a MongoDB id", () => {
+        // 0x6ae37406 seconds after 1970.
+        assert.equal(idTime('6ae374063984cb32f3d0da8f'), new Date(0x6ae37406 * 1000).toISOString());
+        assert.equal(idTime('000000000000000000000000'), '1970-01-01T00:00:00.000Z');
+    });
+});
 
 const chat = (id: string, updatedAt: string, more: Partial<ChatSummary> = {}): ChatSummary => ({
     id,
