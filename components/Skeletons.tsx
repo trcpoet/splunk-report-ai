@@ -160,36 +160,52 @@ export const ReportSkeleton = () => (
     </Loading>
 )
 
-// An Ask AI tab: the chat's heading, its intro and suggestions, the box to
-// type in, and the side panel.
+// An Ask AI chat, as a new chat looks: the question in the middle, the box to
+// type in under it, then the suggestions.
 export const ChatSkeleton = () => (
-    <Loading label="Loading the chat…" className="ai-workspace">
-        <div className="chat">
-            <div className="chat-head">
-                <span className="chat-title"><Line className="w-28" /></span>
-            </div>
-            <div className="chat-intro">
-                <p><Line className="w-full" /><br /><Line className="w-2/3" /></p>
-                <div className="chips">
-                    {['w-56', 'w-64', 'w-48'].map((width, i) => <span key={i} className={`skeleton-block h-[34px] rounded-full ${width}`} />)}
-                </div>
-            </div>
-            <div className="composer">
-                <div className="skeleton-block h-[58px] rounded-[10px]" />
-                <p className="composer-notes"><Line className="w-72" /></p>
-            </div>
+    <Loading label="Loading the chat…" className="chat is-empty">
+        <div className="chat-greeting">
+            <div className="chat-greeting-title w-full"><Line className="w-3/4" /></div>
+            <p className="w-full"><Line className="w-full" /><br /><Line className="w-1/2" /></p>
         </div>
-        <div className="ai-side">
-            <span className="text-lg font-semibold"><Line className="w-40" /></span>
-            <p><Line className="w-full" /><br /><Line className="w-1/2" /></p>
+        <div className="composer">
+            <div className="skeleton-block h-[58px] rounded-[28px]" />
+            <div className="chips suggestions">
+                {['w-56', 'w-64', 'w-48'].map((width, i) => <span key={i} className={`skeleton-block h-[34px] rounded-full ${width}`} />)}
+            </div>
+            <p className="composer-notes"><Line className="w-72" /></p>
+        </div>
+    </Loading>
+)
+
+// The Ask AI sidebar while your chats are read: its two links and a few rows.
+export const ChatListSkeleton = () => (
+    <Loading label="Loading your chats…" className="ai-sidebar">
+        <div className="sidebar-links">
+            {['w-20', 'w-28'].map((width, i) => <span key={i} className="sidebar-link"><Line className={width} /></span>)}
+        </div>
+        <div className="sidebar-group">
+            <span className="text-xs"><Line className="w-12" /></span>
             <ul>
-                {range(6).map((i) => <li key={i} className="text-sm py-2"><Line className="w-4/5" /></li>)}
+                {['w-4/5', 'w-3/5', 'w-2/3', 'w-4/5', 'w-1/2'].map((width, i) => (
+                    <li key={i} className="history-row compact"><span className="history-title w-full"><Line className={width} /></span></li>
+                ))}
             </ul>
         </div>
     </Loading>
 )
 
-// The History tab: the search box, the filter chips, the count and a few rows.
+// The Searches panel while the reports are read.
+export const PanelListSkeleton = () => (
+    <Loading label="Loading the searches…" className="ai-panel-list">
+        <p><Line className="w-72" /></p>
+        <ul>
+            {range(6).map((i) => <li key={i} className="text-sm py-2"><Line className="w-4/5" /></li>)}
+        </ul>
+    </Loading>
+)
+
+// The chats page: the search box, the filter chips, the count and a few rows.
 export const HistorySkeleton = () => (
     <Loading label="Loading your chats…" className="history">
         <div className="filters">
@@ -200,7 +216,7 @@ export const HistorySkeleton = () => (
         </div>
         <p className="text-light-200 text-sm"><Line className="w-36" /></p>
         <section className="history-group">
-            <h2><Line className="w-16" /></h2>
+            <h3><Line className="w-16" /></h3>
             <ul>
                 {range(4).map((i) => (
                     <li key={i} className="history-row">

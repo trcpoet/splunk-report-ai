@@ -1,10 +1,11 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { MessageCircleQuestion, X } from "lucide-react";
 import ChatAnswer from "@/components/ChatAnswer";
 import FeedbackButtons from "@/components/FeedbackButtons";
+import { usePanel } from "@/components/SidePanel";
 import { SkeletonParagraph } from "@/components/Skeletons";
 import Sparkline from "@/components/Sparkline";
 import StatusBadge from "@/components/StatusBadge";
@@ -147,27 +148,16 @@ type Props = {
 };
 
 // "Explain" on a report card or a report page: opens a side panel (a bottom
-// sheet on phones) with an AI summary of the latest run, a plain-statistics
-// look at the results, and ways to dig further. It's a native <dialog>, so
-// focus moves into it, Esc closes it, and focus returns to the button.
+// sheet on phones, usePanel in components/SidePanel.tsx) with an AI summary of
+// the latest run, a plain-statistics look at the results, and ways to dig further.
 const ExplainButton = ({ slug, title, report, className = 'explain-trigger' }: Props) => {
-    const dialog = useRef<HTMLDialogElement>(null);
-    const [open, setOpen] = useState(false);
+    const panel = usePanel();
     const headingId = useId();
 
-    // Next keeps a page you leave, hidden, and runs this cleanup then. A modal
-    // dialog left open on a hidden page would still block the page you're on.
-    useEffect(() => {
-        const node = dialog.current;
-        return () => node?.close();
-    }, []);
-
     const show = () => {
-        setOpen(true);
-        dialog.current?.showModal();
+        panel.show();
         track('report_explained', { slug });
     };
-    const close = () => dialog.current?.close();
 
     return (
         <>
@@ -175,20 +165,8 @@ const ExplainButton = ({ slug, title, report, className = 'explain-trigger' }: P
                 <MessageCircleQuestion aria-hidden="true" />
                 Explain<span className="sr-only"> {title}</span>
             </button>
-            <dialog
-                ref={dialog}
-                className="explain-panel"
-                aria-labelledby={headingId}
-                onClose={() => setOpen(false)}
-                // A click on the dimmed backdrop lands on the dialog itself, outside
-                // its box. (A click on the panel's own padding lands on it too, inside.)
-                onClick={(event) => {
-                    const box = event.currentTarget.getBoundingClientRect();
-                    const outside = event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
-                    if (event.target === event.currentTarget && outside) close();
-                }}
-            >
-                {open && <ExplainContent slug={slug} title={title} given={report} headingId={headingId} close={close} />}
+            <dialog {...panel.dialogProps} className="explain-panel" aria-labelledby={headingId}>
+                {panel.open && <ExplainContent slug={slug} title={title} given={report} headingId={headingId} close={panel.close} />}
             </dialog>
         </>
     )

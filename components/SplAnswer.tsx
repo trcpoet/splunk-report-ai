@@ -116,26 +116,34 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 </ul>
             )}
 
-            <pre className="spl spl-query">
-                <code>
-                    {answer.steps.map((step, i) => (
-                        <span key={i} className={i === highlighted ? 'line is-active' : 'line'}>
-                            {stepLine(step, i)}
-                        </span>
-                    ))}
-                </code>
-            </pre>
-
-            <div className="spl-actions">
-                <CopyButton text={query} label="Copy SPL" />
-                {canBeExample && messageId && <SaveExample messageId={messageId} initial={saved} />}
-                {openUrl && (
-                    <a href={openUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-                        <ExternalLink aria-hidden="true" />
-                        Open in Splunk
-                    </a>
-                )}
+            {/* A code block like ChatGPT's: what it is, and Copy, above the code. */}
+            <div className="code-block">
+                <div className="code-block-head">
+                    <span>SPL</span>
+                    <CopyButton text={query} label="Copy SPL" className="btn-ghost" />
+                </div>
+                <pre className="spl spl-query">
+                    <code>
+                        {answer.steps.map((step, i) => (
+                            <span key={i} className={i === highlighted ? 'line is-active' : 'line'}>
+                                {stepLine(step, i)}
+                            </span>
+                        ))}
+                    </code>
+                </pre>
             </div>
+
+            {(canBeExample || openUrl) && (
+                <div className="spl-actions">
+                    {canBeExample && messageId && <SaveExample messageId={messageId} initial={saved} />}
+                    {openUrl && (
+                        <a href={openUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                            <ExternalLink aria-hidden="true" />
+                            Open in Splunk
+                        </a>
+                    )}
+                </div>
+            )}
 
             <ol className={reveal ? 'spl-steps reveal' : 'spl-steps'} aria-label="What each step does">
                 {answer.steps.map((step, i) => (

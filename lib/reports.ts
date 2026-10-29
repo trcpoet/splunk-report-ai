@@ -165,9 +165,13 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
         .slice(0, limit)
         .map(({ other }) => other);
 
+// A report needs attention when its latest run warns or failed. The home
+// page's count, the briefing and Ask AI's Reports button all use this.
+export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status !== 'success';
+
 export const getReportStats = (reports: ReportListItem[]) => ({
     total: reports.length,
-    needsAttention: reports.filter((report) => report.status !== 'success').length,
+    needsAttention: reports.filter(needsAttention).length,
     emailsPerWeek: reports.reduce((sum, report) => sum + report.runsPerWeek * report.recipients.length, 0),
     recipients: new Set(reports.flatMap((report) => report.recipients)).size,
 });

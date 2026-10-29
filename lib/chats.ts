@@ -1,6 +1,7 @@
 import 'server-only';
 import { Types } from 'mongoose';
 import { connection } from 'next/server';
+import { cache } from 'react';
 import { Chat, MAX_CHAT_MESSAGES, type ChatKind, type IChat, type IChatMessage } from '@/database';
 import type { Viewer } from '@/lib/access';
 import { replaceReportMarkers } from '@/lib/ai/report-links';
@@ -71,8 +72,9 @@ const toMessage = ({ _id, role, text, spl, createdAt }: IChatMessage): ChatMessa
     createdAt: new Date(createdAt).toISOString(),
 });
 
-// The signed-in person's chats, newest first, with the start of the last message.
-export async function listChats(limit = 200): Promise<ChatSummary[]> {
+// The signed-in person's chats, newest first, with the start of the last
+// message. The sidebar and the chats page share one read per request.
+export const listChats = cache(async (limit = 200): Promise<ChatSummary[]> => {
     await connection();
     const viewer = await getViewer();
     await connectDB();
@@ -90,7 +92,7 @@ export async function listChats(limit = 200): Promise<ChatSummary[]> {
         preview: plainText(chat.messages[0]?.text ?? '').slice(0, 200),
         group: chatGroup(new Date(chat.updatedAt), now),
     }));
-}
+});
 
 // One of the signed-in person's chats, or null (missing, someone else's, or not an id).
 export async function getChat(id: string): Promise<ChatDetail | null> {

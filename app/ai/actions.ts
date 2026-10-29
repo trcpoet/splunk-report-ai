@@ -7,10 +7,11 @@ import { getViewer } from "@/lib/dal";
 import { saveVote, type VoteInput } from "@/lib/feedback";
 import { removeExample, saveExample } from "@/lib/spl-examples";
 
-// Changes to saved chats (from the History tab) and 👍 / 👎 votes. Anyone can post to a
-// Server Action, so each one checks its input here, and lib/chats.ts checks
-// that the chat belongs to whoever is signed in (signed-out visitors go to
-// /login). refresh() then redraws the list with the change.
+// Changes to saved chats (from the sidebar and the chats page) and 👍 / 👎
+// votes. Anyone can post to a Server Action, so each one checks its input
+// here, and lib/chats.ts checks that the chat belongs to whoever is signed in
+// (signed-out visitors go to /login). refresh() then redraws the lists with
+// the change.
 
 type Result = { ok: true } | { ok: false; message: string };
 

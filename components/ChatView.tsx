@@ -1,17 +1,19 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUp, RotateCcw, Square, SquarePen } from "lucide-react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ArrowDown, ArrowUp, RotateCcw, Square } from "lucide-react";
 import ChatAnswer, { type ReportChipData } from "@/components/ChatAnswer";
 import CopyButton from "@/components/CopyButton";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import SplAnswer from "@/components/SplAnswer";
 import { track } from "@/lib/analytics";
+import { CHAT_SAVED, NEW_CHAT, STOP_ANSWER, type SavedChat } from "@/lib/ai/chat-events";
 import { replaceReportMarkers } from "@/lib/ai/report-links";
 import { readEvents } from "@/lib/ai/stream";
+import { idTime } from "@/lib/chat-list";
 import type { ChatDetail, ChatKind, ChatMessage } from "@/lib/chats";
-import { firstLine } from "@/lib/format";
+import { firstLine, plural } from "@/lib/format";
 
 // A message on screen. An answer on its way, or one that didn't finish, has a state.
 type Shown = ChatMessage & {
@@ -40,14 +42,33 @@ type Props = {
     savedExamples?: Record<string, true>;
 };
 
+// What a new chat asks, above the box to type in.
+const GREETINGS: Record<ChatKind, string> = {
+    reports: 'What do you want to know about your reports?',
+    spl: 'What do you want to search for?',
+};
+
 const PLACEHOLDERS: Record<ChatKind, string> = {
-    reports: 'Ask about your reports',
-    spl: 'Describe the search you need, or paste one to explain',
+    reports: 'Ask anything about your reports',
+    spl: 'Describe a search, or paste one to explain',
 };
 
 const MAX_QUESTION = 2000;
 
-// The conversation for one tab of the Ask AI page.
+// Within this many pixels of the bottom of the page, the newest text counts
+// as in view: it's kept there while it streams, and the ↓ button stays away.
+const NEAR_BOTTOM = 240;
+
+const distanceFromBottom = () => document.documentElement.scrollHeight - (window.innerHeight + window.scrollY);
+
+// The newest message is at the bottom of the page, just above the box to type
+// in, which sticks to the bottom of the window.
+const scrollToEnd = (behavior: ScrollBehavior = 'instant') =>
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+
+// The conversation for one mode of the Ask AI page, laid out like ChatGPT's:
+// a new chat asks its question in the middle of the page, with the box to type
+// in under it; once you ask, the box moves to the bottom of the window.
 //
 // The address bar says which chat is open: /ai/reports is a new chat, and
 // /ai/reports?chat=<id> is that saved chat. A new chat gets its address once
@@ -67,6 +88,8 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
     const [busy, setBusy] = useState(false);
     // Read out by screen readers when an answer finishes; the text itself isn't.
     const [announcement, setAnnouncement] = useState('');
+    // Whether the newest message is out of view, for the ↓ button.
+    const [away, setAway] = useState(false);
 
     // The chat id this view put in the address bar itself, so it doesn't ask
     // the server for a chat it's already showing.
@@ -74,7 +97,8 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
 
     const abort = useRef<AbortController | null>(null);
     const input = useRef<HTMLTextAreaElement>(null);
-    const end = useRef<HTMLDivElement>(null);
+    // How many messages the chat opened with; only the first showing scrolls to them.
+    const opened = useRef(chat?.messages.length ?? 0);
 
     const startNewChat = () => {
         setChatId(null);
@@ -85,13 +109,15 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         setAnnouncement('');
     };
 
-    // When the address stops naming a chat (the navbar's Ask AI link, say),
-    // show a new one. This adjusts state while rendering, as React suggests
+    // When the address stops naming a chat (New chat, or the navbar's Ask AI
+    // link), show a new one, even while an answer comes in: the chat on screen
+    // must match the address. (New chat stops that answer first, through
+    // NEW_CHAT below.) This adjusts state while rendering, as React suggests
     // for state that follows a changing value: https://react.dev/learn/you-might-not-need-an-effect
     const [seenUrlChat, setSeenUrlChat] = useState(urlChat);
     if (urlChat !== seenUrlChat) {
         setSeenUrlChat(urlChat);
-        if (!urlChat && chatId && !busy) startNewChat();
+        if (!urlChat && chatId) startNewChat();
     }
 
     // When the address names a chat this view isn't showing (Back or Forward
@@ -100,20 +126,61 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         if (urlChat && urlChat !== chatId && urlChat !== addressedChat && !busy) router.refresh();
     }, [urlChat, chatId, addressedChat, busy, router]);
 
+    // A saved chat opens at its newest message, like ChatGPT. Showing the page
+    // again after visiting another one leaves the scroll where it was.
+    useEffect(() => {
+        if (opened.current > 0) scrollToEnd();
+        opened.current = 0;
+    }, []);
+
     // Keep the newest text in view while it streams, unless the person has
     // scrolled up to read something else.
     useEffect(() => {
-        const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 240;
-        if (nearBottom) end.current?.scrollIntoView({ block: 'end' });
+        if (distanceFromBottom() < NEAR_BOTTOM) scrollToEnd();
     }, [messages]);
 
-    // The first answer of a new chat was saved: give the chat its address.
-    const saved = (id: string, question: string) => {
-        if (chatId) return;
-        setChatId(id);
-        setAddressedChat(id);
-        setTitle(firstLine(question));
-        window.history.replaceState(null, '', `${pathname}?chat=${id}`);
+    useEffect(() => {
+        const check = () => setAway(distanceFromBottom() > NEAR_BOTTOM);
+        const frame = requestAnimationFrame(check);
+        window.addEventListener('scroll', check, { passive: true });
+        window.addEventListener('resize', check);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', check);
+            window.removeEventListener('resize', check);
+        };
+    }, []);
+
+    // New chat in the sidebar or the top bar, in this chat's mode: clear it.
+    // An answer still on its way stops, as with Stop, so it can't be saved
+    // into a chat that's no longer on screen (or one being deleted).
+    const onNewChat = useEffectEvent(() => {
+        abort.current?.abort();
+        startNewChat();
+        input.current?.focus();
+    });
+    useEffect(() => {
+        const listener = () => onNewChat();
+        const stop = () => abort.current?.abort();
+        window.addEventListener(NEW_CHAT, listener);
+        window.addEventListener(STOP_ANSWER, stop);
+        return () => {
+            window.removeEventListener(NEW_CHAT, listener);
+            window.removeEventListener(STOP_ANSWER, stop);
+        };
+    }, []);
+
+    // An answer was saved, at `when` by the server's clock. A new chat gets its
+    // address, and the sidebar puts the chat at the top of its list.
+    const saved = (id: string, question: string, when: string) => {
+        const name = title ?? firstLine(question);
+        if (!chatId) {
+            setChatId(id);
+            setAddressedChat(id);
+            setTitle(name);
+            window.history.replaceState(null, '', `${pathname}?chat=${id}`);
+        }
+        window.dispatchEvent(new CustomEvent<SavedChat>(CHAT_SAVED, { detail: { id, kind, title: name, updatedAt: when } }));
     };
 
     const send = async (question: string) => {
@@ -137,7 +204,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
             { id: `question-${createdAt}`, role: 'user', text, createdAt },
             { id: answerId, role: 'assistant', text: '', createdAt, state: 'waiting' },
         ]);
-        requestAnimationFrame(() => end.current?.scrollIntoView({ block: 'end' }));
+        requestAnimationFrame(() => scrollToEnd());
         track('ai_question_asked', { kind });
 
         const fail = (message: string) => {
@@ -161,7 +228,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
             if (kind === 'spl') {
                 const { chatId: id, message } = await response.json() as { chatId: string; message: ChatMessage };
                 update({ ...message, state: undefined, fresh: true });
-                saved(id, text);
+                saved(id, text, message.createdAt);
                 setAnnouncement('Search ready.');
                 return;
             }
@@ -182,7 +249,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                         state: undefined,
                         note: event.cutOff ? 'This answer was cut off because it got too long. Ask for less detail, or a narrower question.' : undefined,
                     });
-                    if (id) saved(id, text);
+                    if (id) saved(id, text, idTime(event.messageId));
                     setAnnouncement('Answer ready.');
                 } else {
                     finished = true;
@@ -226,52 +293,38 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         }
     };
 
-    const newChat = () => {
-        if (urlChat) router.push(pathname);
-        else startNewChat();
-        input.current?.focus();
-    };
+    const jumpDown = () => scrollToEnd(window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth');
 
     const count = Object.keys(reports).length;
+    const empty = messages.length === 0;
+    // The newest answer always shows its buttons; older ones on hover or focus.
+    const newest = messages.findLastIndex(({ role }) => role === 'assistant');
 
     return (
-        <section className="chat" aria-label={kind === 'reports' ? 'Ask about reports' : 'Write SPL'}>
-            <div className="chat-head">
-                <h2 className="chat-title">{title ?? 'New chat'}</h2>
-                {messages.length > 0 && (
-                    <button type="button" className="btn-secondary btn-small" onClick={newChat} disabled={busy}>
-                        <SquarePen aria-hidden="true" />
-                        New chat
-                    </button>
-                )}
-            </div>
-
-            {messages.length === 0 && (
-                <div className="chat-intro">
+        <section className={empty ? 'chat is-empty' : 'chat'} aria-label={kind === 'reports' ? 'Ask about reports' : 'Write SPL'}>
+            {empty ? (
+                <div className="chat-greeting">
+                    <h2 className="chat-greeting-title">{GREETINGS[kind]}</h2>
                     <p>
                         {kind === 'reports'
-                            ? `Ask anything about the ${count} report${count === 1 ? '' : 's'} you can see. Answers use their latest runs and name the reports they come from.`
-                            : 'Describe what you want to find in Splunk, or paste a search to have it explained. You get the search step by step, ready to copy. Nothing runs from here.'}
+                            ? `Answers come from the latest runs of the ${plural(count, 'report', 'reports')} you can see, and name the reports they use.`
+                            : 'Describe what you want to find, or paste a search to have it explained. You get it step by step, ready to copy. Nothing runs from here.'}
                     </p>
-                    {ai.enabled && suggestions.length > 0 && (
-                        <div className="chips" role="group" aria-label="Suggestions">
-                            {suggestions.map((suggestion) => (
-                                <button key={suggestion} type="button" className="chip" onClick={() => send(suggestion)}>
-                                    {suggestion}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
+            ) : (
+                <h2 className="sr-only">{title ?? 'New chat'}</h2>
             )}
 
             <div className="chat-log">
+                {/* Screen readers can't see which side a message is on, so each
+                    one says who it's from, as a heading to jump between them. */}
                 {messages.map((message, index) => message.role === 'user' ? (
-                    <div key={message.id} className="msg-user">{message.text}</div>
+                    <div key={message.id} className="msg-user"><h3 className="sr-only">You asked</h3>{message.text}</div>
                 ) : (
-                    <div key={message.id} className="msg-answer" aria-busy={message.state === 'waiting' || message.state === 'streaming'}>
+                    <div key={message.id} className={index === newest ? 'msg-answer is-newest' : 'msg-answer'} aria-busy={message.state === 'waiting' || message.state === 'streaming'}>
+                        <h3 className="sr-only">Answer</h3>
                         {message.state === 'waiting' && (
-                            <p className="thinking"><span className="pulse" aria-hidden="true" />{kind === 'reports' ? 'Reading your reports…' : 'Writing the search…'}</p>
+                            <p className="thinking">{kind === 'reports' ? 'Reading your reports…' : 'Writing the search…'}</p>
                         )}
 
                         {message.spl ? (
@@ -292,19 +345,29 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                         {!message.state && !message.id.startsWith('answer-') && (
                             <div className="answer-actions">
                                 {!message.spl && (
-                                    <CopyButton text={replaceReportMarkers(message.text, (slug) => reports[slug]?.title ?? slug)} label="Copy" className="btn-ghost" />
+                                    <CopyButton
+                                        text={replaceReportMarkers(message.text, (slug) => reports[slug]?.title ?? slug)}
+                                        label="Copy"
+                                        className="action-button"
+                                        iconOnly
+                                    />
                                 )}
-                                <FeedbackButtons kind="answer" targetId={message.id} initial={votes[message.id]} />
+                                <FeedbackButtons kind="answer" targetId={message.id} initial={votes[message.id]} compact tips={{ up: 'Helpful', down: 'Not helpful' }} />
                             </div>
                         )}
                     </div>
                 ))}
-                <div ref={end} />
             </div>
 
             <p className="sr-only" aria-live="polite">{announcement}</p>
 
             <div className="composer">
+                {!empty && away && (
+                    <button type="button" className="jump-down" onClick={jumpDown} aria-label="Scroll to the newest message">
+                        <ArrowDown aria-hidden="true" />
+                    </button>
+                )}
+
                 {ai.enabled ? (
                     <form onSubmit={submit}>
                         <label htmlFor={inputId} className="sr-only">{PLACEHOLDERS[kind]}</label>
@@ -333,6 +396,17 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                 ) : (
                     <p className="ai-notice" role="status">{ai.notice}</p>
                 )}
+
+                {empty && ai.enabled && suggestions.length > 0 && (
+                    <div className="chips suggestions" role="group" aria-label="Suggestions">
+                        {suggestions.map((suggestion) => (
+                            <button key={suggestion} type="button" className="chip" onClick={() => send(suggestion)}>
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <p className="composer-notes">
                     {ai.testMode && <span>Test mode: answers are canned (AI_PROVIDER=fake). </span>}
                     {demo && <span>Demo accounts are shared, so anyone using this account sees these chats. They&apos;re deleted after 24 hours. </span>}
