@@ -13,7 +13,8 @@
     "test": "node --env-file-if-exists=.env.local --import tsx --test \"lib/**/*.test.ts\"",
     "ml": "ml/.venv/bin/python ml/score.py",
     "ml:plot": "ml/.venv/bin/python ml/score.py --plot",
-    "test:ml": "ml/.venv/bin/python -m pytest ml"
+    "test:ml": "ml/.venv/bin/python -m pytest ml",
+    "eval:spl": "node --conditions=react-server --env-file-if-exists=.env.local --import tsx scripts/eval-spl.ts"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.7.7",

@@ -15,6 +15,12 @@ export const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 export const aiModel = (env: Env = process.env) => env.AI_MODEL || DEFAULT_MODEL;
 
+// For finding past searches like a Write SPL request (lib/spl-examples.ts).
+// gemini-embedding-001 also works; its vectors can't be compared with these,
+// which is fine: saved vectors are kept per model.
+export const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-2';
+export const embeddingModel = (env: Env = process.env) => env.AI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+
 // Whether AI answers are on. syncMode is how the reports got into MongoDB:
 // with live Splunk data, AI stays off until AI_ALLOW_LIVE_DATA=true, because
 // answers send report data to Google.

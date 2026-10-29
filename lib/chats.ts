@@ -4,7 +4,7 @@ import { connection } from 'next/server';
 import { Chat, MAX_CHAT_MESSAGES, type ChatKind, type IChat, type IChatMessage } from '@/database';
 import type { Viewer } from '@/lib/access';
 import { replaceReportMarkers } from '@/lib/ai/report-links';
-import type { SplAnswer } from '@/lib/ai/spl';
+import type { StoredSplAnswer } from '@/lib/ai/spl';
 import { getViewer } from '@/lib/dal';
 import { firstLine } from '@/lib/format';
 import connectDB from '@/lib/mongodb';
@@ -24,7 +24,7 @@ export type ChatMessage = {
     id: string;
     role: 'user' | 'assistant';
     text: string;
-    spl?: SplAnswer;
+    spl?: StoredSplAnswer;
     createdAt: string;
 };
 
@@ -108,7 +108,7 @@ export type Turn = {
     chatId: string;
     kind: ChatKind;
     question: string;
-    answer: { text: string; spl?: SplAnswer };
+    answer: { text: string; spl?: StoredSplAnswer };
 };
 
 // Saves a question and its answer together, and returns the answer's message

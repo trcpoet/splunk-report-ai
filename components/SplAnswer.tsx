@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type CSSProperties } from "react";
-import { ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
+import { useState, useTransition, type CSSProperties } from "react";
+import { BookmarkCheck, BookmarkPlus, CircleX, ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
+import { saveExampleAction } from "@/app/ai/actions";
 import CopyButton from "@/components/CopyButton";
-import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type SplAnswer as Answer } from "@/lib/ai/spl";
+import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type StoredSplAnswer as Answer } from "@/lib/ai/spl";
 
 type Props = {
     answer: Answer;
@@ -14,12 +15,47 @@ type Props = {
     // Sends one of the suggested follow-ups as the next request.
     onFollowUp?: (request: string) => void;
     busy?: boolean;
+    // The saved answer's id, for "Save as example", and whether it's saved.
+    messageId?: string;
+    saved?: boolean;
 };
+
+// "Save as example": later requests like this one get it as an example
+// (lib/spl-examples.ts). The new state shows at once and is saved in the
+// background; if saving fails, it goes back and says why.
+function SaveExample({ messageId, initial }: { messageId: string; initial: boolean }) {
+    const [saved, setSaved] = useState(initial);
+    const [problem, setProblem] = useState<string | null>(null);
+    const [, startTransition] = useTransition();
+
+    const toggle = () => {
+        const next = !saved;
+        setSaved(next);
+        setProblem(null);
+        startTransition(async () => {
+            const result = await saveExampleAction(messageId, next).catch(() => null);
+            if (!result?.ok) {
+                setSaved(!next);
+                setProblem(result?.message ?? 'Not saved. Try again.');
+            }
+        });
+    };
+
+    return (
+        <>
+            <button type="button" className="btn-secondary" aria-pressed={saved} onClick={toggle}>
+                {saved ? <BookmarkCheck aria-hidden="true" /> : <BookmarkPlus aria-hidden="true" />}
+                {saved ? 'Saved as an example' : 'Save as example'}
+            </button>
+            {problem && <span className="feedback-error" role="alert">{problem}</span>}
+        </>
+    )
+}
 
 // A search from Write SPL, as a pipeline: the full query, then each step in
 // order with what it does. Pointing at a step (or pressing its number)
 // highlights its line in the query.
-const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = false }: Props) => {
+const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = false, messageId, saved = false }: Props) => {
     const [hovered, setHovered] = useState<number | null>(null);
     const [pinned, setPinned] = useState<number | null>(null);
     const highlighted = hovered ?? pinned;
@@ -27,6 +63,15 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
     const query = queryFromSteps(answer.steps);
     const check = checkSpl(query);
     const openUrl = splunkSearchUrl(splunkWebUrl, query);
+
+    // What a parser said before the answer was shown. Older answers have no check.
+    const { validation } = answer;
+    const parser = validation?.by === 'splunk' ? "Splunk's parser" : 'The demo parser';
+    const parseError = validation && !validation.ok ? validation.message ?? "the search doesn't parse." : null;
+    const warnings = [...(parseError ? [`${parser}: ${parseError}`] : []), ...check.warnings];
+    const fix = parseError ? `Fix this search. ${parser} says: ${parseError}` : null;
+    // Good examples only read data and parse.
+    const canBeExample = Boolean(messageId) && check.readOnly && validation?.ok !== false;
 
     return (
         <article className="spl-card">
@@ -44,12 +89,30 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                         Changes data or acts outside the search
                     </span>
                 )}
+                {parseError && (
+                    <span className="spl-safety risky">
+                        <CircleX aria-hidden="true" />
+                        Doesn&apos;t parse
+                    </span>
+                )}
                 {answer.timeRange && <span className="pill">{answer.timeRange}</span>}
             </div>
 
-            {check.warnings.length > 0 && (
+            {answer.basedOn && answer.basedOn.length > 0 && (
+                <p className="spl-check">Based on similar searches: {answer.basedOn.join('; ')}.</p>
+            )}
+
+            {validation?.ok && (
+                <p className="spl-check">
+                    {validation.by === 'splunk'
+                        ? "Checked with Splunk's parser: no errors."
+                        : "Checked with the demo parser (Splunk isn't connected): no errors."}
+                </p>
+            )}
+
+            {warnings.length > 0 && (
                 <ul className="spl-warnings">
-                    {check.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                    {warnings.map((warning) => <li key={warning}>{warning}</li>)}
                 </ul>
             )}
 
@@ -65,6 +128,7 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
 
             <div className="spl-actions">
                 <CopyButton text={query} label="Copy SPL" />
+                {canBeExample && messageId && <SaveExample messageId={messageId} initial={saved} />}
                 {openUrl && (
                     <a href={openUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
                         <ExternalLink aria-hidden="true" />
@@ -117,8 +181,13 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 </dl>
             )}
 
-            {onFollowUp && answer.followUps.length > 0 && (
+            {onFollowUp && (fix || answer.followUps.length > 0) && (
                 <div className="chips" role="group" aria-label="Try next">
+                    {fix && (
+                        <button type="button" className="chip" disabled={busy} onClick={() => onFollowUp(fix)}>
+                            Fix the error
+                        </button>
+                    )}
                     {answer.followUps.map((request) => (
                         <button key={request} type="button" className="chip" disabled={busy} onClick={() => onFollowUp(request)}>
                             {request}

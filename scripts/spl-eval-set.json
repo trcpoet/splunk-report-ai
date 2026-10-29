@@ -1,0 +1,15 @@
+{
+    "about": "Requests for npm run eval:spl (scripts/eval-spl.ts), over the demo reports. Each answer is scored on: it parses, it only reads data, it searches one of the expected indexes, and its search names every expected field (and one of the expected commands, when given).",
+    "cases": [
+        { "request": "Failed logins per user in the last 24 hours, only users with 10 or more failures", "indexes": ["wineventlog", "linux_secure"], "fields": ["user"], "commands": ["stats"] },
+        { "request": "Which source IPs did the perimeter firewall deny most, and how many ports did each try?", "indexes": ["firewall"], "fields": ["src_ip", "dest_port"], "commands": ["stats"] },
+        { "request": "Server error rate per web host in the last hour", "indexes": ["web"], "fields": ["status", "host"], "commands": ["stats", "eval"] },
+        { "request": "Hosts whose disks are more than 85% full", "indexes": ["os"], "fields": ["host"], "commands": ["where", "search"] },
+        { "request": "How many GB of license each index used today", "indexes": ["_internal"], "fields": ["idx"], "commands": ["stats"] },
+        { "request": "Who was added to or removed from privileged groups like Domain Admins yesterday?", "indexes": ["wineventlog"], "fields": ["EventCode"], "commands": ["table", "stats"] },
+        { "request": "VPN sessions and distinct users per country this week", "indexes": ["vpn"], "fields": ["src_ip"], "commands": ["iplocation"] },
+        { "request": "p95 latency and decline rate of the charge API per hour", "indexes": ["app"], "fields": ["latency_ms"], "commands": ["stats", "timechart"] },
+        { "request": "Count of 5xx errors by URL for web-prod-03 in the last 4 hours", "indexes": ["web"], "fields": ["status", "host"], "commands": ["stats", "top"] },
+        { "request": "Failed SSH logins on Linux hosts by source address", "indexes": ["linux_secure"], "fields": ["src_ip"], "commands": ["stats"] }
+    ]
+}
