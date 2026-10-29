@@ -18,6 +18,8 @@
 
 ## How it works
 
+The full picture, with diagrams: [docs/architecture.md](docs/architecture.md).
+
 ```
 Splunk REST API (:8089) ─┐
    or the fixtures       ├─► sync worker ─► MongoDB ◄─ data access layer (lib/dal.ts) ─► pages, API
@@ -34,7 +36,33 @@ Splunk REST API (:8089) ─┐
 - **Ask AI** (`lib/ai/`, `app/ai/`, `app/api/ai/`): one file talks to Gemini (`lib/ai/llm.ts`), and the AI only gets the reports the data access layer allows you. Chats live in MongoDB (`lib/chats.ts`), and each account has a daily limit.
 - **ML job** (`ml/`): Python, run after a sync. It reads the runs and votes from MongoDB, and writes its scores back for the app to read (`ml_run_scores`, `ml_report_scores`).
 
-New to the code? [docs/codebase-guide.md](docs/codebase-guide.md) explains what every file does and how the pieces connect. New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
+## Documentation
+
+All the guides are in [`docs/`](docs/README.md). For engineers:
+
+| Guide | Read it to |
+|---|---|
+| [Codebase guide](docs/codebase-guide.md) | Start here: the reading order, the rules that are easy to break, and the glossary |
+| [Architecture](docs/architecture.md) | See how the programs, the data, pages, access, Ask AI and the ML job fit together, with diagrams |
+| [Configuration](docs/configuration.md) | Change a setting: each environment variable, report rules, access, AI, the sync, the look, build, deploy and CI |
+| [File reference](docs/reference/README.md) | Look up what each file does, folder by folder |
+
+By topic: [Ask AI](docs/ai.md), [the ML job](docs/ml.md), [caching and loading](docs/caching-and-loading.md), [MongoDB and access](docs/mongodb-and-access.md), [report settings and access](docs/report-access.md), [connecting live Splunk](docs/connecting-live-splunk.md), [the data and AI strategy](docs/splunk-data-and-ai-strategy.md), and [Docker](docs/docker.md).
+
+### Project layout
+
+```
+app/          pages, layouts, Server Actions and API routes (Next.js App Router)
+components/   what you see: reports, charts, the briefing, Explain, Ask AI
+lib/          shared logic: data access (dal.ts), access rules, chats, votes, statistics
+  ai/         Ask AI, Write SPL, summaries, limits, retrieval; llm.ts is the only AI caller
+  splunk/     the sync, Splunk's REST API, the mapping, and the dummy fixtures
+database/     Mongoose models, one per MongoDB collection
+worker/       the sync worker's entry point (npm run sync)
+scripts/      the demo-user seed and the Write SPL eval
+ml/           the Python ML job
+docs/         the guides above
+```
 
 ## Running with Docker (no other setup)
 
@@ -61,7 +89,7 @@ Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and Mong
 
    Or with Docker: `docker run -d --name splunkevents-mongo -p 127.0.0.1:27017:27017 -v splunkevents-mongo-data:/data/db mongo:8`
 
-3. **Configure:** copy `.env.example` to `.env.local` and fill it in. Generate the secrets with `openssl rand -base64 32`.
+3. **Configure:** copy `.env.example` to `.env.local` and fill it in. Generate the secrets with `openssl rand -base64 32`. What every setting does: [docs/configuration.md](docs/configuration.md).
 4. **Create the demo users:** `npm run seed`
 5. **Load the reports:** `npm run sync` (9 reports and 63 runs the first time; running it again adds nothing new)
 6. **Start the app:** `npm run dev`, then open [http://localhost:3000](http://localhost:3000)
@@ -93,6 +121,16 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run ml` / `ml:plot` | Score the runs with the ML job (`ml:plot` also draws a chart). Set up its Python environment first: [ml/README.md](ml/README.md) |
 | `npm run test:ml` | The ML job's tests |
 | `npm run eval:spl` | Score Write SPL on 10 requests over the demo reports (needs a Gemini key; see [docs/ai.md](docs/ai.md#how-write-spl-learns-from-your-searches)) |
+
+### Working on the code
+
+- **Next.js 16** differs from older versions: read the bundled guide for what you touch, in `node_modules/next/dist/docs/`. The rules that are easy to break are in the [codebase guide](docs/codebase-guide.md#before-you-change-things).
+- **Before a pull request:** run `npm run lint`, `npm test` and `npm run build`. Add `npm run test:ml` if you changed `ml/`.
+- **`main` is protected.**
+  - Changes go through a pull request.
+  - CI's "Lint, test and build" job must pass. CI also runs "ML (Python)" and "Docker".
+  - Vercel deploys `main` only.
+- **Keep the docs current:** new files get an entry in the [file reference](docs/reference/README.md), and new settings a row in [configuration.md](docs/configuration.md).
 
 ## Hosted demo
 
