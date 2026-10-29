@@ -20,6 +20,7 @@
 | [report-access.md](report-access.md) | `lib/report-config.ts` in practice: who sees which report, with a worked example |
 | [connecting-live-splunk.md](connecting-live-splunk.md) | Replacing the dummy data with a company's Splunk, step by step |
 | [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md) | The longer-term plan: AD sign-in, what to copy, RAG, learning from feedback, an agent with guardrails |
+| [google-cloud-migration.md](google-cloud-migration.md) | If application logs move to Google Cloud while security stays in Splunk: reading both, SPL to SQL, the phases, and what to do until then |
 | [docker.md](docker.md) | Running everything with `docker compose up`, its settings, and sharing it with a team |
 
 ## Keeping the docs current

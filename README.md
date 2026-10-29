@@ -47,7 +47,7 @@ All the guides are in [`docs/`](docs/README.md). For engineers:
 | [Configuration](docs/configuration.md) | Change a setting: each environment variable, report rules, access, AI, the sync, the look, build, deploy and CI |
 | [File reference](docs/reference/README.md) | Look up what each file does, folder by folder |
 
-By topic: [Ask AI](docs/ai.md), [the ML job](docs/ml.md), [caching and loading](docs/caching-and-loading.md), [MongoDB and access](docs/mongodb-and-access.md), [report settings and access](docs/report-access.md), [connecting live Splunk](docs/connecting-live-splunk.md), [the data and AI strategy](docs/splunk-data-and-ai-strategy.md), and [Docker](docs/docker.md).
+By topic: [Ask AI](docs/ai.md), [the ML job](docs/ml.md), [caching and loading](docs/caching-and-loading.md), [MongoDB and access](docs/mongodb-and-access.md), [report settings and access](docs/report-access.md), [connecting live Splunk](docs/connecting-live-splunk.md), [the data and AI strategy](docs/splunk-data-and-ai-strategy.md), [Docker](docs/docker.md), and [moving to Google Cloud](docs/google-cloud-migration.md).
 
 ### Project layout
 

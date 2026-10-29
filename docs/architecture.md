@@ -243,6 +243,8 @@ More detail: [ml.md](ml.md) and [ml/README.md](../ml/README.md).
 | **Hosted demo** | Vercel, `main` only (`vercel.json`) | MongoDB Atlas M0 | From a laptop against Atlas, after merges | The public demo |
 | **Company** | Any Node host, or the Docker image | A hosted MongoDB with its own login | `npm run sync:watch` beside it, with the Splunk token | Real Splunk ([connecting-live-splunk.md](connecting-live-splunk.md)) |
 
+**Later, maybe Google Cloud.** Application logs may move to Google Cloud, while security logs stay in Splunk. The sync would then read from both: [google-cloud-migration.md](google-cloud-migration.md).
+
 **Shipping.**
 - `main` on `trcpoet/splunk-report-ai` changes only through pull requests.
 - The ruleset requires the CI job "Lint, test and build".
