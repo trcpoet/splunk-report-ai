@@ -7,6 +7,7 @@ export { default as Chat, MAX_CHAT_MESSAGES } from './chat.model';
 export { default as AiUsage } from './ai-usage.model';
 export { default as AiSummary } from './ai-summary.model';
 export { default as AiFeedback } from './ai-feedback.model';
+export { MlReportScore, MlRunScore } from './ml-score.model';
 
 // TypeScript interfaces exports
 export type { IReport, IRunSummary } from './report.model';
@@ -17,3 +18,4 @@ export type { ChatKind, IChat, IChatMessage } from './chat.model';
 export type { IAiUsage } from './ai-usage.model';
 export type { IAiSummary } from './ai-summary.model';
 export type { FeedbackKind, FlagDetails, IAiFeedback, Vote } from './ai-feedback.model';
+export type { IMlReportScore, IMlRunScore } from './ml-score.model';

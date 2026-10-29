@@ -10,7 +10,10 @@
     "sync": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts",
     "sync:watch": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts --watch",
     "seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo-users.ts",
-    "test": "node --env-file-if-exists=.env.local --import tsx --test \"lib/**/*.test.ts\""
+    "test": "node --env-file-if-exists=.env.local --import tsx --test \"lib/**/*.test.ts\"",
+    "ml": "ml/.venv/bin/python ml/score.py",
+    "ml:plot": "ml/.venv/bin/python ml/score.py --plot",
+    "test:ml": "ml/.venv/bin/python -m pytest ml"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.7.7",

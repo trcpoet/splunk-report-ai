@@ -32,7 +32,8 @@ function resultsTable(report: SplunkReport): string[] {
 }
 
 function describeReport(report: SplunkReport): string {
-    const unusual = findUnusualRun(report.history);
+    const unusual = findUnusualRun(report.history, report.modelRun);
+    const { modelRun, attention } = report;
     const lines = [
         `<report id="${report.slug}">`,
         `Title: ${clean(report.title)}`,
@@ -45,7 +46,9 @@ function describeReport(report: SplunkReport): string {
         ...(report.highlights.length > 0
             ? [`Highlights: ${report.highlights.map(({ label, value, note }) => `${clean(label)} ${clean(value)}${note ? ` (${clean(note)})` : ''}`).join('; ')}`]
             : []),
-        ...(unusual ? [`Unusual newest run: ${unusual.message}`] : []),
+        ...(unusual ? [`Unusual newest run: ${clean(unusual.message)}${unusual.flaggedBy === 'model' ? ' (noticed by the ML model, not the per-report statistics)' : ''}`] : []),
+        ...(modelRun ? [`ML model score for the newest run: ${modelRun.score.toFixed(2)} of 1, where 1 is the most unusual of all reports' runs${modelRun.unusual ? ' (among the 5% that differ most)' : ''}`] : []),
+        ...(attention !== undefined ? [`Learned from people's votes: a flag on this report is worth attention about ${Math.round(attention * 100)}% of the time`] : []),
         `Recent runs, oldest first: ${report.history
             .map((run) => `${formatDateTime(run.runAt)} ${run.status}, ${run.resultCount} results, ${run.status === 'failed' ? 'skipped' : formatDuration(run.durationSec)}`)
             .join('; ')}`,

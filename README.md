@@ -12,6 +12,7 @@
 - **Overview:** headline numbers for the reports you can see, scheduled runs per day by outcome, and the report list with search and status/category filters.
 - **Report page (`/reports/[slug]`):** status and alert message, key numbers, a chart of the latest results (the chart type saved in Splunk), the results table, the SPL query, a results-per-run trend and the run history, schedule details, the distribution lists that used to receive the email, and **Download CSV** / **Copy SPL** buttons.
 - **Briefing and Explain:** the home page says what needs attention and which runs look unusual (plain statistics, `lib/insights.ts`), with a short AI summary. Every report card has **Explain**: an AI summary of the latest run plus a quick look at its results.
+- **ML job (`ml/`):** a Python script that scores every run with an Isolation Forest and learns from the briefing's "Worth flagging?" votes which flags matter. The briefing, Explain and Ask AI use its scores. See [docs/ml.md](docs/ml.md).
 - **Ask AI (`/ai`):** ask questions about your reports and get answers that link to the reports they use, or describe a search and get the SPL explained step by step (never run). Every chat is saved, and the History tab lists them all. Answers come from Google Gemini and see only your reports. Without a `GEMINI_API_KEY` the page says AI is off. See [docs/ai.md](docs/ai.md).
 - **JSON API:** `GET /api/reports` and `GET /api/reports/[slug]` return only what the signed-in user may see (401 when signed out, 404 for reports that are missing or hidden).
 
@@ -31,6 +32,7 @@ Splunk REST API (:8089) ─┐
 - **Caching and loading** (`lib/dal.ts`, `components/Skeletons.tsx`, `components/Transitions.tsx`): report data is cached on the server until the next sync, each user's own pages in their browser for 5 minutes, and a report card loads its report when you point at it. Placeholders keep their content's size, so nothing jumps.
 
 - **Ask AI** (`lib/ai/`, `app/ai/`, `app/api/ai/`): one file talks to Gemini (`lib/ai/llm.ts`), and the AI only gets the reports the data access layer allows you. Chats live in MongoDB (`lib/chats.ts`), and each account has a daily limit.
+- **ML job** (`ml/`): Python, run after a sync. It reads the runs and votes from MongoDB, and writes its scores back for the app to read (`ml_run_scores`, `ml_report_scores`).
 
 New to MongoDB, or changing who sees what? See [docs/mongodb-and-access.md](docs/mongodb-and-access.md). What's cached where, and what each loading or error screen means: [docs/caching-and-loading.md](docs/caching-and-loading.md).
 
@@ -80,6 +82,8 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run seed` | Create the demo users and their access (safe to run again) |
 | `npm test` | Unit tests, plus the full sync pipeline against the fixtures |
 | `npm run lint` | ESLint |
+| `npm run ml` / `ml:plot` | Score the runs with the ML job (`ml:plot` also draws a chart). Set up its Python environment first: [ml/README.md](ml/README.md) |
+| `npm run test:ml` | The ML job's tests |
 
 ## Hosted demo
 
@@ -138,4 +142,4 @@ The MongoDB server connects to the local `splunkevents` database by default. To 
 
 ## Tech stack
 
-Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tailwind CSS 4, MongoDB with Mongoose, Better Auth, shadcn/ui charts (Recharts), Google Gemini through `@google/genai` (Ask AI), and optionally PostHog.
+Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tailwind CSS 4, MongoDB with Mongoose, Better Auth, shadcn/ui charts (Recharts), Google Gemini through `@google/genai` (Ask AI), Python with pandas and scikit-learn (the ML job), and optionally PostHog.

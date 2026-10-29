@@ -1,5 +1,5 @@
 import { formatDuration, formatNumber, parseNumber } from '@/lib/format';
-import type { Cell, RunRecord } from '@/lib/reports';
+import type { Cell, ModelRun, RunRecord } from '@/lib/reports';
 
 // Plain statistics about a report, with no AI and no ML library. Pure, so the
 // pages, the AI's context and the tests share it.
@@ -17,6 +17,9 @@ import type { Cell, RunRecord } from '@/lib/reports';
 // (the Iglewicz–Hoaglin rule of thumb). It's a strict bar on purpose: with
 // about 6 earlier runs and two measures per report, a looser one would flag
 // ordinary noise.
+//
+// The ML job (ml/score.py) can flag a run too. It compares the runs of every
+// report at once, so it can notice a run these per-report numbers let pass.
 
 export type UnusualRun = {
     measure: 'results' | 'duration';
@@ -28,6 +31,10 @@ export type UnusualRun = {
     // The earlier runs it was compared with.
     baseline: number;
     message: string;
+    // Who noticed it: these statistics, or only the ML model.
+    flaggedBy: 'statistics' | 'model';
+    // The ML model's score for the run (0 typical, 1 most unusual), once it has scored it.
+    modelScore?: number;
 };
 
 export const MIN_BASELINE = 4;
@@ -63,9 +70,11 @@ function describe(measure: UnusualRun['measure'], value: number, usual: number, 
     return `${what}, ${value > usual ? 'above' : 'below'} the usual ${show(usual)} (${compared}).`;
 }
 
-// The newest run, if it stands out. Null when it doesn't, when it failed, or
-// when there are fewer than MIN_BASELINE earlier runs to compare with.
-export function findUnusualRun(history: RunRecord[]): UnusualRun | null {
+// The newest run, if it stands out: by these statistics, or else by the ML
+// model's view of it (modelRun), when there is one. Null when it doesn't, when
+// it failed (the report's status says so already), or when there are fewer
+// than MIN_BASELINE earlier runs to compare with.
+export function findUnusualRun(history: RunRecord[], modelRun?: ModelRun): UnusualRun | null {
     const newest = history.at(-1);
     if (!newest || newest.status === 'failed') return null;
 
@@ -79,14 +88,19 @@ export function findUnusualRun(history: RunRecord[]): UnusualRun | null {
     const strongest = checks
         .filter(({ score }) => Math.abs(score) >= UNUSUAL_SCORE)
         .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
-    if (!strongest) return null;
+    // The model flags the run, and says which measure stands out.
+    const byModel = modelRun?.unusual ? checks.find(({ measure }) => measure === modelRun.measure) : undefined;
+    const flagged = strongest ?? byModel;
+    if (!flagged) return null;
 
     return {
-        ...strongest,
-        score: Math.round(strongest.score * 10) / 10,
+        ...flagged,
+        score: Math.round(flagged.score * 10) / 10,
         runAt: newest.runAt,
         baseline: earlier.length,
-        message: describe(strongest.measure, strongest.value, strongest.usual, earlier.length),
+        message: strongest || !modelRun ? describe(flagged.measure, flagged.value, flagged.usual, earlier.length) : modelRun.reason,
+        flaggedBy: strongest ? 'statistics' : 'model',
+        ...(modelRun ? { modelScore: modelRun.score } : {}),
     };
 }
 

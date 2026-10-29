@@ -13,7 +13,10 @@ export type FlagDetails = {
     reason: 'status' | 'unusual';
     status?: ReportStatus;
     measure?: 'results' | 'duration';
+    // The robust z-score from lib/insights.ts.
     score?: number;
+    // The ML model's score for the run (ml/score.py), when it had one.
+    modelScore?: number;
     runAt?: string;
 };
 
@@ -43,6 +46,7 @@ const AiFeedbackSchema = new Schema<IAiFeedback>(
                     status: String,
                     measure: String,
                     score: Number,
+                    modelScore: Number,
                     runAt: String,
                 },
                 { _id: false },

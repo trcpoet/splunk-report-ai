@@ -3,11 +3,11 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
-import { Report, ReportRun, SyncState, SYNC_STATE_ID, UserAccess, type IReport } from '@/database';
+import { MlReportScore, MlRunScore, Report, ReportRun, SyncState, SYNC_STATE_ID, UserAccess, type IMlReportScore, type IMlRunScore, type IReport } from '@/database';
 import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
-import type { Cell, ChartThreshold, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import type { Cell, ChartThreshold, ModelRun, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
 
 // The data access layer: pages and API routes get report data only from here,
 // and every exported function checks who is asking. proxy.ts merely redirects
@@ -94,8 +94,34 @@ const toChart = ({ type, x, y, threshold, max, panels, scatter }: ReportChart): 
     ...(scatter ? { scatter: { x: scatter.x, caption: scatter.caption, ...(scatter.log ? { log: true } : {}) } } : {}),
 });
 
+// What the ML job (ml/score.py) said about each report's newest run, and what
+// it learned from the votes, by slug. Both are empty until the job has run.
+type ModelScores = { runs: Map<string, IMlRunScore>; attention: Map<string, number> };
+
+async function loadModelScores(docs: IReport[]): Promise<ModelScores> {
+    const newest = docs.flatMap((doc) => (doc.latest ? [{ reportSlug: doc.slug, runAt: doc.latest.runAt }] : []));
+    const [runs, reports] = await Promise.all([
+        newest.length > 0 ? MlRunScore.find({ $or: newest }).lean<IMlRunScore[]>() : [],
+        MlReportScore.find({}).lean<IMlReportScore[]>(),
+    ]);
+    return {
+        runs: new Map(runs.map((run) => [run.reportSlug, run])),
+        attention: new Map(reports.map((report) => [report._id, report.attention])),
+    };
+}
+
+const toModelRun = ({ score, unusual, reason, measure }: IMlRunScore): ModelRun => ({
+    score,
+    unusual,
+    reason,
+    measure: measure === 'results' || measure === 'duration' ? measure : null,
+});
+
 // Plain values only: cached results can't hold ObjectIds or other class instances.
-function toListItem(doc: IReport): ReportListItem {
+function toListItem(doc: IReport, model: ModelScores): ReportListItem {
+    const modelRun = model.runs.get(doc.slug);
+    const attention = model.attention.get(doc.slug);
+
     return {
         slug: doc.slug,
         title: doc.title,
@@ -120,6 +146,8 @@ function toListItem(doc: IReport): ReportListItem {
         chart: doc.chart ? toChart(doc.chart) : null,
         resultsRunAt: doc.results ? iso(doc.results.runAt) : null,
         history: doc.history.map(({ runAt, status, durationSec, resultCount }) => ({ runAt: iso(runAt), status, durationSec, resultCount })),
+        ...(modelRun ? { modelRun: toModelRun(modelRun) } : {}),
+        ...(attention !== undefined ? { attention } : {}),
     };
 }
 
@@ -130,8 +158,9 @@ async function loadReports(): Promise<StoredReport[]> {
 
     await connectDB();
     const docs = await Report.find({ disabled: false }).sort({ title: 1 }).lean<IReport[]>();
+    const model = await loadModelScores(docs);
 
-    return docs.map((doc) => ({ report: toListItem(doc), allowedGroups: [...doc.allowedGroups], resultsSid: doc.results?.sid ?? null }));
+    return docs.map((doc) => ({ report: toListItem(doc, model), allowedGroups: [...doc.allowedGroups], resultsSid: doc.results?.sid ?? null }));
 }
 
 async function loadResults(sid: string): Promise<{ columns: string[]; rows: Cell[][] } | null> {

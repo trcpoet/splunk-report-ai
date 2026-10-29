@@ -10,14 +10,20 @@ import { getSyncInfo, getViewer, getVisibleReports } from "@/lib/dal";
 import { getVotes } from "@/lib/feedback";
 import { formatDateTime } from "@/lib/format";
 import { findUnusualRun, unusualTrend } from "@/lib/insights";
+import type { ReportListItem } from "@/lib/reports";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
+// Once the ML job has learned from enough votes which flags are worth
+// attention (docs/ml.md), those come first. Until then, title order.
+const mostWorthAttention = (a: ReportListItem, b: ReportListItem) => (b.attention ?? 0) - (a.attention ?? 0);
+
 // What needs attention across the reports the viewer can see, shown at once
 // from plain statistics: reports that warn or fail, and runs that stand out
-// from their recent runs (lib/insights.ts). Then, when AI is on, a two- or
-// three-sentence summary. "Worth flagging?" votes teach the ML job in ml/
-// which flags people find useful.
+// from their recent runs (lib/insights.ts), or that the ML job in ml/ flags.
+// Then, when AI is on, a two- or three-sentence summary. "Worth flagging?"
+// votes teach the ML job which flags people find useful, and once it has
+// learned, those come first.
 //
 // On the home page it's a card ('home'); on Ask about reports it sits in the
 // side panel ('side').
@@ -25,11 +31,12 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
     const [viewer, reports, sync] = await Promise.all([getViewer(), getVisibleReports(), getSyncInfo()]);
     if (reports.length === 0) return null;
 
-    const attention = reports.filter((report) => report.status !== 'success');
-    const unusual = reports.flatMap((report) => {
-        const run = findUnusualRun(report.history);
+    const attention = reports.filter((report) => report.status !== 'success').sort(mostWorthAttention);
+    const unusual = [...reports].sort(mostWorthAttention).flatMap((report) => {
+        const run = findUnusualRun(report.history, report.modelRun);
         return run ? [{ report, run }] : [];
     });
+    const learned = reports.some((report) => report.attention !== undefined);
 
     const votes = await getVotes(viewer, 'flag', [
         ...attention.map(({ slug, lastRun }) => flagId(slug, lastRun, 'status')),
@@ -93,6 +100,11 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                                         <Sparkline values={trend.values} usual={run.usual} highlightLast label={trend.label} />
                                     </div>
                                     <p>{run.message}</p>
+                                    {run.modelScore !== undefined && (
+                                        <p className="briefing-model">
+                                            {run.flaggedBy === 'model' ? 'Noticed by the ML model' : 'ML model score'}: {run.modelScore.toFixed(2)} of 1
+                                        </p>
+                                    )}
                                     <div className="briefing-item-actions">
                                         <Link href={`/ai/reports?about=${report.slug}`}>Ask about it</Link>
                                         <FeedbackButtons
@@ -112,6 +124,9 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
 
             {attention.length === 0 && unusual.length === 0 && (
                 <p className="briefing-calm">No report is warning or failing, and every latest run looks like the ones before it.</p>
+            )}
+            {learned && (attention.length > 1 || unusual.length > 1) && (
+                <p className="briefing-calm">Flags are ordered by the ML model, which learned from your votes which ones are worth attention.</p>
             )}
 
             {ai && <BriefingSummary key={briefingKey(reports)} reports={chips} />}
