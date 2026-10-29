@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { MessagesSquare, Pencil, SquareTerminal, Trash2 } from "lucide-react";
 import { deleteChatAction, renameChatAction } from "@/app/ai/actions";
+import { CHAT_DELETED } from "@/components/AiTabs";
 import type { ChatGroup, ChatKind, ChatSummary } from "@/lib/chats";
 import { formatDateTime, formatTime } from "@/lib/format";
 
@@ -49,7 +50,8 @@ const HistoryRow = ({ chat }: { chat: ChatSummary }) => {
     const remove = () => {
         startTransition(async () => {
             const result = await deleteChatAction(chat.id);
-            if (!result.ok) setError(result.message);
+            if (result.ok) window.dispatchEvent(new CustomEvent(CHAT_DELETED, { detail: chat.id }));
+            else setError(result.message);
         });
     };
 

@@ -2,6 +2,7 @@ import 'server-only';
 import { Types } from 'mongoose';
 import { Chat, MAX_CHAT_MESSAGES, type ChatKind, type IChat, type IChatMessage } from '@/database';
 import type { Viewer } from '@/lib/access';
+import { replaceReportMarkers } from '@/lib/ai/report-links';
 import type { SplAnswer } from '@/lib/ai/spl';
 import { getViewer } from '@/lib/dal';
 import { firstLine } from '@/lib/format';
@@ -39,12 +40,14 @@ export function chatGroup(updatedAt: Date, now: Date): ChatGroup {
 // Chats in DEMO_MODE, where visitors share accounts, are deleted after a day.
 const DEMO_CHAT_HOURS = 24;
 
-const isChatId = (id: string) => /^[a-f0-9]{24}$/.test(id);
+// A chat id is a MongoDB ObjectId in hex. Requests and actions check ids with it.
+export const CHAT_ID = /^[a-f0-9]{24}$/;
+
+const isChatId = (id: string) => CHAT_ID.test(id);
 
 // An answer's Markdown as one line of plain text, for the history list:
 // no **bold** marks, list bullets or headings, and report ids as plain words.
-const plainText = (markdown: string) => markdown
-    .replace(/\[\[([a-z0-9-]+)\]\]/g, '$1')
+const plainText = (markdown: string) => replaceReportMarkers(markdown, (slug) => slug)
     .replace(/\*\*|__|`/g, '')
     .replace(/^\s*(?:#{1,6}|>|[-*+]|\d+\.)\s+/gm, '')
     .replace(/\s+/g, ' ')

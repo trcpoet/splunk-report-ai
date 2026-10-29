@@ -41,11 +41,12 @@ export async function POST(request: Request) {
                     (text) => send({ type: 'text', text }),
                 );
                 const messageId = await saveTurn(viewer, { chatId, kind: 'reports', question, answer: { text: answer.text } });
-                await recordTokens(viewer.id, answer.usage);
 
                 send(messageId
                     ? { type: 'done', messageId, cutOff: answer.cutOff }
                     : { type: 'error', message: "This answer couldn't be saved because the chat is full. Start a new chat to keep going." });
+                // After the page knows the outcome, so this can't change it.
+                await recordTokens(viewer.id, answer.usage);
             } catch (error) {
                 if (!(error instanceof AiError)) console.error('Ask about reports failed:', error);
                 send({ type: 'error', message: error instanceof AiError ? error.message : 'Something went wrong while answering. Try again.' });

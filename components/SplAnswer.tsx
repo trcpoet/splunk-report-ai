@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { ExternalLink, ShieldCheck, TriangleAlert } from "lucide-react";
 import CopyButton from "@/components/CopyButton";
-import { checkSpl, queryFromSteps, splunkSearchUrl, type SplAnswer as Answer } from "@/lib/ai/spl";
+import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type SplAnswer as Answer } from "@/lib/ai/spl";
 
 type Props = {
     answer: Answer;
@@ -57,7 +57,7 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 <code>
                     {answer.steps.map((step, i) => (
                         <span key={i} className={i === highlighted ? 'line is-active' : 'line'}>
-                            {i === 0 ? step.code : `| ${step.code}`}
+                            {stepLine(step, i)}
                         </span>
                     ))}
                 </code>

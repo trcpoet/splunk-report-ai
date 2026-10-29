@@ -5,17 +5,17 @@ import { aiOffMessage, aiStatus } from '@/lib/ai/config';
 import type { Turn as LlmTurn } from '@/lib/ai/llm';
 import { queryFromSteps } from '@/lib/ai/spl';
 import { countRequest } from '@/lib/ai/usage';
-import { getChat, newChatId, turnsLeft, type ChatDetail, type ChatKind, type ChatMessage } from '@/lib/chats';
+import { CHAT_ID, getChat, newChatId, turnsLeft, type ChatDetail, type ChatKind, type ChatMessage } from '@/lib/chats';
 import { getSyncInfo, getViewerOrNull, getVisibleReportsWithResults } from '@/lib/dal';
 import type { SplunkReport, SyncInfo } from '@/lib/reports';
 
 // The checks both chat routes (/api/ai/chat and /api/ai/spl) run before asking
 // the AI, in order: signed in, a valid question, AI turned on, a chat that is
 // theirs and has room, and today's limit. Each failure is a JSON answer the
-// page shows as it is.
+// page shows as it is. The reports are loaded last, only for requests that pass.
 
 const Body = z.object({
-    chatId: z.string().regex(/^[a-f0-9]{24}$/).optional(),
+    chatId: z.string().regex(CHAT_ID).optional(),
     message: z.string().trim().min(1).max(2000),
 });
 
@@ -39,11 +39,7 @@ export async function prepareTurn(request: Request, kind: ChatKind): Promise<Rea
     if (!body.success) return jsonError(400, 'Send a question of 1 to 2,000 characters.');
     const { chatId, message } = body.data;
 
-    const [reports, sync, chat] = await Promise.all([
-        getVisibleReportsWithResults(),
-        getSyncInfo(),
-        chatId ? getChat(chatId) : null,
-    ]);
+    const [sync, chat] = await Promise.all([getSyncInfo(), chatId ? getChat(chatId) : null]);
 
     const status = aiStatus(sync?.mode);
     if (!status.enabled) return jsonError(503, aiOffMessage(status.reason));
@@ -55,6 +51,7 @@ export async function prepareTurn(request: Request, kind: ChatKind): Promise<Rea
     const limited = await countRequest(viewer.id);
     if (limited) return jsonError(429, limited);
 
+    const reports = await getVisibleReportsWithResults();
     return { viewer, chatId: chat?.id ?? newChatId(), chat, question: message, reports, sync };
 }
 

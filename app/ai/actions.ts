@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
-import { deleteChat, renameChat } from "@/lib/chats";
+import { CHAT_ID, deleteChat, renameChat } from "@/lib/chats";
 
 // Changes to saved chats, called from the History tab. Anyone can post to a
 // Server Action, so each one checks its input here, and lib/chats.ts checks
@@ -11,7 +11,7 @@ import { deleteChat, renameChat } from "@/lib/chats";
 
 type Result = { ok: true } | { ok: false; message: string };
 
-const ChatId = z.string().regex(/^[a-f0-9]{24}$/);
+const ChatId = z.string().regex(CHAT_ID);
 const NOT_FOUND: Result = { ok: false, message: 'Chat not found. It may have been deleted.' };
 
 export async function renameChatAction(id: string, title: string): Promise<Result> {

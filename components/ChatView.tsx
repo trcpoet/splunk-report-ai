@@ -7,6 +7,7 @@ import ChatAnswer, { type ReportChipData } from "@/components/ChatAnswer";
 import CopyButton from "@/components/CopyButton";
 import SplAnswer from "@/components/SplAnswer";
 import { track } from "@/lib/analytics";
+import { replaceReportMarkers } from "@/lib/ai/report-links";
 import { readEvents } from "@/lib/ai/stream";
 import type { ChatDetail, ChatKind, ChatMessage } from "@/lib/chats";
 import { firstLine } from "@/lib/format";
@@ -62,14 +63,17 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
     // Read out by screen readers when an answer finishes; the text itself isn't.
     const [announcement, setAnnouncement] = useState('');
 
+    // The chat id this view put in the address bar itself, so it doesn't ask
+    // the server for a chat it's already showing.
+    const [addressedChat, setAddressedChat] = useState<string | null>(chat?.id ?? null);
+
     const abort = useRef<AbortController | null>(null);
     const input = useRef<HTMLTextAreaElement>(null);
     const end = useRef<HTMLDivElement>(null);
-    // The chat id this view just put in the address bar itself.
-    const addressedChat = useRef<string | null>(chat?.id ?? null);
 
     const startNewChat = () => {
         setChatId(null);
+        setAddressedChat(null);
         setTitle(null);
         setMessages([]);
         setDraft('');
@@ -88,8 +92,8 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
     // When the address names a chat this view isn't showing (Back or Forward
     // after starting a new chat), ask the server for that chat's page.
     useEffect(() => {
-        if (urlChat && urlChat !== chatId && urlChat !== addressedChat.current && !busy) router.refresh();
-    }, [urlChat, chatId, busy, router]);
+        if (urlChat && urlChat !== chatId && urlChat !== addressedChat && !busy) router.refresh();
+    }, [urlChat, chatId, addressedChat, busy, router]);
 
     // Keep the newest text in view while it streams, unless the person has
     // scrolled up to read something else.
@@ -98,15 +102,12 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         if (nearBottom) end.current?.scrollIntoView({ block: 'end' });
     }, [messages]);
 
-    const update = (change: Partial<Shown>) =>
-        setMessages((list) => list.map((message) => (message.id === 'pending' ? { ...message, ...change } : message)));
-
     // The first answer of a new chat was saved: give the chat its address.
     const saved = (id: string, question: string) => {
         if (chatId) return;
         setChatId(id);
+        setAddressedChat(id);
         setTitle(firstLine(question));
-        addressedChat.current = id;
         window.history.replaceState(null, '', `${pathname}?chat=${id}`);
     };
 
@@ -120,11 +121,16 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         setDraft('');
         setAnnouncement('');
 
+        // Each answer on its way has its own id, so a stopped or failed answer
+        // above it is never touched. The server's id replaces it in the last update.
         const createdAt = new Date().toISOString();
+        const answerId = `answer-${createdAt}`;
+        const update = (change: Partial<Shown>) =>
+            setMessages((list) => list.map((message) => (message.id === answerId ? { ...message, ...change } : message)));
         setMessages((list) => [
             ...list,
-            { id: `question-${Date.now()}`, role: 'user', text, createdAt },
-            { id: 'pending', role: 'assistant', text: '', createdAt, state: 'waiting' },
+            { id: `question-${createdAt}`, role: 'user', text, createdAt },
+            { id: answerId, role: 'assistant', text: '', createdAt, state: 'waiting' },
         ]);
         requestAnimationFrame(() => end.current?.scrollIntoView({ block: 'end' }));
         track('ai_question_asked', { kind });
@@ -157,6 +163,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
 
             let id = chatId;
             let answer = '';
+            let finished = false;
             await readEvents(response.body, (event) => {
                 if (event.type === 'start') {
                     id = event.chatId;
@@ -164,6 +171,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                     answer += event.text;
                     update({ text: answer, state: 'streaming' });
                 } else if (event.type === 'done') {
+                    finished = true;
                     update({
                         id: event.messageId,
                         state: undefined,
@@ -172,9 +180,12 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                     if (id) saved(id, text);
                     setAnnouncement('Answer ready.');
                 } else {
+                    finished = true;
                     fail(event.message);
                 }
             });
+            // The connection closed without a "done" (the server timed out, say).
+            if (!finished) fail("The answer stopped before it finished, so it wasn't saved. Try again.");
         } catch {
             if (controller.signal.aborted) {
                 update({ state: 'stopped', note: "Stopped. This answer wasn't saved." });
@@ -273,7 +284,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                             </button>
                         )}
                         {!message.state && !message.spl && (
-                            <CopyButton text={message.text.replace(/\[\[([a-z0-9-]+)\]\]/g, (_, slug: string) => reports[slug]?.title ?? slug)} label="Copy" className="btn-ghost" />
+                            <CopyButton text={replaceReportMarkers(message.text, (slug) => reports[slug]?.title ?? slug)} label="Copy" className="btn-ghost" />
                         )}
                     </div>
                 ))}

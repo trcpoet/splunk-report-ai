@@ -1,11 +1,6 @@
 // What the model is told, in plain English. Each prompt is fixed text, followed
 // by the person's reports from lib/ai/context.ts, so it reads the same for
 // every question in a chat (which also lets Gemini reuse its cache).
-//
-// Bump PROMPT_VERSION after changing a prompt, so cached answers built with
-// the old wording are made again.
-
-export const PROMPT_VERSION = 1;
 
 // The Ask about reports tab.
 export const REPORTS_PROMPT = `You answer questions about Splunk scheduled reports for someone who receives them. You work inside the SplunkEvents app, which shows each report's latest results, its run history and its search (SPL).

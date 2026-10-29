@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { History, MessagesSquare, SquareTerminal } from "lucide-react";
+
+// Sent by the History tab after deleting a chat, with the chat's id.
+export const CHAT_DELETED = 'ai:chat-deleted';
 
 const TABS = [
     { href: '/ai/reports', label: 'Ask about reports', icon: MessagesSquare },
@@ -36,6 +39,16 @@ const AiTabs = () => {
     const pathname = usePathname();
     const chat = useSearchParams().get('chat');
     const [last, setLast] = useState<Record<string, string>>({});
+
+    // A deleted chat is forgotten, so its tab opens a new chat instead of "Chat not found".
+    useEffect(() => {
+        const forget = (event: Event) => {
+            const id = (event as CustomEvent<string>).detail;
+            setLast((tabs) => Object.fromEntries(Object.entries(tabs).filter(([, href]) => !href.endsWith(`chat=${id}`))));
+        };
+        window.addEventListener(CHAT_DELETED, forget);
+        return () => window.removeEventListener(CHAT_DELETED, forget);
+    }, []);
 
     const remember = () => {
         if (pathname === '/ai/reports' || pathname === '/ai/spl') {
