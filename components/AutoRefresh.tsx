@@ -15,9 +15,11 @@ const AutoRefresh = () => {
     useEffect(() => {
         let last = Date.now();
 
-        // Skips hidden tabs and the sign-in page, which has no report data.
+        // Skips hidden tabs, the sign-in page, which has no report data, and the
+        // Ask AI pages, where a refresh in the middle of an answer would reset the chat.
         const refresh = () => {
-            if (document.visibilityState !== 'visible' || window.location.pathname === '/login') return;
+            const path = window.location.pathname;
+            if (document.visibilityState !== 'visible' || path === '/login' || path === '/ai' || path.startsWith('/ai/')) return;
             last = Date.now();
             router.refresh();
         };

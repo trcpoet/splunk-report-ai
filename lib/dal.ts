@@ -196,6 +196,19 @@ export async function getVisibleReport(slug: string): Promise<SplunkReport | nul
     return { ...stored.report, columns: results?.columns ?? [], rows: results?.rows ?? [] };
 }
 
+// Every report the viewer may see, each with its latest results, for the AI's
+// context (lib/ai/context.ts). The results come from the same cache as the
+// report pages.
+export async function getVisibleReportsWithResults(): Promise<SplunkReport[]> {
+    const viewer = await getViewer();
+    const visible = (await loadReports()).filter(({ allowedGroups }) => canView(viewer, allowedGroups));
+
+    return Promise.all(visible.map(async ({ report, resultsSid }) => {
+        const results = resultsSid ? await loadResults(resultsSid) : null;
+        return { ...report, columns: results?.columns ?? [], rows: results?.rows ?? [] };
+    }));
+}
+
 const DAY_MS = 86_400_000;
 
 // Runs per day by outcome across the viewer's reports, for the days up to the newest run.

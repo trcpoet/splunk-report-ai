@@ -28,7 +28,7 @@ Each server instance on Vercel has its own memory, so a freshly started one read
 - An admin changing someone's groups reaches their open tab within a minute for the page on screen, and within 5 minutes for pages already loaded in the background. Those pages only hold what the person could already see.
 - The database connections give up after 5 seconds in the web app only. The sync worker and the seed script keep the driver's 30 seconds, so their writes ride out a brief Atlas primary election.
 
-Open pages still refresh themselves once a minute (`components/AutoRefresh.tsx`), so new sync results show up without a reload. A tab you come back to catches up at once, unless it refreshed in the last minute. The sign-in page never refreshes.
+Open pages still refresh themselves once a minute (`components/AutoRefresh.tsx`), so new sync results show up without a reload. A tab you come back to catches up at once, unless it refreshed in the last minute. The sign-in page never refreshes, and neither do the Ask AI pages: a refresh in the middle of an answer would reset the chat. Each question there reads the latest report data anyway.
 
 ## Loading pages before you click
 

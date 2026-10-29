@@ -230,6 +230,31 @@
         @apply border border-dark-200 bg-dark-200 text-light-100 hover:border-primary/60;
     }
 
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 rounded-[6px] border border-red-400/40 bg-red-400/10 px-4 py-2.5 font-semibold text-red-300 cursor-pointer transition-colors hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-small {
+        @apply shrink-0 whitespace-nowrap px-3 py-1.5 text-sm;
+    }
+
+    /* A quiet button under an answer, such as Copy. */
+    .btn-ghost {
+        @apply inline-flex w-fit items-center gap-1.5 rounded-[6px] px-2 py-1 text-xs text-light-200 cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100;
+
+        svg {
+            @apply size-3.5;
+        }
+    }
+
+    .icon-button {
+        @apply inline-flex size-9 items-center justify-center rounded-[6px] text-light-200 cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100;
+
+        svg {
+            @apply size-4;
+        }
+    }
+
     .spinner {
         @apply size-4 shrink-0 animate-spin;
     }
@@ -281,15 +306,32 @@
         }
 
         ul {
-            @apply flex flex-row items-center gap-6 list-none;
+            @apply flex flex-row items-center gap-6 max-sm:gap-4 list-none;
 
             /* The padding makes them easier to tap without moving anything. */
             a {
-                @apply py-1.5 transition-colors hover:text-primary;
+                @apply whitespace-nowrap py-1.5 transition-colors hover:text-primary;
             }
 
             a[aria-current="page"] {
                 @apply text-primary;
+            }
+
+            /* On phones the logo already goes home. */
+            a.nav-overview {
+                @apply max-sm:hidden;
+            }
+
+            a.nav-ai {
+                @apply inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-primary hover:border-primary max-sm:px-2.5;
+
+                svg {
+                    @apply size-4 shrink-0;
+                }
+            }
+
+            a.nav-ai[aria-current="page"] {
+                @apply border-primary bg-primary/10;
             }
         }
     }
@@ -614,6 +656,381 @@
         }
     }
 
+    /* Ask AI (app/ai): the tabs, the chat, Write SPL's pipeline and the history. */
+    #ai {
+        @apply flex flex-col gap-6;
+
+        .ai-header {
+            @apply flex flex-col gap-2;
+
+            h1 {
+                @apply text-4xl max-sm:text-3xl;
+            }
+
+            p {
+                @apply max-w-2xl text-light-100 max-sm:text-sm;
+            }
+        }
+    }
+
+    .ai-tabs {
+        @apply flex flex-row gap-1 overflow-x-auto border-b border-dark-200;
+
+        a {
+            @apply -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm text-light-200 transition-colors hover:text-light-100 max-sm:px-3;
+
+            /* On phones the three labels fit only without their icons. */
+            svg {
+                @apply size-4 shrink-0 max-sm:hidden;
+            }
+        }
+
+        a[aria-current="page"] {
+            @apply border-primary text-light-100;
+        }
+    }
+
+    .ai-workspace {
+        @apply grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_19rem];
+    }
+
+    /* What the AI can see, or the searches to learn from. */
+    .ai-side {
+        @apply flex flex-col gap-3 rounded-[10px] border border-dark-200 bg-dark-100/80 px-5 py-5 card-shadow lg:sticky lg:top-24;
+
+        h2 {
+            @apply font-schibsted-grotesk text-lg font-semibold;
+        }
+
+        p {
+            @apply text-sm text-light-200;
+        }
+
+        ul {
+            @apply -mx-2 flex list-none flex-col;
+        }
+
+        a {
+            @apply flex flex-row items-start gap-2.5 rounded-[6px] px-2 py-2 text-sm text-light-100 transition-colors hover:bg-dark-200;
+        }
+
+        .dot {
+            @apply mt-1.5 shrink-0;
+        }
+
+        .side-note {
+            @apply line-clamp-1 text-xs text-light-200;
+        }
+
+        code.side-note {
+            @apply font-martian-mono text-blue;
+        }
+    }
+
+    /* Report status as a small dot: in answers, the side panel and the history. */
+    .dot {
+        @apply inline-block size-2 rounded-full;
+    }
+
+    .dot-success {
+        background: var(--status-success);
+    }
+
+    .dot-warning {
+        background: var(--status-warning);
+    }
+
+    .dot-failed {
+        background: var(--status-failed);
+    }
+
+    .chat {
+        @apply flex min-w-0 flex-col gap-6;
+
+        .chat-head {
+            @apply flex min-h-9 flex-row items-center justify-between gap-3;
+        }
+
+        .chat-title {
+            @apply truncate font-schibsted-grotesk text-xl font-semibold;
+        }
+
+        .chat-intro {
+            @apply flex flex-col gap-4;
+
+            p {
+                @apply max-w-[68ch] text-light-100;
+            }
+        }
+
+        .chat-log {
+            @apply flex flex-col gap-6;
+        }
+    }
+
+    /* Your question: a small bubble on the right. */
+    .msg-user {
+        @apply max-w-[85%] self-end whitespace-pre-wrap break-words rounded-[10px] bg-dark-200 px-4 py-2.5 text-light-100;
+    }
+
+    /* The answer: prose with a thin accent rule, like a memo. */
+    .msg-answer {
+        @apply flex flex-col gap-3 border-l-2 border-primary/60 pl-4;
+    }
+
+    .thinking {
+        @apply inline-flex items-center gap-2 text-sm text-light-200;
+
+        .pulse {
+            @apply size-2 rounded-full bg-primary animate-pulse motion-reduce:animate-none;
+        }
+    }
+
+    .answer-text {
+        @apply flex max-w-[68ch] flex-col gap-3 text-[15px] leading-relaxed text-light-100;
+
+        ul,
+        ol {
+            @apply flex list-outside flex-col gap-1 pl-5;
+        }
+
+        ul {
+            @apply list-disc;
+        }
+
+        ol {
+            @apply list-decimal;
+        }
+
+        strong {
+            @apply font-semibold text-white;
+        }
+
+        code {
+            @apply font-martian-mono text-xs text-blue;
+        }
+
+        pre {
+            @apply overflow-x-auto rounded-[10px] border border-dark-200 bg-dark-100 p-4;
+        }
+
+        .table-wrap {
+            @apply my-1;
+        }
+    }
+
+    .report-chip {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-2.5 py-0.5 align-baseline text-sm text-light-100 transition-colors hover:border-primary/60 hover:text-primary;
+
+        .dot {
+            @apply size-1.5;
+        }
+    }
+
+    .answer-note {
+        @apply text-sm text-light-200;
+    }
+
+    .answer-note.failed {
+        @apply text-amber-300;
+    }
+
+    /* The box to type in stays at the bottom of the window on long chats. */
+    .composer {
+        @apply sticky bottom-0 flex flex-col gap-2 bg-background/95 pb-4 pt-2 backdrop-blur;
+
+        form {
+            @apply flex flex-row items-end gap-2 rounded-[10px] border border-light-200/40 bg-dark-100 p-2 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary;
+        }
+
+        textarea {
+            @apply max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-light-100 placeholder:text-light-200/70 focus-visible:outline-none;
+            field-sizing: content;
+        }
+
+        .composer-button {
+            @apply inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] bg-primary text-black cursor-pointer transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40;
+
+            svg {
+                @apply size-4;
+            }
+        }
+
+        .composer-button.stop {
+            @apply bg-dark-200 text-light-100 hover:bg-dark-200/80;
+        }
+    }
+
+    .composer-notes {
+        @apply text-xs text-light-200;
+    }
+
+    .ai-notice {
+        @apply rounded-[10px] border border-dashed border-dark-200 px-5 py-4 text-sm text-light-100;
+    }
+
+    /* Write SPL: the search as a pipeline, one numbered step per pipe command. */
+    .spl-card {
+        @apply flex max-w-3xl flex-col gap-4;
+
+        .spl-summary {
+            @apply max-w-[68ch] text-[15px] leading-relaxed text-light-100;
+        }
+
+        .spl-safety {
+            @apply inline-flex w-fit items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-2.5 py-0.5 text-xs font-medium text-light-100;
+
+            svg {
+                @apply size-3.5 shrink-0;
+            }
+        }
+
+        .spl-safety.risky {
+            @apply border-amber-400/30 bg-amber-400/10 text-amber-300;
+        }
+
+        .spl-warnings {
+            @apply flex list-inside list-disc flex-col gap-1 text-sm text-amber-300;
+        }
+
+        .spl-query {
+            code {
+                @apply flex flex-col;
+            }
+
+            .line {
+                @apply -mx-4 px-4 transition-colors;
+            }
+
+            .line.is-active {
+                @apply bg-primary/15 text-white;
+            }
+        }
+
+        .spl-actions {
+            @apply flex flex-row flex-wrap gap-2;
+
+            > * {
+                @apply px-3 py-1.5 text-sm;
+            }
+        }
+
+        .spl-facts {
+            @apply flex flex-col gap-3 text-sm;
+
+            dt {
+                @apply mb-1 text-xs text-light-200;
+            }
+
+            dd code {
+                @apply rounded-[4px] bg-dark-200 px-1.5 py-0.5 font-martian-mono text-xs text-blue;
+            }
+
+            ul {
+                @apply list-inside list-disc text-light-100;
+            }
+        }
+    }
+
+    .spl-steps {
+        @apply flex list-none flex-col;
+
+        li {
+            @apply relative grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-1 pb-5 last:pb-0;
+        }
+
+        /* The rule joining one step to the next. */
+        li::before {
+            @apply absolute bottom-0 left-[calc(1rem-1px)] top-8 w-0.5 bg-dark-200 content-[''];
+        }
+
+        li:last-child::before {
+            @apply hidden;
+        }
+
+        .step-number {
+            @apply row-span-2 flex size-8 items-center justify-center rounded-full border border-light-200/50 bg-dark-100 font-martian-mono text-xs text-light-100 cursor-pointer transition-colors hover:border-primary/60 aria-pressed:border-primary aria-pressed:text-primary;
+        }
+
+        code {
+            @apply self-center break-all font-martian-mono text-xs text-blue;
+        }
+
+        p {
+            @apply text-sm text-light-200;
+        }
+    }
+
+    /* A search that just arrived shows its steps one after another, once. */
+    .spl-steps.reveal li {
+        animation: step-in 240ms ease-out both;
+        animation-delay: calc(var(--i, 0) * 60ms);
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    .history {
+        @apply flex flex-col gap-6;
+    }
+
+    .history-group {
+        @apply flex flex-col gap-2;
+
+        h2 {
+            @apply text-sm text-light-200;
+        }
+
+        ul {
+            @apply flex list-none flex-col divide-y divide-dark-200 rounded-[10px] border border-dark-200 bg-dark-100/80;
+        }
+    }
+
+    .history-row {
+        @apply flex flex-row flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3;
+
+        .history-icon {
+            @apply size-4 shrink-0 text-light-200;
+        }
+
+        .history-link {
+            @apply flex min-w-0 flex-1 flex-col gap-0.5;
+        }
+
+        .history-link:hover .history-title {
+            @apply text-primary;
+        }
+
+        .history-title {
+            @apply truncate font-medium text-light-100 transition-colors;
+        }
+
+        .history-preview {
+            @apply truncate text-sm text-light-200;
+        }
+
+        .history-meta {
+            @apply flex flex-row flex-wrap gap-3 text-xs text-light-200;
+        }
+
+        .history-actions {
+            @apply flex flex-row flex-wrap items-center gap-2;
+        }
+
+        .history-rename {
+            @apply flex min-w-0 flex-1 flex-row flex-wrap items-center gap-2;
+
+            input {
+                @apply min-w-0 flex-1 rounded-[6px] border border-light-200/50 bg-dark-100 px-3 py-1.5 text-sm text-light-100 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+            }
+        }
+
+        .history-error {
+            @apply w-full text-sm text-amber-300;
+        }
+    }
+
     #login {
         @apply flex flex-col items-center gap-8 pt-10;
 
@@ -688,6 +1105,13 @@
         .sign-out {
             @apply inline-flex items-center gap-1.5 rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer transition-colors hover:border-primary/60 disabled:opacity-60 aria-busy:cursor-wait;
         }
+    }
+}
+
+@keyframes step-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
     }
 }
 

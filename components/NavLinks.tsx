@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { MessagesSquare } from "lucide-react";
 import { PAGE_TRANSITION } from "@/components/Transitions";
 
 // Following a link to the page you're on doesn't scroll, so links to the home
@@ -19,24 +20,31 @@ export const HomeLink = ({ className, children }: { className?: string; children
     </Link>
 )
 
+// `section` marks the link as current on every page under it (the Ask AI tabs).
 const LINKS = [
-    { href: '/', label: 'Overview' },
+    { href: '/', label: 'Overview', className: 'nav-overview' },
     { href: '/#reports', label: 'All Reports' },
+    { href: '/ai', label: 'Ask AI', className: 'nav-ai', section: '/ai' },
 ];
+
+const isCurrent = (link: (typeof LINKS)[number], current?: string) =>
+    link.section ? current === link.section || !!current?.startsWith(`${link.section}/`) : link.href === current;
 
 // The navbar's page links, with the current page marked. The Navbar also
 // shows this list unmarked while a report page's address is still unknown.
 export const NavLinkList = ({ current }: { current?: string }) => (
     <>
-        {LINKS.map(({ href, label }) => (
-            <li key={href}>
+        {LINKS.map((link) => (
+            <li key={link.href}>
                 <Link
-                    href={href}
+                    href={link.href}
+                    className={link.className}
                     transitionTypes={PAGE_TRANSITION}
-                    onClick={href === '/' ? toTopOnHome : undefined}
-                    aria-current={href === current ? 'page' : undefined}
+                    onClick={link.href === '/' ? toTopOnHome : undefined}
+                    aria-current={isCurrent(link, current) ? 'page' : undefined}
                 >
-                    {label}
+                    {link.section && <MessagesSquare aria-hidden="true" />}
+                    {link.label}
                 </Link>
             </li>
         ))}

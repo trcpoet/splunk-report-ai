@@ -60,3 +60,9 @@ export const formatTime = (iso: string) => {
 
 export const formatDuration = (seconds: number) =>
     seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+
+// The first line of some text, shortened to `max` characters, for titles.
+export const firstLine = (text: string, max = 80) => {
+    const line = text.trim().split('\n')[0].replace(/\s+/g, ' ');
+    return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
+};
