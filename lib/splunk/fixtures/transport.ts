@@ -11,14 +11,14 @@ import { reports, type FixtureReport } from './reports';
 //   like job artifacts deleted after dispatch.ttl
 // - result values arrive as strings
 
-const APP_IDS: Record<string, string> = {
+export const APP_IDS: Record<string, string> = {
     'Search & Reporting': 'search',
     'Splunk Enterprise Security': 'SplunkEnterpriseSecuritySuite',
     'Monitoring Console': 'splunk_monitoring_console',
     'Payments Analytics': 'payments_analytics',
 };
 
-const TIME_RANGES: Record<string, [earliest: string, latest: string]> = {
+export const TIME_RANGES: Record<string, [earliest: string, latest: string]> = {
     'Last 24 hours': ['-24h', 'now'],
     'Last 60 minutes': ['-60m', 'now'],
     'Last 4 hours': ['-4h', 'now'],
@@ -28,7 +28,7 @@ const TIME_RANGES: Record<string, [earliest: string, latest: string]> = {
 };
 
 // The chart each report's author picked in Splunk. null means a statistics table.
-const CHARTS: Record<string, 'bar' | 'column' | null> = {
+export const CHARTS: Record<string, 'bar' | 'column' | null> = {
     'failed-logins-by-user': 'bar',
     'web-5xx-error-rate': 'column',
     'firewall-denied-top-sources': 'bar',

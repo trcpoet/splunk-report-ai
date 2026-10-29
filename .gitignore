@@ -50,5 +50,6 @@ next-env.d.ts
 # the ML job (ml/): its virtual environment, charts and Python caches
 ml/.venv/
 ml/out/
+.splunk-example/
 __pycache__/
 .pytest_cache/

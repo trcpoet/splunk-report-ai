@@ -1,0 +1,105 @@
+# Runs the Splunk example (docs/splunk-example.md) on a fresh machine: a real
+# Splunk Enterprise trial with its dummy logs and scheduled reports, and the
+# connector copying their runs into MongoDB through Splunk's REST API. It checks
+# that the six reports reach the app with Splunk's results.
+# Not required for merging. It runs when the connector or the example changes,
+# every Monday (to catch changes in Splunk's image), and by hand.
+name: Splunk example
+
+on:
+  pull_request:
+    paths:
+      - lib/splunk/**
+      - worker/**
+      - scripts/splunk-example/**
+      - docker-compose.splunk.yml
+      - Dockerfile
+      - .github/workflows/splunk-example.yml
+  push:
+    branches: [main]
+    paths:
+      - lib/splunk/**
+      - worker/**
+      - scripts/splunk-example/**
+      - docker-compose.splunk.yml
+      - Dockerfile
+      - .github/workflows/splunk-example.yml
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: splunk-example-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  splunk:
+    name: Splunk example
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_FILE: docker-compose.splunk.yml
+      # Starting Splunk's image means accepting Splunk's General Terms
+      # (https://www.splunk.com/en_us/legal/splunk-general-terms.html). This job
+      # runs a throwaway trial only to test the connector.
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      # The reports and the connector run every minute, so the check is quick.
+      SPLUNK_EXAMPLE_CRON: '* * * * *'
+      SYNC_INTERVAL_MINUTES: 1
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose build
+      - name: Start Splunk and set it up, then MongoDB, the app, the feeder and the connector
+        run: docker compose up -d
+      - name: Wait for the app
+        run: |
+          for attempt in $(seq 1 60); do
+            curl -fsS -o /dev/null http://localhost:3000/login && exit 0
+            sleep 3
+          done
+          exit 1
+      - name: Sign in
+        run: |
+          curl -fsS -c cookies.txt -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' \
+            -d '{"email":"admin@example.com","password":"splunk-demo-2026"}' \
+            http://localhost:3000/api/auth/sign-in/email > /dev/null
+      - name: Wait for the six reports, each with a run from Splunk
+        run: |
+          slugs="failed-logins-by-user web-5xx-error-rate firewall-denied-top-sources disk-space-over-85 privileged-group-changes forwarder-health-missing-hosts"
+          for attempt in $(seq 1 60); do
+            ready=0
+            for slug in $slugs; do
+              curl -fsS -b cookies.txt "http://localhost:3000/api/reports/$slug" -o "$slug.json" 2>/dev/null \
+                && jq -e '(.report.history | length) > 0 and .report.resultsRunAt != null' "$slug.json" > /dev/null \
+                && ready=$((ready + 1))
+            done
+            echo "$ready of 6 reports have results from Splunk"
+            [ "$ready" = 6 ] && exit 0
+            sleep 15
+          done
+          exit 1
+      - name: Check what Splunk returned
+        run: |
+          # The columns report-config expects, and many accounts over the threshold.
+          jq -e '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"] and (.report.rows | length) > 10' failed-logins-by-user.json
+          # Status rules on live data: web-03 is above the error budget, db-02's /data above 95%.
+          jq -e '.report.status == "warning"' web-5xx-error-rate.json
+          jq -e '.report.status == "warning"' disk-space-over-85.json
+          # The two hosts that went quiet.
+          jq -e '[.report.rows[][0]] as $hosts | ($hosts | any(. == "db-03")) and ($hosts | any(. == "app-07"))' forwarder-health-missing-hosts.json
+          jq -e '(.report.rows | length) > 0' firewall-denied-top-sources.json privileged-group-changes.json
+          for report in *.json; do jq -e '.report.status != "failed"' "$report" > /dev/null || { echo "$report failed"; exit 1; }; done
+      - name: Check the connector read Splunk, not the dummy data
+        run: docker compose exec -T mongo mongosh --quiet splunkevents --eval 'db.sync_state.findOne().mode' | grep -qx live
+      - name: Show the logs
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=150 splunk-setup feeder connector app
+          docker compose logs --tail=60 splunk
+      - name: Stop
+        if: always()
+        run: docker compose down -v

@@ -11,6 +11,7 @@ Company Splunk ──► sync worker (npm run sync) ──► MongoDB ──► 
 - The **web app never talks to Splunk.** It only reads MongoDB.
 - The **sync worker** is the only part that talks to Splunk. It asks for the scheduled reports and their latest results, and saves them in MongoDB.
 - Today the worker reads **fake Splunk** (the files in `lib/splunk/fixtures/`). Going live means pointing it at **real Splunk**. That's 4 settings in `.env.local`. No app code changes.
+- **To watch it work before you have access,** run the example with a test Splunk: [splunk-example.md](splunk-example.md). It's Splunk Enterprise's trial in Docker, with dummy reports, and the same connector.
 
 > **Splunk MCP is a separate thing.** The `splunk` MCP server in the Claude Code plugin lets Claude look inside Splunk while you work. The app doesn't use it, and you don't need it for live data. See "Optional: Splunk MCP for Claude Code" at the end.
 

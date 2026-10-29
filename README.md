@@ -117,6 +117,8 @@ Vercel deploys only `main` (`vercel.json`'s `git.deploymentEnabled`); other bran
 
 **Step-by-step guide:** [docs/connecting-live-splunk.md](docs/connecting-live-splunk.md) (work laptop setup, what to ask your Splunk admin, testing the token, troubleshooting). **Who sees which report:** [docs/report-access.md](docs/report-access.md). **The overall strategy** (AD sign-in, what to copy, RAG over past searches, learning from feedback, an agent with guardrails, anomaly detection): [docs/splunk-data-and-ai-strategy.md](docs/splunk-data-and-ai-strategy.md).
 
+**Try it with a real Splunk first:** [docs/splunk-example.md](docs/splunk-example.md) runs Splunk Enterprise's free trial in Docker, with dummy logs and scheduled reports, and the connector copying them into MongoDB through the REST API.
+
 In short, the mapping, access and UI code stay the same; only the worker's settings change:
 
 1. Create a Splunk service account with an authentication token, and share the scheduled reports with its role.
