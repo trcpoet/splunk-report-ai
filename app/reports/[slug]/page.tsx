@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChartBoundary from "@/components/ChartBoundary";
+import ExplainButton from "@/components/ExplainButton";
 import StatusBadge from "@/components/StatusBadge";
 import ResultsTable from "@/components/ResultsTable";
 import ReportActions from "@/components/ReportActions";
@@ -88,6 +89,7 @@ async function ReportDetails({ params }: Props) {
                 </div>
                 <h1 className="text-4xl max-sm:text-3xl">{report.title}</h1>
                 <p>{report.description}</p>
+                <ExplainButton slug={report.slug} title={report.title} className="btn-secondary btn-small" />
             </div>
 
             {report.statusMessage && (
@@ -175,7 +177,12 @@ async function ReportDetails({ params }: Props) {
                     </section>
 
                     <section className="flex-col-gap-3">
-                        <h2>Search query (SPL)</h2>
+                        <div className="flex flex-row flex-wrap items-baseline justify-between gap-2">
+                            <h2>Search query (SPL)</h2>
+                            <Link href={`/ai/spl?explain=${report.slug}`} className="text-sm text-primary hover:underline" transitionTypes={PAGE_TRANSITION}>
+                                Explain it step by step
+                            </Link>
+                        </div>
                         <pre className="spl"><code>{report.spl}</code></pre>
                     </section>
 

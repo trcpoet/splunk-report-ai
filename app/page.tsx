@@ -1,7 +1,8 @@
+import Briefing from "@/components/Briefing";
 import ExploreBtn from "@/components/ExploreBtn";
 import ReportBrowser from "@/components/ReportBrowser";
 import RunOutcomes from "@/components/RunOutcomes";
-import { OverviewSkeleton, ReportsSkeleton } from "@/components/Skeletons";
+import { BriefingSkeleton, OverviewSkeleton, ReportsSkeleton } from "@/components/Skeletons";
 import { PageTransition, Reveal } from "@/components/Transitions";
 import { getRunOutcomes, getSyncInfo, getVisibleReports } from "@/lib/dal";
 import { getCategories, getReportStats, toSummary } from "@/lib/reports";
@@ -62,6 +63,13 @@ async function Overview() {
                     {sync.mode === 'fixture' && ' · demo data'}
                 </p>
             )}
+
+            {/* Headline numbers, then what needs attention, then the trend, then the list. */}
+            <div className="mt-10">
+                <Reveal fallback={<BriefingSkeleton />}>
+                    <Briefing variant="home" />
+                </Reveal>
+            </div>
 
             {outcomes.length > 0 && (
                 <div className="mt-10">

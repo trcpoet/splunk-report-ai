@@ -48,6 +48,8 @@ Locally, MongoDB runs through Homebrew (`brew services start mongodb-community@8
 | `user`, `account`, `session` | logins, password hashes and sessions | Better Auth |
 | `chats` | Ask AI conversations, one document per chat with its questions and answers inside, owned by the user who started it | the Ask AI page ([ai.md](ai.md)) |
 | `ai_usage` | AI requests and tokens per user per day, for the daily limits (deleted after a week) | the Ask AI page |
+| `ai_summaries` | AI summaries for Explain and the briefing, written once and reused (deleted after 30 days) | the Ask AI endpoints |
+| `ai_feedback` | 👍 / 👎 on AI answers, summaries and briefing flags, one per user per item | the thumbs buttons |
 
 ## Looking at the data
 

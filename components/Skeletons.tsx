@@ -207,6 +207,24 @@ export const HistorySkeleton = () => (
     </Loading>
 )
 
+// The briefing: its headline, a few flagged reports and the summary.
+export const BriefingSkeleton = ({ variant = 'home' }: { variant?: 'home' | 'side' }) => (
+    <Loading label="Loading the briefing…" className={`briefing briefing-${variant}`}>
+        <span className="briefing-headline"><Line className="w-64" /></span>
+        <div className="briefing-group">
+            <span className="text-sm"><Line className="w-28" /></span>
+            <ul>
+                {range(2).map((i) => (
+                    <li key={i}>
+                        <span className="text-sm"><Line className="w-3/4" /></span>
+                        <span className="text-sm"><Line className="w-full" /></span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    </Loading>
+)
+
 // Holds the user menu's place in the navbar while the session is read, so the
 // links next to it don't jump. Hidden on the sign-in page, which has no menu.
 export const UserMenuSkeleton = () => (

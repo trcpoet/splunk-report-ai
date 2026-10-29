@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import { ArrowUp, RotateCcw, Square, SquarePen } from "lucide-react";
 import ChatAnswer, { type ReportChipData } from "@/components/ChatAnswer";
 import CopyButton from "@/components/CopyButton";
+import FeedbackButtons from "@/components/FeedbackButtons";
 import SplAnswer from "@/components/SplAnswer";
 import { track } from "@/lib/analytics";
 import { replaceReportMarkers } from "@/lib/ai/report-links";
@@ -33,6 +34,8 @@ type Props = {
     splunkWebUrl?: string;
     // Demo accounts are shared, so their chats are too.
     demo?: boolean;
+    // The viewer's 👍 / 👎 on the answers already saved, by message id.
+    votes?: Record<string, 'up' | 'down'>;
 };
 
 const PLACEHOLDERS: Record<ChatKind, string> = {
@@ -48,7 +51,7 @@ const MAX_QUESTION = 2000;
 // /ai/reports?chat=<id> is that saved chat. A new chat gets its address once
 // its first answer is saved. Each question and answer are saved together by
 // the server, so an answer that is stopped or fails isn't saved.
-const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWebUrl, demo = false }: Props) => {
+const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWebUrl, demo = false, votes = {} }: Props) => {
     const router = useRouter();
     const pathname = usePathname();
     // Next keeps recently visited pages, hidden, so ids must be unique per view.
@@ -283,8 +286,14 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                                 Try again
                             </button>
                         )}
-                        {!message.state && !message.spl && (
-                            <CopyButton text={replaceReportMarkers(message.text, (slug) => reports[slug]?.title ?? slug)} label="Copy" className="btn-ghost" />
+                        {/* A saved answer: the server's id has replaced the one it had on its way. */}
+                        {!message.state && !message.id.startsWith('answer-') && (
+                            <div className="answer-actions">
+                                {!message.spl && (
+                                    <CopyButton text={replaceReportMarkers(message.text, (slug) => reports[slug]?.title ?? slug)} label="Copy" className="btn-ghost" />
+                                )}
+                                <FeedbackButtons kind="answer" targetId={message.id} initial={votes[message.id]} />
+                            </div>
                         )}
                     </div>
                 ))}

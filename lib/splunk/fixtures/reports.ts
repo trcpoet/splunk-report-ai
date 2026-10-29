@@ -147,10 +147,13 @@ export const reports: FixtureReport[] = [
         runsPerWeek: 42,
         timeRange: 'Last 4 hours',
         index: 'firewall (pan:traffic)',
-        lastRun: '2026-10-02T08:00:00Z',
-        nextRun: '2026-10-02T12:00:00Z',
+        lastRun: '2026-10-02T12:00:00Z',
+        nextRun: '2026-10-02T16:00:00Z',
         status: 'success',
-        resultCount: 25,
+        // A spike in the 12:00 run: about 25 sources usually cross the threshold.
+        // The Explain panel and the briefing flag it as unusual (lib/insights.ts).
+        // It's one run later than before, so a sync adds it as a new run.
+        resultCount: 61,
         recipients: ['netsec@example.com', 'soc-tier1@example.com'],
         tags: ['security', 'network', 'firewall'],
         spl: `index=firewall sourcetype=pan:traffic action=denied
@@ -171,7 +174,7 @@ export const reports: FixtureReport[] = [
             ['203.0.113.12', 4407, 12, 'dmz'],
             ['192.0.2.58', 3981, 245, 'dmz, guest'],
         ],
-        history: buildHistory('2026-10-02T08:00:00Z', 4, 'sssssss', 25, 64),
+        history: buildHistory('2026-10-02T12:00:00Z', 4, 'sssssss', 25, 64),
     },
     {
         slug: 'license-usage-by-index',
