@@ -27,12 +27,12 @@ export const SplAnswerSchema = z.object({
 export type SplAnswer = z.infer<typeof SplAnswerSchema>;
 export type SplStep = SplAnswer['steps'][number];
 
-// What a parser said about a search, checked before it's shown (lib/ai/validate.ts):
-// Splunk's own parser when the app can reach it, otherwise the demo parser.
-export type SplValidation = { ok: boolean; by: 'splunk' | 'demo'; message?: string };
+// What the built-in SPL checker said about a search before it was shown
+// (lib/ai/validate.ts).
+export type SplValidation = { ok: boolean; message?: string };
 
 // An answer as the app stores and shows it: Gemini's answer, plus what the app
-// adds: the parser's check, and the titles of the example searches it was
+// adds: the SPL checker's result, and the titles of the example searches it was
 // written from (lib/spl-examples.ts).
 export type StoredSplAnswer = SplAnswer & { validation?: SplValidation; basedOn?: string[] };
 

@@ -70,7 +70,7 @@ Status rules and highlight functions look columns up by header name, so they mus
 
 ## Live Splunk
 
-Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLUNK_TOKEN` and `SPLUNK_TZ` for the worker only. The token is for a service account the reports are shared with, and must never reach the web app or a `NEXT_PUBLIC_` variable. The web app may have its own `SPLUNK_PARSER_TOKEN` instead, for a parse-only role with no index access: Write SPL then checks searches with Splunk's parser (`lib/splunk/parser.ts`), which never runs them. The worker calls, with `output_mode=json`:
+Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLUNK_TOKEN` and `SPLUNK_TZ` for the worker only. The token is for a service account the reports are shared with, and must never reach the web app or a `NEXT_PUBLIC_` variable. The worker calls, with `output_mode=json`:
 
 | Data | Endpoint |
 |---|---|

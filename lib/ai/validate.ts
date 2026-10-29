@@ -1,15 +1,12 @@
 import { pipeCommands, type SplValidation } from '@/lib/ai/spl';
-import { splunkParse } from '@/lib/splunk/parser';
 
-// Checks a Write SPL search before it's shown, without running it:
-// - with Splunk's own parser, when the web app has a parse-only token
-//   (SPLUNK_BASE_URL and SPLUNK_PARSER_TOKEN; see lib/splunk/parser.ts);
-// - otherwise, or when Splunk can't be reached, with demoParse below, a small
-//   parser that catches the usual mistakes.
-// Server code: it reads the token from the environment.
+// Checks a Write SPL search before it's shown, without running it. It catches
+// what Splunk rejects most often: unknown commands, quotes or brackets that
+// never close, and a pipe with nothing after it. A search that passes can still
+// fail in Splunk (an unknown field, a macro, an app's own command).
 
 // Splunk's built-in search commands, plus the Machine Learning Toolkit's. Apps
-// can add their own commands, which only Splunk's parser knows.
+// can add their own commands, which only Splunk knows.
 const SPL_COMMANDS = new Set([
     'abstract', 'accum', 'addcoltotals', 'addinfo', 'addtotals', 'analyzefields', 'anomalies', 'anomalousvalue',
     'anomalydetection', 'append', 'appendcols', 'appendpipe', 'apply', 'arules', 'associate', 'audit', 'autoregress',
@@ -29,8 +26,6 @@ const SPL_COMMANDS = new Set([
     'tojson', 'top', 'transaction', 'transpose', 'trendline', 'tscollect', 'tstats', 'typeahead', 'typelearner',
     'typer', 'union', 'uniq', 'untable', 'walklex', 'where', 'x11', 'xmlkv', 'xmlunescape', 'xpath', 'xyseries',
 ]);
-
-export type ParseResult = { ok: true } | { ok: false; message: string };
 
 // Quotes, brackets and parentheses that never close (or close too early).
 function unbalanced(query: string): string | null {
@@ -56,10 +51,9 @@ function unbalanced(query: string): string | null {
     return null;
 }
 
-// The demo parser: what Splunk's parser would reject most often. A search that
-// passes may still fail in Splunk (an unknown field, a macro, an app's own
-// command), so the page says which parser checked it.
-export function demoParse(query: string): ParseResult {
+// The built-in SPL checker. Write SPL stores its result with each answer, and
+// the page shows it (components/SplAnswer.tsx).
+export function validateSpl(query: string): SplValidation {
     const text = query.trim();
     if (!text) return { ok: false, message: 'The search is empty.' };
 
@@ -75,23 +69,4 @@ export function demoParse(query: string): ParseResult {
     if (unknown) return { ok: false, message: `Unknown search command '${unknown}'.` };
 
     return { ok: true };
-}
-
-type ValidateOptions = { env?: Record<string, string | undefined>; fetchImpl?: typeof fetch };
-
-export async function validateSpl(query: string, { env = process.env, fetchImpl }: ValidateOptions = {}): Promise<SplValidation> {
-    const baseUrl = env.SPLUNK_BASE_URL;
-    const token = env.SPLUNK_PARSER_TOKEN;
-
-    if (baseUrl && token) {
-        try {
-            const result = await splunkParse({ baseUrl, token, query, fetchImpl });
-            return result.ok ? { ok: true, by: 'splunk' } : { ok: false, by: 'splunk', message: result.message };
-        } catch (error) {
-            console.error("Couldn't reach Splunk's parser, so the demo parser checked the search:", error);
-        }
-    }
-
-    const result = demoParse(query);
-    return result.ok ? { ok: true, by: 'demo' } : { ok: false, by: 'demo', message: result.message };
 }

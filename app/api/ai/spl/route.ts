@@ -16,7 +16,7 @@ export const maxDuration = 60;
  * of the reports the signed-in person can see, and the past searches most
  * like the request (lib/spl-examples.ts). Answers with
  * { chatId, message }, where message.spl holds the search step by step and
- * what a parser said about it (lib/ai/validate.ts). The app never runs the
+ * what the built-in SPL checker said about it (lib/ai/validate.ts). The app never runs the
  * search.
  */
 export async function POST(request: Request) {
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         // Checked before it's shown, so a search that won't parse says so.
         const spl: StoredSplAnswer = {
             ...answer,
-            validation: await validateSpl(queryFromSteps(answer.steps)),
+            validation: validateSpl(queryFromSteps(answer.steps)),
             ...(examples && examples.length > 0 ? { basedOn: examples.map(({ title }) => title) } : {}),
         };
 

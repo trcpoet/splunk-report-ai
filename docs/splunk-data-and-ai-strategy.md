@@ -12,7 +12,7 @@ How to bring Splunk data into SplunkEvents, and how to make its AI write better 
 1. **Collect** through Splunk's REST API into MongoDB, with a **service-account token**, not people's AD logins.
 2. **The REST API, not the JavaScript SDK.** The SDKs wrap the same API. Use the Python SDK only inside Python jobs.
 3. **Copy results and run statistics, not raw logs.** Raw events stay in Splunk.
-4. **RAG first.** Retrieve similar past searches and real field names for each request. **Check every search with a parser** before showing it.
+4. **RAG first.** Retrieve similar past searches and real field names for each request. **Check every search** before showing it.
 5. **"Supervised" learning means feedback and evaluation now, and fine-tuning later**, once there are hundreds of verified examples.
 6. **"Unsupervised" learning runs inside Splunk**, where the logs are. Only the scores come back.
 7. **An agent only with read-only tools, limits and a person's approval.** Approved searches become scheduled reports.
@@ -31,8 +31,8 @@ sync worker ──► MongoDB: reports, runs, results, votes, ML scores, past se
    ML job ─────────┘                  ▼
                            SplunkEvents web app (access by the app's groups)
                              ├─ Ask about reports: AI over the stored reports
-                             └─ Write SPL: similar past searches ─► AI ─► Splunk's parser
-                                           (parse-only token) ─► you run it in Splunk
+                             └─ Write SPL: similar past searches ─► AI ─► SPL check
+                                           ─► you run it in Splunk
 ```
 
 ## 1. Collecting the data
@@ -44,7 +44,6 @@ People sign in to Splunk Web with AD, through LDAP or through single sign-on (SA
 1. **A service account,** with a role that can read the scheduled reports the app shows, and nothing that writes.
 2. **An authentication token** for it: Settings → Tokens, or the `services/authorization/tokens` REST endpoint. This is the sync worker's `SPLUNK_TOKEN`.
    - With SAML single sign-on, tokens only work when the identity provider answers attribute queries, or when Splunk's authentication extensions supply the user's details. That is the admins' setup, and on Splunk Cloud only some identity providers are supported.
-3. **Optional: a second token,** for a parse-only role with no index access. It's the web app's `SPLUNK_PARSER_TOKEN`, so Write SPL can check searches with Splunk's own parser.
 
 Who sees which report stays in the app, in its `user_access` groups ([report-access.md](report-access.md)). Later, the app's own sign-in can use the company's single sign-on, and read people's AD groups into `user_access`.
 
@@ -75,7 +74,7 @@ RAG (retrieval-augmented generation) means finding the most relevant examples an
 - **Real field names:**
   - **Where they come from:** in live mode, summarize each index and sourcetype on a schedule with `| fieldsummary` or `| tstats`.
   - **Why it matters:** invented field names are the most common reason a generated search is wrong.
-- **Check before showing.** Every search goes through Splunk's parser, or the demo parser, before you see it ([ai.md](ai.md)). A search that doesn't parse offers "Fix the error".
+- **Check before showing.** Every search goes through a built-in SPL checker before you see it ([ai.md](ai.md)). A search that fails offers "Fix the error".
 
 ## 3. "Supervised" learning: feedback and evaluation
 
@@ -129,7 +128,7 @@ Keep PostHog for how people use the app, such as which reports they open and whe
 
 ## The order to build in
 
-1. **Done:** each Write SPL search is checked with a parser before it's shown.
+1. **Done:** each Write SPL search is checked before it's shown.
 2. **Done:** RAG for Write SPL, with "Save as example", and `npm run eval:spl` to measure it ([ai.md](ai.md#how-write-spl-learns-from-your-searches)).
 3. Real field names from `| fieldsummary`, in live mode.
 4. The evaluation set, scored with a real key on a schedule.
@@ -139,7 +138,7 @@ Keep PostHog for how people use the app, such as which reports they open and whe
 
 - **This repo is public** and holds dummy data only.
 - **At work,** use the work copy of the repo, with:
-  - the service-account and parse-only tokens;
+  - the service-account token;
   - the company's approved LLM in `lib/ai/llm.ts`;
   - approval for copying report results into MongoDB and sending them to an LLM.
 

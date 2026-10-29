@@ -36,7 +36,7 @@ export const MAX_CHAT_MESSAGES = 100;
 
 const SplStepSchema = new Schema({ code: String, explanation: String }, { _id: false });
 
-const SplValidationSchema = new Schema({ ok: Boolean, by: { type: String, enum: ['splunk', 'demo'] }, message: String }, { _id: false });
+const SplValidationSchema = new Schema({ ok: Boolean, message: String }, { _id: false });
 
 const SplAnswerSchema = new Schema<StoredSplAnswer>(
     {
