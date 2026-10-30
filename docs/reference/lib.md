@@ -22,6 +22,7 @@ Files marked **server-only** start with `import 'server-only'`, so importing the
 | `getScheduleLoad()` | `ScheduleLoad` | How many of the viewer's reports' searches run at once, by time of day, in the schedules' time zone (`lib/schedule-load.ts`). |
 | `getSyncInfo()` | `{ mode, lastSuccessAt, lastError, timeZone }` or `null` | For "Data as of", for `aiStatus()` (live data keeps AI off), and the scheduler chart's time zone (`UTC` until a sync saves one). |
 
+- **Once per request:** `getVisibleReports` and the run counts behind the two home page views are wrapped in React `cache()`, since the home page's parts each ask for them.
 - **Behind them:** five cached loaders, not exported, each with `'use cache'`, tag `reports` and `cacheLife('minutes')`.
   - `loadReports` loads every enabled report once for all viewers, with the ML scores attached as `modelRun` and `attention`.
   - The others are `loadResults(sid)`, `loadRunCounts()`, `loadSyncInfo()` and `loadScheduleLoad(schedules, timeZone)`. The last one is cached per set of reports, because laying out a month of runs takes some milliseconds.
@@ -167,27 +168,30 @@ Plain statistics, with no AI and no ML library.
 
 The runs behind the home page's "Scheduled runs per day" chart and its run health grid.
 - **`lastDays(counts, days)`:** the UTC days up to the newest day with a run. Both views use it, so they show the same days.
-- **`countsOn(counts, day, slug?)`:** a day's runs by outcome, for one report or all.
+- **`totalsByDay(counts, days)`:** each day's runs by outcome, all reports together.
 - **`worstStatus(counts)`:** failed beats warning beats healthy; no runs is `null`.
 - **`runHealthRows(reports, counts, days)`:** a row per report, failures first, then warnings, then by title.
+- **One pass:** the counts cover the whole retention period, so both add them up in a single pass over the days shown, not once per cell.
 - **Also exports:** the `RunCount` type, which `dal.ts`'s `loadRunCounts()` returns.
 - **Tests:** `run-health.test.ts`.
 
 ### `schedule-load.ts` (pure)
 
 `scheduleLoad(reports, timeZone, slotMinutes = 5)`: how many of the reports' searches run at once, by time of day, for the "When searches run" chart.
-- **How:** each report's cron is laid out over a reference month, January 2024. It starts on a Monday and has no daylight-saving change in most zones, so weekly and monthly schedules count. Each run lasts the report's usual run time: the `median` of its finished runs in `history`, in whole minutes.
+- **How:** each report's cron is laid out over a reference month, January 2024. It starts on a Monday, so weekly and monthly schedules count. Each run lasts the report's usual run time: the `median` of its finished runs in `history`, in whole minutes. Runs from December 31 carry on past midnight into the 1st.
+- **In UTC, whatever the time zone:** crons are clock times, so with no daylight-saving change, every zone gives the same times of day. The zone only labels the chart. croner's `utcOffset: 0` is also about 30 times faster than its `timezone` option.
 - **The result:** 288 five-minute slots, each with the most searches at once on its busiest day and the reports running then, plus:
-  - `busiest`: the two highest counts, with every time of day they happen. Neighboring slots are joined.
-  - `onTheHour` of `total`: reports that start at :00.
-- **Speed:** croner's `utcOffset` with January's offset, which is about 30 times faster than its `timezone` option and gives the same runs. A cron croner can't read is skipped.
+  - `busiest`: the two highest counts, with every time of day they happen, and on which days in words ("Mondays", "weekdays", "once a month"). Neighboring slots are joined only for the same searches on the same days.
+  - `onTheHour` of `total`: reports that only ever start at :00. A search every few minutes doesn't count, since moving it wouldn't help.
+- **Left out:** a cron croner can't read, and a schedule that never runs in January (yearly, or only in other months).
 - **Tests:** `schedule-load.test.ts`, with the demo reports.
 
 ### `format.ts` (pure)
 
 Dates and numbers, always in UTC with fixed English month names, so the server and the browser print the same text.
-- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `parseNumber`, `plural`, `firstLine`.
+- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `plural`, `firstLine`.
 - **`formatClock(minutes)`** writes minutes after midnight as a time of day: 480 is "08:00".
+- **`formatList(items)`** joins names as "a, b, and c" (`Intl.ListFormat`), for the report page's chart headings and the scheduler chart.
 - **`parseNumber`** reads Splunk's text numbers ("$1,234", "1.84%", "12G").
 - **Rule:** use these instead of `toLocaleString`, which differs between server and browser.
 

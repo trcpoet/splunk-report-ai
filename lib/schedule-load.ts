@@ -1,4 +1,5 @@
 import { Cron } from 'croner';
+import { plural } from '@/lib/format';
 import { median } from '@/lib/insights';
 import type { ReportListItem } from '@/lib/reports';
 
@@ -7,14 +8,17 @@ import type { ReportListItem } from '@/lib/reports';
 // (components/SchedulerLoad.tsx). Pure, so the tests share it.
 //
 // Each report's runs come from its cron, laid out over a reference month:
-// January 2024 starts on a Monday and has no daylight-saving change in most
-// time zones, so daily, weekly and monthly schedules all show. Each run lasts
-// the report's usual run time, in whole minutes. The minute-by-minute count is
-// then folded into one day by keeping each minute's busiest day, in slots of a
-// few minutes.
+// January 2024, which starts on a Monday, so daily, weekly and monthly
+// schedules all show. Each run lasts the report's usual run time, in whole
+// minutes. The minute-by-minute count is then folded into one day by keeping
+// each minute's busiest day, in slots of a few minutes.
+//
+// Crons are clock times, so they're laid out in UTC: with no daylight-saving
+// change, every time zone gives the same times of day. The zone only labels
+// the chart. (croner's utcOffset is also far faster than its timezone option.)
 
 export type LoadSlot = {
-    // Minutes after midnight, in the schedules' time zone.
+    // Minutes after midnight.
     minute: number;
     // The most searches running at once in the slot, on its busiest day.
     running: number;
@@ -22,14 +26,13 @@ export type LoadSlot = {
     reports: string[];
 };
 
-// A stretch of the day with the same number of searches at once.
+// A stretch of the day with the same searches running at once.
 export type BusyTime = {
     minute: number;
-    // Where it ends: a slot later, or more when the next slots are as busy.
+    // Where it ends: a slot later, or more when the next slots match.
     until: number;
-    // When it happens, if not every day: "Mondays", or "5 days a month".
+    // When it happens, if not every day: "Mondays", "weekdays", "once a month"...
     on: string | null;
-    // The reports running at its start.
     reports: string[];
 };
 
@@ -45,7 +48,8 @@ export type ScheduleLoad = {
     // The two highest numbers of searches at once (2 or more), most first,
     // each with every time of day it happens.
     busiest: BusyTier[];
-    // Reports with a run that starts on the hour, of the `total` whose cron could be read.
+    // Reports that only ever start on the hour, of the `total` that run in the
+    // reference month.
     onTheHour: number;
     total: number;
 };
@@ -57,33 +61,49 @@ const DAY_MINUTES = 1440;
 const MONTH_DAYS = 31;
 const MONTH_MINUTES = MONTH_DAYS * DAY_MINUTES;
 const MINUTE_MS = 60_000;
-// Midnight at the start of Monday, January 1, 2024, read as UTC.
+// Midnight at the start of Monday, January 1, 2024.
 const MONTH_START = Date.UTC(2024, 0, 1);
 const WEEKDAYS = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
 
-// How far the time zone's clocks are ahead of UTC in January.
-function offsetMs(timeZone: string) {
-    const at = MONTH_START + 14 * DAY_MINUTES * MINUTE_MS;
-    const parts = Object.fromEntries(
-        new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
-            .formatToParts(new Date(at))
-            .map(({ type, value }) => [type, Number(value)]),
-    );
-    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) - at;
+const sameItems = <T>(a: T[], b: T[]) => a.length === b.length && a.every((item, i) => item === b[i]);
+
+// The days of the month (0 is Monday the 1st) that fall on these weekdays (0 is Monday).
+const daysOn = (weekdays: number[]) => Array.from({ length: MONTH_DAYS }, (_, day) => day).filter((day) => weekdays.includes(day % 7));
+
+// How to say which days of the month a time is that busy on; null for every day.
+function daysText(days: number[]) {
+    if (days.length === MONTH_DAYS) return null;
+    if (sameItems(days, daysOn([0, 1, 2, 3, 4]))) return 'weekdays';
+    if (sameItems(days, daysOn([5, 6]))) return 'weekends';
+
+    const weekday = WEEKDAYS.findIndex((_, i) => sameItems(days, daysOn([i])));
+    if (weekday >= 0) return WEEKDAYS[weekday];
+
+    return days.length === 1 ? 'once a month' : `${plural(days.length, 'day', 'days')} a month`;
 }
 
-// The minutes of the month, from midnight on the 1st, when a cron starts.
-// January's fixed offset stands in for the time zone: the same runs, about 30
-// times faster than croner's timezone option. null when the cron can't be read.
-function startMinutes(cron: string, offset: number): number[] | null {
+// The zone's name if the runtime knows it, otherwise UTC.
+function knownZone(timeZone: string) {
     try {
-        const job = new Cron(cron, { utcOffset: offset / MINUTE_MS, paused: true });
-        const start = MONTH_START - offset;
-        const end = start + MONTH_MINUTES * MINUTE_MS;
+        new Intl.DateTimeFormat('en-US', { timeZone }).format(0);
+        return timeZone;
+    } catch {
+        return 'UTC';
+    }
+}
+
+// The minutes, from midnight on January 1, when a cron starts in the month or
+// the day before, whose late runs can carry on past midnight. null when the
+// cron can't be read.
+function startMinutes(cron: string): number[] | null {
+    try {
+        const job = new Cron(cron, { utcOffset: 0, paused: true });
+        const from = MONTH_START - DAY_MINUTES * MINUTE_MS;
+        const end = MONTH_START + MONTH_MINUTES * MINUTE_MS;
         const minutes: number[] = [];
 
-        for (let next = job.nextRun(new Date(start - 1)); next && next.getTime() < end; next = job.nextRun(next)) {
-            minutes.push(Math.round((next.getTime() - start) / MINUTE_MS));
+        for (let next = job.nextRun(new Date(from - 1)); next && next.getTime() < end; next = job.nextRun(next)) {
+            minutes.push(Math.round((next.getTime() - MONTH_START) / MINUTE_MS));
         }
         return minutes;
     } catch {
@@ -118,26 +138,25 @@ function runsAt({ starts, length }: Placed, minute: number) {
 }
 
 export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes = 5): ScheduleLoad {
-    let zone = timeZone;
-    let offset = 0;
-    try {
-        offset = offsetMs(zone);
-    } catch {
-        zone = 'UTC';
-    }
-
+    // A schedule that never runs in January (yearly, or only in other months)
+    // has nothing to place, so it isn't counted.
     const placed: Placed[] = reports.flatMap(({ title, cron, history }) => {
-        const starts = startMinutes(cron, offset);
-        return starts ? [{ title, starts, length: usualMinutes(history) }] : [];
+        const starts = startMinutes(cron);
+        return starts?.some((start) => start >= 0) ? [{ title, starts, length: usualMinutes(history) }] : [];
     });
 
     // Searches running in each minute of the month: +1 where a run starts,
-    // -1 where it ends, then a running total.
+    // -1 where it ends, then a running total. A run from the day before counts
+    // from midnight; one that would run past the month's end stops there.
     const change = new Int32Array(MONTH_MINUTES + 1);
     for (const { starts, length } of placed) {
         for (const start of starts) {
-            change[start] += 1;
-            change[Math.min(start + length, MONTH_MINUTES)] -= 1;
+            const from = Math.max(start, 0);
+            const to = Math.min(start + length, MONTH_MINUTES);
+            if (to <= from) continue;
+
+            change[from] += 1;
+            change[to] -= 1;
         }
     }
 
@@ -173,11 +192,7 @@ export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes 
     // The days of the month that reach the peak at that minute of the day.
     const on = (at: number, most: number) => {
         const minute = at % DAY_MINUTES;
-        const days = Array.from({ length: MONTH_DAYS }, (_, day) => day).filter((day) => running[day * DAY_MINUTES + minute] === most);
-        if (days.length === MONTH_DAYS) return null;
-
-        const weekdays = new Set(days.map((day) => day % 7));
-        return weekdays.size === 1 && days.length >= 4 ? WEEKDAYS[days[0] % 7] : `${days.length} days a month`;
+        return daysText(Array.from({ length: MONTH_DAYS }, (_, day) => day).filter((day) => running[day * DAY_MINUTES + minute] === most));
     };
 
     const counts = [...new Set(slots.map(({ running: most }) => most).filter((most) => most >= 2))].sort((a, b) => b - a).slice(0, 2);
@@ -186,22 +201,26 @@ export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes 
         slots.forEach((slot, i) => {
             if (slot.running !== count) return;
 
+            const when = on(peaks[i].at, count);
             const last = times.at(-1);
-            if (last && last.until === slot.minute) {
+            // Joined only when it's the same searches, on the same days.
+            if (last && last.until === slot.minute && last.on === when && sameItems(last.reports, slot.reports)) {
                 last.until += slotMinutes;
             } else {
-                times.push({ minute: slot.minute, until: slot.minute + slotMinutes, on: on(peaks[i].at, count), reports: slot.reports });
+                times.push({ minute: slot.minute, until: slot.minute + slotMinutes, on: when, reports: slot.reports });
             }
         });
         return { running: count, times };
     });
 
     return {
-        timeZone: zone,
+        timeZone: knownZone(timeZone),
         slotMinutes,
         slots,
         busiest,
-        onTheHour: placed.filter(({ starts }) => starts.some((start) => start % 60 === 0)).length,
+        // Only reports that always start on the hour: moving those spreads the
+        // load. One that runs every few minutes reaches :00 wherever it starts.
+        onTheHour: placed.filter(({ starts }) => starts.filter((start) => start >= 0).every((start) => start % 60 === 0)).length,
         total: placed.length,
     };
 }

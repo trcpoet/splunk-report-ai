@@ -67,6 +67,11 @@ export const formatDuration = (seconds: number) =>
 // "1 report", "3 reports".
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
+const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
+
+// "a, b, and c".
+export const formatList = (items: string[]) => LIST.format(items);
+
 // The first line of some text, shortened to `max` characters, for titles.
 export const firstLine = (text: string, max = 80) => {
     const line = text.trim().split('\n')[0].replace(/\s+/g, ' ');

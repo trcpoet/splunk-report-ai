@@ -5,7 +5,7 @@ import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/
 import ChartBoundary from "@/components/ChartBoundary";
 import ResultsTable from "@/components/ResultsTable";
 import { AXIS_TICK, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, TOOLTIP_CLASS, X_TICK_MARGIN } from "@/lib/chart-theme";
-import { formatClock, plural } from "@/lib/format";
+import { formatClock, formatList, plural } from "@/lib/format";
 import type { BusyTime, LoadSlot, ScheduleLoad } from "@/lib/schedule-load";
 
 // One series, so one color, the accent: not a status color, since a busy
@@ -13,6 +13,8 @@ import type { BusyTime, LoadSlot, ScheduleLoad } from "@/lib/schedule-load";
 const config = {
     running: { label: 'Running at once', color: 'var(--color-primary)' },
 } satisfies ChartConfig;
+
+const DAY_MINUTES = 1440;
 
 // Every 3 hours, from midnight to midnight.
 const TICKS = Array.from({ length: 9 }, (_, i) => i * 180);
@@ -23,15 +25,17 @@ const ACTIVE_DOT = { r: 4, strokeWidth: 2, stroke: 'var(--color-dark-100)', fill
 const MAX_NAMES = 5;
 const MAX_TIMES = 8;
 
-// "a", "a and b", "a, b and c"; past `max`, "a, b and 3 more".
-function listed(items: string[], max: number, more: (count: number) => string) {
-    if (items.length > max) return `${items.slice(0, max).join(', ')} and ${more(items.length - max)}`;
-    return items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : (items[0] ?? '');
-}
+// "a, b, and c"; past `max`, "a, b, and 3 more".
+const listed = (items: string[], max: number, more: (count: number) => string) =>
+    formatList(items.length > max ? [...items.slice(0, max), more(items.length - max)] : items);
 
 const names = (reports: string[]) => listed(reports, MAX_NAMES, (count) => `${count} more`);
 
-const slotTime = (minute: number, slotMinutes: number) => `${formatClock(minute)}–${formatClock(minute + slotMinutes)}`;
+// The closing point at midnight shows as the last slot.
+const slotTime = (minute: number, slotMinutes: number) => {
+    const start = Math.min(minute, DAY_MINUTES - slotMinutes);
+    return `${formatClock(start)}–${formatClock(start + slotMinutes)}`;
+};
 
 // "08:00 on Mondays", or "06:00–06:15" when the next slots are as busy.
 const busyTime = ({ minute, until, on }: BusyTime, slotMinutes: number) =>
@@ -59,6 +63,9 @@ const SchedulerLoad = ({ load }: { load: ScheduleLoad }) => {
     const { slots, slotMinutes, busiest, onTheHour, total, timeZone } = load;
     const busy = slots.filter(({ running }) => running > 0);
     const timeColumn = `Time (${timeZone})`;
+    // A step runs from its point to the next one, so the last slot needs a
+    // closing point at midnight to be drawn.
+    const data = [...slots, { ...slots[slots.length - 1], minute: DAY_MINUTES }];
 
     return (
         <figure className="chart-card">
@@ -69,12 +76,12 @@ const SchedulerLoad = ({ load }: { load: ScheduleLoad }) => {
 
             <ChartBoundary>
                 <ChartContainer config={config} className={CHART_CLASS} style={{ height: 220 }} aria-label="Step chart of how many searches run at once through the day">
-                    <AreaChart data={slots} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+                    <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
                         <CartesianGrid vertical={false} stroke={GRID_STROKE} />
                         <XAxis
                             dataKey="minute"
                             type="number"
-                            domain={[0, 1440]}
+                            domain={[0, DAY_MINUTES]}
                             ticks={TICKS}
                             tickFormatter={formatClock}
                             interval="preserveStartEnd"

@@ -8,7 +8,7 @@ import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import type { Cell, ChartThreshold, ModelRun, ReportChart, ReportHighlight, ReportListItem, RunHealth, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
-import { countsOn, lastDays, runHealthRows, type RunCount } from '@/lib/run-health';
+import { lastDays, runHealthRows, totalsByDay, type RunCount } from '@/lib/run-health';
 import { scheduleLoad, type ScheduleLoad } from '@/lib/schedule-load';
 
 // The data access layer: pages and API routes get report data only from here,
@@ -217,13 +217,15 @@ async function loadScheduleLoad(schedules: Pick<ReportListItem, 'title' | 'cron'
 // ---------------------------------------------------------------------------
 // What the signed-in user may see
 
-export async function getVisibleReports(): Promise<ReportListItem[]> {
+// Wrapped in React cache(): the home page's parts each ask for the reports,
+// and one request filters them once.
+export const getVisibleReports = cache(async (): Promise<ReportListItem[]> => {
     const viewer = await getViewer();
 
     return (await loadReports())
         .filter(({ allowedGroups }) => canView(viewer, allowedGroups))
         .map(({ report }) => report);
-}
+});
 
 // A report the viewer may not see comes back as null, the same as a missing
 // one, so its name doesn't leak.
@@ -249,19 +251,19 @@ export async function getVisibleReportsWithResults(): Promise<SplunkReport[]> {
     }));
 }
 
-// The run counts of the viewer's reports.
-async function visibleRunCounts(): Promise<{ reports: ReportListItem[]; counts: RunCount[] }> {
+// The run counts of the viewer's reports, once per request for both views below.
+const visibleRunCounts = cache(async (): Promise<{ reports: ReportListItem[]; counts: RunCount[] }> => {
     const reports = await getVisibleReports();
     const visible = new Set(reports.map(({ slug }) => slug));
 
     return { reports, counts: (await loadRunCounts()).filter(({ slug }) => visible.has(slug)) };
-}
+});
 
 // Runs per day by outcome across the viewer's reports, for the days up to the newest run.
 export async function getRunOutcomes(days = 7): Promise<RunOutcomeDay[]> {
     const { counts } = await visibleRunCounts();
 
-    return lastDays(counts, days).map((day) => ({ day, ...countsOn(counts, day) }));
+    return totalsByDay(counts, lastDays(counts, days));
 }
 
 // The same days, per report: the home page's run health grid.

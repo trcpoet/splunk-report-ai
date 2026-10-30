@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { formatClock, parseNumber } from '@/lib/format';
+import { formatClock, formatList, parseNumber } from '@/lib/format';
 
 describe('parseNumber', () => {
     test('reads numbers that Splunk sent as formatted text', () => {
@@ -29,5 +29,13 @@ describe('parseNumber', () => {
 describe('formatClock', () => {
     test('shows minutes after midnight as a time of day', () => {
         assert.deepEqual([0, 75, 480, 1435, 1440].map(formatClock), ['00:00', '01:15', '08:00', '23:55', '24:00']);
+    });
+});
+
+describe('formatList', () => {
+    test('joins names the way the report page does', () => {
+        assert.equal(formatList(['Disk']), 'Disk');
+        assert.equal(formatList(['Disk', 'Web']), 'Disk and Web');
+        assert.equal(formatList(['Disk', 'Web', 'VPN']), 'Disk, Web, and VPN');
     });
 });
