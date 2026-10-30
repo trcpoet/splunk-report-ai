@@ -1,0 +1,19 @@
+SplunkEvents is installed as "{{ .Release.Name }}".
+
+{{- if or .Values.route.enabled .Values.ingress.enabled }}
+
+Open {{ .Values.url }}
+{{- else }}
+
+Nothing exposes it yet. Set route.enabled (OpenShift) or ingress.enabled, or try it with:
+  kubectl port-forward service/{{ include "splunk-events.fullname" . }}-web 3000:3000
+{{- end }}
+
+The connector copies {{ if eq .Values.connector.splunk.mode "live" }}your Splunk's scheduled reports{{ else }}the dummy reports{{ end }} into MongoDB on the schedule "{{ .Values.connector.schedule }}". To run it now:
+  kubectl create job --from=cronjob/{{ include "splunk-events.fullname" . }}-connector {{ include "splunk-events.fullname" . }}-sync-now
+{{- if .Values.demo.enabled }}
+
+The demo accounts are set up after each install and upgrade.
+{{- end }}
+
+See docs/kubernetes.md.

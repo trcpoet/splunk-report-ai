@@ -1,0 +1,29 @@
+# An example for an OpenShift cluster, with placeholders only. Copy it, fill in
+# your own values, and keep your copy with your platform's configuration, not
+# in this public repo. Then:
+#   helm install splunk-events deploy/helm/splunk-events -f your-values.yaml
+
+image:
+  registry: registry.example.com/your-team
+  tag: "1.0.0"
+
+url: https://splunk-events.apps.example.com
+
+route:
+  enabled: true
+
+connector:
+  splunk:
+    mode: live
+    baseUrl: https://splunk.example.com:8089
+    timeZone: America/New_York
+    tokenSecret:
+      name: splunk-events-splunk-token
+  caBundle:
+    configMap: company-ca-bundle
+
+ml:
+  enabled: true
+
+secrets:
+  existingSecret: splunk-events-secrets
