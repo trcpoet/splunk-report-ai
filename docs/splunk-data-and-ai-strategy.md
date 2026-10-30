@@ -7,6 +7,8 @@ How to bring Splunk data into SplunkEvents, and how to make its AI write better 
 - Supervised or unsupervised learning?
 - Can PostHog find anomalies in reports?
 
+If application logs move to Google Cloud, [google-cloud-migration.md](google-cloud-migration.md) covers reading both, and turning SPL into SQL.
+
 ## In short
 
 1. **Collect** through Splunk's REST API into MongoDB, with a **service-account token**, not people's AD logins.
