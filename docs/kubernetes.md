@@ -121,5 +121,3 @@ CI's **Helm** workflow, on every change to the chart or the images:
 1. Lints the chart, and renders it with the OpenShift example. It checks that the web app's pods never get the Splunk token.
 2. Builds the three images and installs the chart on a throwaway kind cluster, with a test MongoDB, the dummy reports and the demo accounts.
 3. Runs the connector and the ML job once, then signs in and reads the reports.
-
-To try a real Splunk without one, see [splunk-example.md](splunk-example.md) (in Docker).

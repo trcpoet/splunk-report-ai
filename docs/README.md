@@ -22,6 +22,7 @@
 | [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md) | The longer-term plan: AD sign-in, what to copy, RAG, learning from feedback, an agent with guardrails |
 | [google-cloud-migration.md](google-cloud-migration.md) | If application logs move to Google Cloud while security stays in Splunk: reading both, SPL to SQL, the phases, and what to do until then |
 | [docker.md](docker.md) | Running everything with `docker compose up`, its settings, and sharing it with a team |
+| [kubernetes.md](kubernetes.md) | Running it on Kubernetes or OpenShift with the Helm chart: the images, the secrets, the values, and what to ask the platform team |
 
 ## Keeping the docs current
 
