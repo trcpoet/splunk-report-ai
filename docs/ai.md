@@ -63,10 +63,9 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - The answer is the search as a pipeline: the whole query, then each pipe command with one sentence on what it does.
 - Point at a step, or press its number, to highlight it in the query.
 - A badge says whether the search only reads events, or changes data or does something outside the search (for example `outputlookup` writes a lookup, `sendemail` sends mail). Searches that name no index get a warning too.
-- **Each search is parsed before you see it**, without running it (`lib/ai/validate.ts`):
-  - with Splunk's own parser, when the web app has `SPLUNK_BASE_URL` and `SPLUNK_PARSER_TOKEN`, a token for a parse-only role that can't read any index;
-  - otherwise with a small built-in parser, which catches unknown commands and quotes or brackets that never close. It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
-  A line under the badges says which parser checked it. A search that doesn't parse says why, and offers **Fix the error**, which asks again with the parser's message.
+- **Each search is checked as it's shown**, without running it (`lib/ai/validate.ts`). A built-in SPL checker catches unknown commands, quotes, brackets or macros that never close, and a pipe with nothing after it. It runs each time, so older answers get today's checks too.
+  - It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
+  - A search that fails the check says why, and offers **Fix the error**, which asks again with the checker's message.
 - **Copy SPL** (above the search, like a code block in ChatGPT) copies the search. **Open in Splunk** (when `SPLUNK_WEB_URL` is set) opens it in Splunk's search page, where it runs only when you press Enter there.
 - Follow-up suggestions such as "Only the last 7 days" change the search in the same chat.
 - **Searches** (top right) lists the searches behind your reports. Pick one to have it explained.
@@ -129,7 +128,7 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 | `lib/ai/prompts.ts` | What the AI is told, in plain English |
 | `lib/ai/context.ts` | Your reports as text for the AI |
 | `lib/ai/spl.ts` | The shape of a Write SPL answer, and the safety check |
-| `lib/ai/validate.ts`, `lib/splunk/parser.ts` | Parsing each Write SPL search: Splunk's parser with a parse-only token, else the demo parser |
+| `lib/ai/validate.ts` | Checking each Write SPL search with the built-in SPL checker |
 | `lib/ai/stream.ts` | How streamed answers reach the browser (one JSON event per line) |
 | `lib/ai/turn.ts` | The checks before each question: signed in, AI on, your chat, today's limit |
 | `lib/ai/usage.ts` | Daily limits |

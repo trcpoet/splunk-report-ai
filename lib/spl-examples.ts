@@ -6,6 +6,7 @@ import { canView, type Viewer } from '@/lib/access';
 import { embed, EMBEDDING_DIMENSIONS, embeddingModelInUse, type EmbedInput } from '@/lib/ai/llm';
 import { exampleText, reportExample, savedExample, topK, type SplExample } from '@/lib/ai/retrieval';
 import { checkSpl, queryFromSteps } from '@/lib/ai/spl';
+import { validateSpl } from '@/lib/ai/validate';
 import { CHAT_ID } from '@/lib/chats';
 import connectDB from '@/lib/mongodb';
 import type { SplunkReport } from '@/lib/reports';
@@ -79,7 +80,7 @@ export async function saveExample(viewer: Viewer, messageId: string): Promise<bo
     if (answer?.role !== 'assistant' || !answer.spl || !question) return false;
 
     const query = queryFromSteps(answer.spl.steps);
-    if (!checkSpl(query).readOnly || answer.spl.validation?.ok === false) return false;
+    if (!checkSpl(query).readOnly || !validateSpl(query).ok) return false;
 
     await SavedSplExample.updateOne(
         { _id: messageId },
