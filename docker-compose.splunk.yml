@@ -40,7 +40,10 @@ services:
 
   splunk:
     # Splunk Enterprise, which runs as a 60-day trial. x86 only.
-    image: splunk/splunk:10.6.0
+    # 10.0, not 10.2 or later: from 10.2, the KV store that keeps the tokens
+    # runs MongoDB 8.0, which can't start on Linux kernels 6.19 and newer (the
+    # same bug as in docker-compose.yml). The REST API the connector uses is the same.
+    image: splunk/splunk:10.0.11
     platform: linux/amd64
     environment:
       SPLUNK_START_ARGS: --accept-license

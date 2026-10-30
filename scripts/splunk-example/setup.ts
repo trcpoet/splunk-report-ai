@@ -92,17 +92,29 @@ async function connectorToken(admin: SplunkAdmin): Promise<string> {
     const deadline = Date.now() + 10 * 60_000;
     let reply = await admin.post('/services/authorization/tokens', { name: SERVICE_ACCOUNT, audience: 'SplunkEvents example connector', expires_on: '+30d' });
     for (let said = 0; reply.status === 503 && Date.now() < deadline; ) {
+        const status = await kvStoreStatus(admin);
+        if (status === 'failed') {
+            throw new Error("Splunk's KV store, which keeps the tokens, failed to start. Its log is /opt/splunk/var/log/splunk/mongod.log in the splunk container.");
+        }
         if (Date.now() - said > 60_000) {
-            console.log("Waiting for Splunk's KV store, which keeps the tokens…");
+            console.log(`Waiting for Splunk's KV store, which keeps the tokens (${status})…`);
             said = Date.now();
         }
         await sleep(10_000);
         reply = await admin.post('/services/authorization/tokens', { name: SERVICE_ACCOUNT, audience: 'SplunkEvents example connector', expires_on: '+30d' });
     }
+    if (reply.status === 503) console.error(`Splunk's KV store is still "${await kvStoreStatus(admin)}".`);
     expectOk(reply, 'Creating the connector token');
     const token = reply.body?.entry?.[0]?.content?.token;
     if (typeof token !== 'string' || !token) throw new Error("Splunk made the token but didn't send it back.");
     return token;
+}
+
+// "ready", "starting", "failed", ... as Splunk reports it.
+async function kvStoreStatus(admin: SplunkAdmin): Promise<string> {
+    const reply = await admin.get('/services/kvstore/status').catch(() => null);
+    const current = reply?.body?.entry?.[0]?.content?.current as { status?: string } | undefined;
+    return current?.status ?? 'unknown';
 }
 
 // The last day of dummy logs, unless an earlier run already sent them. It ends

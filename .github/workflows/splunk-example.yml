@@ -100,6 +100,8 @@ jobs:
           docker compose ps -a
           docker compose logs --tail=150 splunk-setup feeder connector app
           docker compose logs --tail=60 splunk
+          echo "Kernel: $(uname -r)"
+          docker compose exec -T splunk tail -n 40 /opt/splunk/var/log/splunk/mongod.log || true
       - name: Stop
         if: always()
         run: docker compose down -v

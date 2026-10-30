@@ -7,6 +7,8 @@ This runs SplunkEvents against a real Splunk:
 
 Use it to watch the live path work before you can reach your company's Splunk.
 
+**Which Splunk:** version 10.0. From 10.2 on, the KV store, where Splunk keeps tokens, runs MongoDB 8.0, which can't start on Linux kernels 6.19 and newer. Those kernels are common on new machines and on GitHub's. The REST calls the connector makes are the same in every version.
+
 **Why not a public Splunk?** There isn't one to test against. Splunk Cloud trials can't use the REST API, and Splunk doesn't host a demo instance. Splunk Enterprise's trial has the same REST API as any Splunk Enterprise.
 
 ```
