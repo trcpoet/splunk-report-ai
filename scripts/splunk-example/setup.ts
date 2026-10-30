@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { eventsForMinute, type EventBatch } from '@/lib/splunk/example/events';
 import { EXAMPLE_INDEXES, exampleSearches } from '@/lib/splunk/example/searches';
 import { adminFromEnv, alreadyThere, expectOk, waitForSplunk, type SplunkAdmin } from './admin';
@@ -85,10 +86,20 @@ async function connectorToken(admin: SplunkAdmin): Promise<string> {
     if (!alreadyThere(user)) expectOk(user, `Creating the ${SERVICE_ACCOUNT} user`);
 
     expectOk(await admin.post('/services/admin/token-auth/tokens_auth', { disabled: 'false' }), 'Turning on token authentication');
-    const reply = expectOk(
-        await admin.post('/services/authorization/tokens', { name: SERVICE_ACCOUNT, audience: 'SplunkEvents example connector', expires_on: '+30d' }),
-        'Creating the connector token',
-    );
+
+    // Splunk keeps tokens in its KV store, which starts a few minutes after
+    // Splunk itself. Until then, making a token answers 503.
+    const deadline = Date.now() + 10 * 60_000;
+    let reply = await admin.post('/services/authorization/tokens', { name: SERVICE_ACCOUNT, audience: 'SplunkEvents example connector', expires_on: '+30d' });
+    for (let said = 0; reply.status === 503 && Date.now() < deadline; ) {
+        if (Date.now() - said > 60_000) {
+            console.log("Waiting for Splunk's KV store, which keeps the tokens…");
+            said = Date.now();
+        }
+        await sleep(10_000);
+        reply = await admin.post('/services/authorization/tokens', { name: SERVICE_ACCOUNT, audience: 'SplunkEvents example connector', expires_on: '+30d' });
+    }
+    expectOk(reply, 'Creating the connector token');
     const token = reply.body?.entry?.[0]?.content?.token;
     if (typeof token !== 'string' || !token) throw new Error("Splunk made the token but didn't send it back.");
     return token;
