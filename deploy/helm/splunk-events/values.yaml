@@ -1,0 +1,104 @@
+# Settings for the SplunkEvents chart. docs/kubernetes.md explains each one.
+# Nothing in this file is secret: secrets come from Kubernetes Secrets.
+
+image:
+  # Where your images are, for example registry.example.com/your-team. Build and
+  # push them first (docs/kubernetes.md).
+  registry: ""
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+  # Dockerfile target "app": the web app.
+  app: splunk-events-app
+  # Dockerfile target "worker": the connector and the demo-accounts job.
+  worker: splunk-events-worker
+  # ml/Dockerfile: the ML job.
+  ml: splunk-events-ml
+imagePullSecrets: []
+
+# The address people open. Sign-in only works from this address.
+url: https://splunk-events.example.com
+
+web:
+  # Keep 1: each pod keeps its own copy of the report data, and the connector
+  # refreshes one pod (docs/kubernetes.md, "One web pod").
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 768Mi
+  # More settings for the web app, from .env.example, such as AI_PROVIDER,
+  # AI_MODEL, AI_ALLOW_LIVE_DATA or SPLUNK_WEB_URL. Secrets go in the Secret.
+  env: {}
+
+# OpenShift: a Route gives the app its address. Defaults to url's host.
+route:
+  enabled: false
+  host: ""
+
+# Other Kubernetes: an Ingress for url's host.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # For example: [{ secretName: splunk-events-tls, hosts: [splunk-events.example.com] }]
+  tls: []
+
+connector:
+  # How often it copies new runs. Keep it shorter than your reports' dispatch.ttl
+  # (two schedule periods by default), or older runs lose their results first.
+  schedule: "*/15 * * * *"
+  splunk:
+    # fixture: the dummy reports, to try the chart before you have Splunk access.
+    # live: your Splunk's REST API.
+    mode: fixture
+    # The search head's management port, for example https://splunk.example.com:8089
+    baseUrl: ""
+    # The search head's timezone, for schedule text.
+    timeZone: UTC
+    # The Secret with the service account's token. Only the connector gets it.
+    tokenSecret:
+      name: ""
+      key: SPLUNK_TOKEN
+  # If Splunk's certificate comes from your company's own certificate
+  # authority: a ConfigMap holding that authority's PEM file.
+  caBundle:
+    configMap: ""
+    key: ca.crt
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+ml:
+  # The ML job (docs/ml.md): scores every run, and learns from the votes.
+  enabled: false
+  schedule: "30 * * * *"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+# How long MongoDB keeps report runs, in days (90 when empty). The dummy
+# reports' runs have fixed dates, so fixture mode needs a long one, like 3650.
+runRetentionDays: ""
+
+# Demo accounts (lib/demo-users.ts), which all share secrets.DEMO_PASSWORD.
+# Only for dummy data. Build the app image with --build-arg DEMO_MODE=true too.
+demo:
+  enabled: false
+
+# The app's secrets: MONGODB_URI, BETTER_AUTH_SECRET and REVALIDATE_SECRET, and
+# optionally GEMINI_API_KEY and DEMO_PASSWORD.
+secrets:
+  # A Secret your platform provides (for example from Vault). Recommended.
+  existingSecret: ""
+  # Or the chart makes one from these values: for trying the chart only.
+  # Never commit real values.
+  values: {}

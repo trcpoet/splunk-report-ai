@@ -72,6 +72,8 @@ docker compose up --build
 
 Then open [http://localhost:3000](http://localhost:3000) and pick a demo account (password `splunk-demo-2026`). This starts MongoDB, loads the dummy reports and runs the app, with nothing else to install or configure. Settings, the ML job and sharing it with a team: [docs/docker.md](docs/docker.md).
 
+**On Kubernetes or OpenShift:** the Helm chart in `deploy/helm/splunk-events` runs the app, the connector on a schedule and the ML job. See [docs/kubernetes.md](docs/kubernetes.md).
+
 ## Running locally
 
 Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and MongoDB 8.

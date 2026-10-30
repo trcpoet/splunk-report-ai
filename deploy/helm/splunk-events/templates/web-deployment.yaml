@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "splunk-events.fullname" . }}-web
+  labels:
+    {{- include "splunk-events.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  # Each pod keeps its own copy of the report data, and the connector refreshes
+  # one pod, so keep 1 (docs/kubernetes.md).
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      {{- include "splunk-events.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "splunk-events.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "splunk-events.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: web
+          image: {{ include "splunk-events.image" (dict "root" . "name" .Values.image.app) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # Next listens on every address in the pod. Kubernetes would
+            # otherwise set HOSTNAME to the pod's name.
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: BETTER_AUTH_URL
+              value: {{ required "Set url: the address people open" .Values.url | quote }}
+            - name: DEMO_MODE
+              value: {{ .Values.demo.enabled | quote }}
+            {{- include "splunk-events.retentionEnv" . | nindent 12 }}
+            {{- range $name, $value := .Values.web.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "MONGODB_URI") | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "BETTER_AUTH_SECRET") | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "REVALIDATE_SECRET") | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "GEMINI_API_KEY" "optional" true) | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "DEMO_PASSWORD" "optional" true) | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          securityContext:
+            {{- include "splunk-events.containerSecurityContext" . | nindent 12 }}

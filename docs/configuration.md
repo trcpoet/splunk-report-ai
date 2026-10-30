@@ -14,6 +14,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | The shell environment | Everything above, and Claude Code tools (`.mcp.json`, the plugin) | Claude Code reads its tools' settings from the shell, not from `.env.local`. |
 | Vercel → Settings → Environment Variables | The hosted web app | Production only: PR branches don't deploy. New values apply to new deployments, so redeploy after a change. |
 | A `.env` next to `docker-compose.yml` | `docker compose` | Every value has a default ([docker.md](docker.md)). |
+| Your copy of `deploy/helm/splunk-events/values.yaml` | The Helm chart, on Kubernetes or OpenShift | Keep it with your platform's configuration, not in this repo. Secrets come from Kubernetes Secrets ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | CI | Placeholders only. The build never connects to the database, so GitHub holds no secrets. |
 | `lib/*.ts` and other code files | Everyone | Settings that are rules, not values: reports, access, limits. Change them in a PR. |
 
@@ -217,12 +218,14 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `next.config.ts` | `cacheComponents` and `partialPrefetching` (on); `output: 'standalone'` when `NEXT_OUTPUT=standalone`; the PostHog `/ingest` rewrites. |
 | `proxy.ts` | Which paths need a session cookie (`matcher`). API routes answer 401 themselves, so they're left out. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. Don't gate deploys on `VERCEL_ENV`: it's empty in the ignore step. |
-| `Dockerfile` | Three stages: `tools` (seed and sync), `build`, `app` (the standalone server, as user `node`, with a health check). |
-| `docker-compose.yml` | Services `mongo` (7.0), `setup` (seed and sync once), `app`, and `ml` behind the `ml` profile ([docker.md](docker.md)). |
+| `Dockerfile` | Stages:<br>• `tools`: seed and sync, as root, for docker compose;<br>• `build`;<br>• `worker`: the same scripts as user 1000, for Kubernetes;<br>• `app`: the standalone server as user 1000, its files writable by group 0 for OpenShift, with a health check.<br>A plain `docker build` builds `app`. |
+| `docker-compose.yml` | Services `mongo` (7.0), `setup` (seed and sync once), `app`, and `ml` behind the `ml` profile. `ml` runs as root, so `--plot` can write `ml/out` ([docker.md](docker.md)). |
 | `docker-compose.splunk.yml` | The real-Splunk example: `splunk` (10.0, pinned), `splunk-setup`, `feeder`, `seed`, `app`, `connector` (the worker in live mode) and `mongo` ([splunk-example.md](splunk-example.md)). |
 | `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker inside. |
+| `deploy/helm/splunk-events/` | The Helm chart:<br>• the web Deployment, Service, and Route or Ingress;<br>• the connector and ML CronJobs;<br>• the demo-accounts Job, and the Secret.<br>`values.yaml` documents every value ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
 | `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the six reports arrive from Splunk. It runs when `lib/splunk/`, `worker/` or the example change, on Mondays, and by hand. |
+| `.github/workflows/helm.yml` | "Helm" (not required). It lints and renders the chart, then installs it on a throwaway kind cluster and runs the connector and the ML job once. It runs when the chart or the images change. |
 | `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks. |
 | `tsconfig.json` | `@/*` maps to the repo root. |
 | `package.json` | The scripts. Tests are `lib/**/*.test.ts`, run with `node --test` through `tsx`. |

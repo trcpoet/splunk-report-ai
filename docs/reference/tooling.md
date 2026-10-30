@@ -54,7 +54,7 @@ How it works: [docs/ml.md](../ml.md) and [ml/README.md](../../ml/README.md).
 | `tests/test_ml.py` | `npm run test:ml` (pytest). It builds runs in memory, so it needs no database. It checks that the statistics match the app's, how failed runs are handled, the reasons in plain words, and both models. |
 | `requirements.txt` | Exact versions: pymongo, pandas, numpy, scikit-learn, matplotlib, python-dotenv, pytest. |
 | `pytest.ini` | Tests live in `tests/`; the `ml/` folder is on the path. |
-| `Dockerfile` | `python:3.14-slim` with the requirements, for `docker compose --profile ml run --rm ml`. |
+| `Dockerfile` | `python:3.14-slim` with the requirements, run as user 1000. It's used by `docker compose --profile ml run --rm ml` (as root, for `--plot`) and by the chart's ML CronJob. |
 | `README.md` | Setting up `ml/.venv`, running it, and what it writes. |
 
 What `score.py` does:
@@ -84,14 +84,17 @@ What `score.py` does:
 
 | File | What it does |
 |---|---|
-| `Dockerfile` | Multi-stage build on `node:24-slim`:<br>• `deps` runs `npm ci`;<br>• `tools` has all the code, for seed and sync;<br>• `build` runs `next build` with placeholders, with `DEMO_MODE` and `DEMO_PASSWORD` as build arguments;<br>• `app` runs the standalone server as user `node` on :3000, with a health check on `/login`. |
-| `docker-compose.yml` | `docker compose up --build`:<br>• `mongo` (7.0, with a health check);<br>• `setup` (seed, then sync, once);<br>• `app`;<br>• `ml`, under `--profile ml`.<br>Every setting has a default ([docker.md](../docker.md)). |
+| `Dockerfile` | Multi-stage build on `node:24-slim`:<br>• `deps` runs `npm ci`;<br>• `tools` has all the code, for seed and sync;<br>• `build` runs `next build` with placeholders, with `DEMO_MODE` and `DEMO_PASSWORD` as build arguments, and gives group 0 the owner's rights on what `app` copies;<br>• `worker` is `tools` as user 1000 (`HOME=/tmp`), for the chart's connector and demo-accounts Job;<br>• `app` runs the standalone server as user 1000 on :3000, with a health check on `/login`. It comes last, so a plain `docker build` builds it. |
+| `docker-compose.yml` | `docker compose up --build`:<br>• `mongo` (7.0, with a health check);<br>• `setup` (seed, then sync, once);<br>• `app`;<br>• `ml`, under `--profile ml`, as root so `--plot` can write `ml/out`.<br>Every setting has a default ([docker.md](../docker.md)). |
 | `docker-compose.splunk.yml` | The real-Splunk example:<br>• `splunk` (10.0, pinned: from 10.2 the KV store can't start on Linux kernels 6.19+);<br>• `splunk-setup`, `feeder` and `seed`;<br>• `app`;<br>• `connector`, the worker in live mode with the token file;<br>• `mongo`.<br>([splunk-example.md](../splunk-example.md)) |
 | `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) with Docker inside, for the Splunk example. `BETTER_AUTH_URL` is set to the codespace's address. |
+| `deploy/helm/splunk-events/` | The Helm chart ([kubernetes.md](../kubernetes.md)):<br>• `templates/`: the web Deployment and Service, a Route (`route.enabled`) or an Ingress, the connector CronJob, the ML CronJob (`ml.enabled`), the demo-accounts Job (`demo.enabled`), the Secret (unless `secrets.existingSecret`);<br>• `_helpers.tpl`: names, labels, images, secret variables, and security contexts that fit OpenShift's restricted policy;<br>• `values.yaml`: every value, commented;<br>• `values-openshift-example.yaml`: a live setup with placeholders.<br>The Splunk token's Secret goes to the connector only. |
+| `deploy/helm/ci/` | The chart's CI install: `values.yaml` (fixture mode, demo accounts, placeholder secrets) and `mongo.yaml` (a throwaway MongoDB). |
 | `.dockerignore` | Keeps secrets (`.env*` except `.env.example`, `.splunk-example`), `.git`, `.next`, `node_modules`, `ml/.venv`, `ml/out`, `.claude` and logs out of the build context. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. |
 | `.github/workflows/ci.yml` | On every PR and push to `main`, with newer pushes cancelling older runs:<br>• **"Lint, test and build"**, required by the `main` ruleset;<br>• **"ML (Python)"**, which runs pytest on Python 3.14;<br>• **"Docker"**, which builds, starts, signs in, reads `/api/reports`, then runs the ML job. |
 | `.github/workflows/splunk-example.yml` | "Splunk example" (not required). It runs `docker-compose.splunk.yml` with the reports and sync every minute, then checks:<br>• the six reports arrive with Splunk's results and columns;<br>• the status rules fire;<br>• the sync ran in live mode.<br>It runs when the connector or the example change, on Mondays, and by hand. |
+| `.github/workflows/helm.yml` | "Helm" (not required):<br>• `helm lint` and `helm template` with both value files;<br>• a check that the web app never gets `SPLUNK_TOKEN`;<br>• the three images built and installed on a kind cluster, with the connector and the ML job run once, then a sign-in.<br>It runs when the chart, the Dockerfiles or `worker/` change. |
 
 ## Settings and git
 

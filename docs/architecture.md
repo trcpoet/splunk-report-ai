@@ -243,6 +243,7 @@ More detail: [ml.md](ml.md) and [ml/README.md](../ml/README.md).
 | **Hosted demo** | Vercel, `main` only (`vercel.json`) | MongoDB Atlas M0 | From a laptop against Atlas, after merges | The public demo |
 | **Splunk example** | `docker compose -f docker-compose.splunk.yml up --build` | `mongo:7.0` container | `connector` service: the worker in live mode, every 2 minutes, against a Splunk 10.0 trial in Docker | Watching the connector read a real Splunk before you have access ([splunk-example.md](splunk-example.md)) |
 | **Company** | Any Node host, or the Docker image | A hosted MongoDB with its own login | `npm run sync:watch` beside it, with the Splunk token | Real Splunk ([connecting-live-splunk.md](connecting-live-splunk.md)) |
+| **Kubernetes or OpenShift** | The Helm chart (`deploy/helm/splunk-events`): a Deployment behind a Route or an Ingress | The company's MongoDB, outside the chart | The `connector` CronJob, every 15 minutes, with the token from its own Secret | A company cluster ([kubernetes.md](kubernetes.md)) |
 
 **Later, maybe Google Cloud.** Application logs may move to Google Cloud, while security logs stay in Splunk. The sync would then read from both: [google-cloud-migration.md](google-cloud-migration.md).
 

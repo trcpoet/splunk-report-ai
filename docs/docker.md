@@ -71,6 +71,7 @@ It needs the app running, and tells it to show the new scores.
   - Set `BETTER_AUTH_URL` to the address people use, and put HTTPS in front of it.
   - Keep `DEMO_MODE=true` only while the data is dummy data.
 - **With real Splunk:** don't change this setup. Real data, the service-account token and an approved AI provider belong in your work copy of the repo, with its own settings ([ai.md](ai.md) covers company Splunk and approved AI providers).
+- **On Kubernetes or OpenShift:** use the Helm chart instead ([kubernetes.md](kubernetes.md)).
 
 ## With a real Splunk
 
