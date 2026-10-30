@@ -53,6 +53,10 @@ const SPRAY_TARGETS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].flatMap((first) =
 const SPRAY_SOURCE = '203.0.113.66';
 const SSH_USERS = ['root', 'admin', 'ubuntu', 'deploy', 'oracle', 'test', 'git'];
 
+// Windows sign-ins as one key=value line each. Not "WinEventLog": Splunk treats
+// that name as real Windows event logs, which these lines aren't shaped like.
+const WINDOWS_SOURCETYPE = 'windows_security';
+
 const PORT_SCANNER = '203.0.113.200';
 const FLOODER = '198.51.100.77';
 const ZONES = ['dmz', 'internal', 'guest'];
@@ -110,7 +114,7 @@ export function eventsForMinute(minute: Date, { live = true, now = minute.getTim
 
     // Failed sign-ins: Windows and SSH, a couple a minute.
     for (let i = random() < 0.5 ? 1 : 2; i > 0; i--) {
-        add('wineventlog', 'wineventlog', 'dc-01', 'WinEventLog:Security',
+        add('wineventlog', WINDOWS_SOURCETYPE, 'dc-01', 'windows_security',
             `${moment().toISOString()} LogName=Security EventCode=4625 TargetUserName=${usual(WINDOWS_USERS)} src_ip=${ip('192.0.2', 10, 60)} LogonType=3 Status=0xC000006D`);
     }
     if (random() < 0.7) {
@@ -123,7 +127,7 @@ export function eventsForMinute(minute: Date, { live = true, now = minute.getTim
     if (live && new Date(start).getUTCMinutes() === 30) {
         for (const user of SPRAY_TARGETS) {
             for (let attempt = 0; attempt < 12; attempt++) {
-                add('wineventlog', 'wineventlog', 'dc-01', 'WinEventLog:Security',
+                add('wineventlog', WINDOWS_SOURCETYPE, 'dc-01', 'windows_security',
                     `${moment().toISOString()} LogName=Security EventCode=4625 TargetUserName=${user} src_ip=${SPRAY_SOURCE} LogonType=3 Status=0xC000006A`);
             }
         }
@@ -132,7 +136,7 @@ export function eventsForMinute(minute: Date, { live = true, now = minute.getTim
     // Changes to privileged groups: a few a day.
     if ((start / MINUTE) % 397 === 0) {
         const change = pick(GROUP_CHANGES);
-        add('wineventlog', 'wineventlog', 'dc-01', 'WinEventLog:Security',
+        add('wineventlog', WINDOWS_SOURCETYPE, 'dc-01', 'windows_security',
             `${moment().toISOString()} LogName=Security EventCode=${change.code} SubjectUserName=${change.by} MemberName=${change.member} TargetUserName="${change.group}"`);
     }
 

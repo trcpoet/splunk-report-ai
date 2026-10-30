@@ -68,12 +68,13 @@ jobs:
             http://localhost:3000/api/auth/sign-in/email > /dev/null
       - name: Wait for the six reports, each with rows from Splunk
         run: |
+          mkdir -p reports
           slugs="failed-logins-by-user web-5xx-error-rate firewall-denied-top-sources disk-space-over-85 privileged-group-changes forwarder-health-missing-hosts"
           for attempt in $(seq 1 60); do
             ready=0
             for slug in $slugs; do
-              curl -fsS -b cookies.txt "http://localhost:3000/api/reports/$slug" -o "$slug.json" 2>/dev/null \
-                && jq -e '(.report.history | length) > 0 and (.report.rows | length) > 0' "$slug.json" > /dev/null \
+              curl -fsS -b cookies.txt "http://localhost:3000/api/reports/$slug" -o "reports/$slug.json" 2>/dev/null \
+                && jq -e '(.report.history | length) > 0 and (.report.rows | length) > 0' "reports/$slug.json" > /dev/null \
                 && ready=$((ready + 1))
             done
             echo "$ready of 6 reports have rows from Splunk"
@@ -84,9 +85,9 @@ jobs:
       - name: Check what Splunk returned
         run: |
           check() {
-            jq -e "$2" "$1.json" > /dev/null && echo "ok: $1: $3" && return
+            jq -e "$2" "reports/$1.json" > /dev/null && echo "ok: $1: $3" && return
             echo "FAILED: $1: $3"
-            jq -c '{status: .report.status, statusMessage: .report.statusMessage, columns: .report.columns, rows: (.report.rows | length), first: .report.rows[0]}' "$1.json"
+            jq -c '{status: .report.status, statusMessage: .report.statusMessage, columns: .report.columns, rows: (.report.rows | length), first: .report.rows[0]}' "reports/$1.json"
             exit 1
           }
           check failed-logins-by-user '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"]' "the columns report-config expects"
@@ -95,7 +96,7 @@ jobs:
           check disk-space-over-85 '.report.status == "warning"' "db-02's /data is above 95%"
           check forwarder-health-missing-hosts '[.report.rows[][0]] as $hosts | ($hosts | any(. == "db-03")) and ($hosts | any(. == "app-07"))' "the two hosts that went quiet"
           for slug in firewall-denied-top-sources privileged-group-changes; do check "$slug" '(.report.rows | length) > 0' "has rows"; done
-          for report in *.json; do check "${report%.json}" '.report.status != "failed"' "didn't fail"; done
+          for report in reports/*.json; do slug=${report#reports/}; check "${slug%.json}" '.report.status != "failed"' "didn't fail"; done
       - name: Check the connector read Splunk, not the dummy data
         run: docker compose exec -T mongo mongosh --quiet splunkevents --eval 'db.sync_state.findOne().mode' | grep -qx live
       - name: Show the logs
@@ -104,7 +105,7 @@ jobs:
           docker compose ps -a
           docker compose logs --tail=150 splunk-setup feeder connector app
           docker compose logs --tail=60 splunk
-          for report in *.json; do echo "$report: $(jq -c '{status: .report.status, columns: .report.columns, rows: (.report.rows | length), runs: (.report.history | length)}' "$report" 2>/dev/null)"; done
+          for report in reports/*.json; do echo "$report: $(jq -c '{status: .report.status, columns: .report.columns, rows: (.report.rows | length), runs: (.report.history | length)}' "$report" 2>/dev/null)"; done
           echo "Kernel: $(uname -r)"
           docker compose exec -T -u splunk splunk tail -n 40 /opt/splunk/var/log/splunk/mongod.log || true
       - name: Stop
