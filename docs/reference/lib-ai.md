@@ -126,7 +126,7 @@ The model names a report as `[[report-id]]`.
 ### `spl.ts` (pure)
 
 The shape of a Write SPL answer, and a safety check.
-- **`SplAnswerSchema`** (zod) is the shape Gemini must answer in: a summary, then steps (`code` and `explanation` per pipe command), the time range, fields, assumptions and follow-ups. `StoredSplAnswer` adds the parser's verdict and the examples it was based on.
+- **`SplAnswerSchema`** (zod) is the shape Gemini must answer in: a summary, then steps (`code` and `explanation` per pipe command), the time range, fields, assumptions and follow-ups. `StoredSplAnswer` adds the examples it was based on.
 - **`queryFromSteps`, `stepLine`, `pipeCommands`** build the one query from the steps. The screen and the copied text come from the same function.
 - **`checkSpl(query)`** checks whether the search only reads events.
   - It warns about commands that write or act outside the search: `outputlookup`, `collect`, `mcollect`, `tscollect`, `sendemail` and others.
@@ -135,11 +135,11 @@ The shape of a Write SPL answer, and a safety check.
 - **`splunkSearchUrl(base, query)`** builds the Open in Splunk link.
 - **Tested.**
 
-### `validate.ts` (server)
+### `validate.ts`
 
-`validateSpl(query)` checks a search before it's shown, without running it.
-- **With `SPLUNK_BASE_URL` and `SPLUNK_PARSER_TOKEN`:** Splunk's own parser (`lib/splunk/parser.ts`).
-- **Otherwise, or when Splunk can't be reached:** `demoParse`, a small built-in parser. It catches unknown commands and unclosed quotes or brackets. It doesn't know apps' own commands or macros.
+`validateSpl(query)` is the built-in SPL checker. It's quick and needs nothing else, and it never runs the search, so the page calls it each time it shows an answer (`components/SplAnswer.tsx`). Save as example calls it too.
+- It catches unknown commands; quotes, brackets or macros that never close; and a pipe with nothing after it, or with something that can't be a command.
+- It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
 - **Tested.**
 
 ### `retrieval.ts` (pure)

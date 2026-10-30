@@ -1,0 +1,24 @@
+{
+    // A cloud machine for the Splunk example (docs/splunk-example.md). Splunk's
+    // image needs an Intel/AMD (x86) machine with room to run it, which GitHub
+    // Codespaces provides. In a codespace, sign-in uses the forwarded address.
+    "name": "SplunkEvents",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:4-24-bookworm",
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    },
+    "hostRequirements": {
+        "cpus": 4,
+        "memory": "16gb",
+        "storage": "32gb"
+    },
+    "forwardPorts": [3000, 8000],
+    "portsAttributes": {
+        "3000": { "label": "SplunkEvents" },
+        "8000": { "label": "Splunk Web" }
+    },
+    "remoteEnv": {
+        "BETTER_AUTH_URL": "https://${containerEnv:CODESPACE_NAME}-3000.${containerEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+    },
+    "postCreateCommand": "npm ci"
+}

@@ -63,7 +63,7 @@ One saved Ask AI conversation. The messages live inside the chat, because they'r
 - **Chat fields:** `userId`, `kind` (`reports` or `spl`), `title`, `messages`, `expiresAt` (demo mode), plus timestamps.
 - **Message fields:** `role`, `text`, `createdAt`, and for Write SPL, `spl`.
   - `spl` holds the summary, steps, time range, fields, assumptions and follow-ups;
-  - plus `validation` (the parser's verdict) and `basedOn` (the examples used).
+  - plus `basedOn` (the examples used). The SPL check isn't stored: the page runs it when it shows the answer.
 - **Exports:** `ChatKind`, `IChat`, `IChatMessage`, `MAX_CHAT_MESSAGES`.
 - **Access:** only `lib/chats.ts` reads and writes it, and it checks `userId` every time.
 

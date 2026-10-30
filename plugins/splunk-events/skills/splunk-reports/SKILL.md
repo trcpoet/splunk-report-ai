@@ -70,7 +70,7 @@ Status rules and highlight functions look columns up by header name, so they mus
 
 ## Live Splunk
 
-Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLUNK_TOKEN` and `SPLUNK_TZ` for the worker only. The token is for a service account the reports are shared with, and must never reach the web app or a `NEXT_PUBLIC_` variable. The web app may have its own `SPLUNK_PARSER_TOKEN` instead, for a parse-only role with no index access: Write SPL then checks searches with Splunk's parser (`lib/splunk/parser.ts`), which never runs them. The worker calls, with `output_mode=json`:
+Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLUNK_TOKEN` and `SPLUNK_TZ` for the worker only. The token is for a service account the reports are shared with, and must never reach the web app or a `NEXT_PUBLIC_` variable. The worker calls, with `output_mode=json`:
 
 | Data | Endpoint |
 |---|---|
@@ -81,5 +81,7 @@ Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLU
 | App labels | `GET /services/apps/local` |
 
 The worker only reads runs the scheduler already made; it never dispatches searches. Results expire after `dispatch.ttl` (two schedule periods by default), so the worker must sync more often than that. A 404 on results means they expired, and the run is stored without rows.
+
+The worker can read its token from a file instead: `SPLUNK_TOKEN_FILE` (a mounted secret). To try live mode without a company Splunk, `docker-compose.splunk.yml` runs Splunk Enterprise's trial with six of the dummy reports and their logs (`lib/splunk/example/`, set up by `scripts/splunk-example/`) and the worker reading it: see `docs/splunk-example.md`. Its searches are the fixture SPL plus a `rename` step, so keep the fixture SPL runnable.
 
 Read the Next.js guides in `node_modules/next/dist/docs/` before changing data fetching, caching or auth code: this Next.js version differs from older ones (see AGENTS.md). Report reads are cached with `'use cache'` and the `reports` tag; the worker clears them through `POST /api/revalidate`.

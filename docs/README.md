@@ -19,6 +19,7 @@
 | [mongodb-and-access.md](mongodb-and-access.md) | MongoDB in plain words, how fresh data reaches the screen, and where users' groups could come from |
 | [report-access.md](report-access.md) | `lib/report-config.ts` in practice: who sees which report, with a worked example |
 | [connecting-live-splunk.md](connecting-live-splunk.md) | Replacing the dummy data with a company's Splunk, step by step |
+| [splunk-example.md](splunk-example.md) | The connector against a real Splunk before you have access: Splunk Enterprise's trial in Docker, with dummy logs and scheduled reports |
 | [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md) | The longer-term plan: AD sign-in, what to copy, RAG, learning from feedback, an agent with guardrails |
 | [google-cloud-migration.md](google-cloud-migration.md) | If application logs move to Google Cloud while security stays in Splunk: reading both, SPL to SQL, the phases, and what to do until then |
 | [docker.md](docker.md) | Running everything with `docker compose up`, its settings, and sharing it with a team |

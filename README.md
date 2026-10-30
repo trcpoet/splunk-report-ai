@@ -123,6 +123,7 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run ml` / `ml:plot` | Score the runs with the ML job (`ml:plot` also draws a chart). Set up its Python environment first: [ml/README.md](ml/README.md) |
 | `npm run test:ml` | The ML job's tests |
 | `npm run eval:spl` | Score Write SPL on 10 requests over the demo reports (needs a Gemini key; see [docs/ai.md](docs/ai.md#how-write-spl-learns-from-your-searches)) |
+| `npm run splunk:setup` / `splunk:feed` | Set up a test Splunk for the example, and send it dummy logs every minute ([docs/splunk-example.md](docs/splunk-example.md)) |
 
 ### Working on the code
 
@@ -156,6 +157,8 @@ Vercel deploys only `main` (`vercel.json`'s `git.deploymentEnabled`); other bran
 ## Connecting real Splunk
 
 **Step-by-step guide:** [docs/connecting-live-splunk.md](docs/connecting-live-splunk.md) (work laptop setup, what to ask your Splunk admin, testing the token, troubleshooting). **Who sees which report:** [docs/report-access.md](docs/report-access.md). **The overall strategy** (AD sign-in, what to copy, RAG over past searches, learning from feedback, an agent with guardrails, anomaly detection): [docs/splunk-data-and-ai-strategy.md](docs/splunk-data-and-ai-strategy.md).
+
+**Try it with a real Splunk first:** [docs/splunk-example.md](docs/splunk-example.md) runs Splunk Enterprise's free trial in Docker, with dummy logs and scheduled reports, and the connector copying them into MongoDB through the REST API.
 
 In short, the mapping, access and UI code stay the same; only the worker's settings change:
 

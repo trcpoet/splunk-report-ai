@@ -16,8 +16,6 @@ The sync only reads. Every call asks for `output_mode=json`.
 | `GET /services/search/jobs/<sid>` | One job's facts: state, run time, duration, result count, messages |
 | `GET /services/search/v2/jobs/<sid>/results` | One job's result rows (up to `SYNC_MAX_ROWS`) |
 
-The web app makes one more call, only for Write SPL, and only with a parse-only token: `POST /services/search/parser` (`parser.ts`).
-
 ## `sync.ts`
 
 Copies Splunk scheduled reports and their runs into MongoDB.
@@ -48,6 +46,7 @@ How the worker talks to Splunk.
 - **Retries:** it retries network errors, timeouts and HTTP 429, 500, 502, 503 and 504, with exponential backoff (about 0.5, 1 and 2 s) and a little jitter.
 - **`SplunkHttpError`** carries the HTTP status, and `isNotFound(error)` tests for 404. Expired job results answer 404.
 - **Certificates:** for an internal certificate authority, set `NODE_EXTRA_CA_CERTS`. Never turn certificate checks off.
+- **`splunkTokenFromEnv(env)`** returns `SPLUNK_TOKEN`, or else the trimmed contents of the file `SPLUNK_TOKEN_FILE` names (a mounted secret). It says which file it couldn't read. Tested in `transport.test.ts`.
 
 ## `map.ts` (pure)
 
@@ -74,10 +73,6 @@ Only the REST fields the sync reads:
 
 Most values arrive as strings, so `map.ts` converts defensively.
 
-## `parser.ts`
-
-`splunkParse({ baseUrl, token, query, timeoutMs = 5000 })` checks a search with Splunk's own parser, `POST /services/search/parser`, without running it. Write SPL uses it through `lib/ai/validate.ts`. It needs `SPLUNK_PARSER_TOKEN`, a token for a role that can't read any index. The worker's `SPLUNK_TOKEN` never reaches the web app.
-
 ## `fixtures/reports.ts`
 
 The 9 dummy reports the demo runs on.
@@ -94,4 +89,18 @@ The 9 dummy reports the demo runs on.
 - only the newest finished run still has results; older ones answer 404, like results deleted after `dispatch.ttl`;
 - result values arrive as strings.
 
-`SPLUNK_MODE=fixture` (the default) uses it, so the whole pipeline runs without Splunk.
+`SPLUNK_MODE=fixture` (the default) uses it, so the whole pipeline runs without Splunk. It exports `APP_IDS`, `TIME_RANGES` and `CHARTS`, which the Splunk example reuses.
+
+## `example/`: the Splunk example's reports and logs
+
+For the real-Splunk example ([splunk-example.md](../splunk-example.md)). The app never imports it.
+- **`searches.ts`:** `exampleSearches()` gives six of the dummy reports as Splunk saved searches. Each has the fixture SPL plus a last step that names the columns the way `lib/report-config.ts` expects, and also the report's time range, recipients and chart. `EXAMPLE_INDEXES` lists the indexes the logs go to.
+- **`events.ts` (pure):** `eventsForMinute(minute, { live, now })` makes one minute of dummy logs, seeded so a given minute always comes out the same. The logs are Windows and SSH sign-ins, web requests, firewall denies, disk space, and group changes.
+  - Planted on purpose: web-03 over the error budget, db-02's `/data` at 96%, and db-03 and app-07 going quiet.
+  - Password spraying happens at half past each hour, from the feeder only.
+  - The backfill sends the busy logs for the last 4 hours only.
+- **Tested** in `events.test.ts`:
+  - documentation IPs only;
+  - each sourcetype's time format;
+  - the indexes;
+  - the planted problems.

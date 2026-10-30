@@ -275,7 +275,7 @@ An answer as Markdown, through react-markdown, which never runs HTML.
 ### `SplAnswer.tsx` (client)
 
 A Write SPL answer:
-- **Before the query:** the summary, then badges (read-only or not, parses or not, time range), then the parser's line and any warnings.
+- **Before the query:** the summary, then badges (read-only or not, parses or not, time range), then the SPL checker's line and any warnings. The page runs the checker (`validateSpl`) each time it shows an answer.
 - **The query** sits in a code block with Copy.
 - **Buttons:** Save as example (`saveExampleAction`, only for read-only searches that parse) and Open in Splunk.
 - **The steps:** numbered, and pointing at one highlights its line.

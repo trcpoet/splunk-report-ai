@@ -10,6 +10,8 @@
     "sync": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts",
     "sync:watch": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts --watch",
     "seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo-users.ts",
+    "splunk:setup": "node --env-file-if-exists=.env.local --import tsx scripts/splunk-example/setup.ts",
+    "splunk:feed": "node --env-file-if-exists=.env.local --import tsx scripts/splunk-example/feed.ts",
     "test": "node --env-file-if-exists=.env.local --import tsx --test \"lib/**/*.test.ts\"",
     "ml": "ml/.venv/bin/python ml/score.py",
     "ml:plot": "ml/.venv/bin/python ml/score.py --plot",
