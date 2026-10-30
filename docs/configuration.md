@@ -60,7 +60,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 9 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
 | `SPLUNK_BASE_URL` | none | `worker/sync.ts` | Required for `live`: the management port, usually `https://<host>:8089`. |
 | `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live`: a service account's authentication token. **Only the worker's environment may hold it.** |
-| `SPLUNK_TZ` | `UTC` | `worker/sync.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. |
+| `SPLUNK_TZ` | `UTC` | `worker/sync.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
 | `SYNC_INTERVAL_MINUTES` | `15` | `worker/sync.ts` | How often `npm run sync:watch` syncs. Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
 | `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. Not in `.env.example`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
@@ -163,6 +163,10 @@ Besides the environment variables above, these live in code:
 | The same rules in Python | `ml/features.py` | must match | `test_robust_z_matches_the_app` checks they agree. Change both together. |
 | Share of runs the forest flags | `ml/score.py` | `CONTAMINATION = 0.05` | About 3 of the demo's 64 runs. |
 | Votes before learning | `ml/score.py` | `MIN_VOTES = 20` | The flag model waits for this many votes, with at least one 👍 and one 👎. |
+| Days on the home page | `lib/dal.ts` | `getRunOutcomes(days = 7)`, `getRunHealth(days = 7)` | The days in "Scheduled runs per day" and the run health grid. Change both together, so they match. |
+| Reports in the grid before "Show more" | `components/RunHealthGrid.tsx` | `VISIBLE_ROWS = 10` | The rest sit behind a "Show N more reports" toggle. |
+| Scheduler chart slots | `lib/schedule-load.ts` | `slotMinutes = 5` | The chart's step width. Each slot shows the most searches at once on its busiest day of the reference month. |
+| Names and times listed | `components/SchedulerLoad.tsx` | `MAX_NAMES = 5`, `MAX_TIMES = 8` | Past these, the busiest-times lines and the tooltip end with "and N more". |
 
 Run the job with `npm run ml` (or `ml:plot` for a chart) after a sync. Its Python setup: [ml/README.md](../ml/README.md).
 

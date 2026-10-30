@@ -38,22 +38,32 @@ const StatTile = () => (
     </div>
 )
 
-// The four tiles, the "Data as of" line and the runs-per-day chart card.
+// A chart card: its heading, its plot and the "Show as table" line.
+const ChartCardSkeleton = ({ height }: { height: number }) => (
+    <div className="chart-card">
+        <div className="flex flex-col gap-0.5">
+            <Line className="chart-heading w-48" />
+            <Line className="chart-subtitle w-64" />
+        </div>
+        <div className="skeleton-block" style={{ height }} />
+        <div className="text-sm"><Line className="w-28" /></div>
+    </div>
+)
+
+// The four tiles, the "Data as of" line, the runs-per-day chart and the run
+// health grid side by side, and the "When searches run" chart.
 export const OverviewSkeleton = () => (
     <Loading label="Loading the overview…">
         <div className="stats">
             {range(4).map((i) => <StatTile key={i} />)}
         </div>
         <p className="data-freshness"><Line className="w-48" /></p>
-        <div className="mt-10">
-            <div className="chart-card">
-                <div className="flex flex-col gap-0.5">
-                    <Line className="chart-heading w-48" />
-                    <Line className="chart-subtitle w-64" />
-                </div>
-                <div className="skeleton-block h-[260px]" />
-                <div className="text-sm"><Line className="w-28" /></div>
-            </div>
+        <div className="overview-charts">
+            <ChartCardSkeleton height={260} />
+            <ChartCardSkeleton height={260} />
+        </div>
+        <div className="mt-6">
+            <ChartCardSkeleton height={220} />
         </div>
     </Loading>
 )

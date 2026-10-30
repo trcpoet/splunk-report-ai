@@ -49,7 +49,7 @@ One document per scheduled run (a Splunk search job), keyed by `sid`. This is th
 
 ## `sync-state.model.ts`
 
-A single document (`_id: 'splunk'`) describing the latest sync: `mode` (`fixture` or `live`), `lastStartedAt`, `lastFinishedAt`, `lastSuccessAt`, `lastError`, and `counts` (`reports`, `newRuns`, `errors`). It powers "Data as of", and tells the app whether its data is live, which keeps AI off unless allowed. Exports `SYNC_STATE_ID`.
+A single document (`_id: 'splunk'`) describing the latest sync: `mode` (`fixture` or `live`), `timeZone` (the worker's `SPLUNK_TZ`, default `UTC`), `lastStartedAt`, `lastFinishedAt`, `lastSuccessAt`, `lastError`, and `counts` (`reports`, `newRuns`, `errors`). It powers "Data as of", tells the app whether its data is live (which keeps AI off unless allowed), and gives the home page's scheduler chart its time zone. Exports `SYNC_STATE_ID`.
 
 ## `user-access.model.ts`
 

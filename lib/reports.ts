@@ -130,10 +130,28 @@ export type RunOutcomeDay = {
     failed: number;
 };
 
+export type OutcomeCounts = Omit<RunOutcomeDay, 'day'>;
+
+// One report in the run health grid: its runs by outcome on each day, or null
+// for a day it didn't run.
+export type RunHealthRow = {
+    slug: string;
+    title: string;
+    cells: (OutcomeCounts | null)[];
+};
+
+// The run health grid on the home page. days are YYYY-MM-DD (UTC), oldest first.
+export type RunHealth = {
+    days: string[];
+    rows: RunHealthRow[];
+};
+
 export type SyncInfo = {
     mode: 'fixture' | 'live';
     lastSuccessAt: string;
     lastError: string | null;
+    // The time zone the schedules run in: the sync worker's SPLUNK_TZ.
+    timeZone: string;
 };
 
 export type ReportSummary = Pick<

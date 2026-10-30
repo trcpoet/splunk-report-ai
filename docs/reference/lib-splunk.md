@@ -37,7 +37,7 @@ What `syncAll` does:
 2. It lists the scheduled reports, then fetches each one's new runs into `report_runs`.
 3. It recomputes each `reports` document: the latest run, the last `HISTORY_SIZE` (7) runs, highlights and the chart (`map.ts`).
 4. It marks reports that are no longer scheduled as `disabled`.
-5. It records the finish in `sync_state`, then calls `POST /api/revalidate` twice, `SECOND_REFRESH_MS` (3 s) apart, when `APP_URL` and `REVALIDATE_SECRET` are set.
+5. It records the finish and the time zone (`SPLUNK_TZ`) in `sync_state`, then calls `POST /api/revalidate` twice, `SECOND_REFRESH_MS` (3 s) apart, when `APP_URL` and `REVALIDATE_SECRET` are set.
 
 **Tests:** `map.test.ts` runs `syncAll` against the fixture transport end to end.
 

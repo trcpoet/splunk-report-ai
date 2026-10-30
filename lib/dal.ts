@@ -7,7 +7,9 @@ import { MlReportScore, MlRunScore, Report, ReportRun, SyncState, SYNC_STATE_ID,
 import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
-import type { Cell, ChartThreshold, ModelRun, ReportChart, ReportHighlight, ReportListItem, ReportStatus, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import type { Cell, ChartThreshold, ModelRun, ReportChart, ReportHighlight, ReportListItem, RunHealth, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import { lastDays, runHealthRows, totalsByDay, type RunCount } from '@/lib/run-health';
+import { scheduleLoad, type ScheduleLoad } from '@/lib/schedule-load';
 
 // The data access layer: pages and API routes get report data only from here,
 // and every exported function checks who is asking. proxy.ts merely redirects
@@ -66,8 +68,6 @@ type StoredReport = {
     allowedGroups: string[];
     resultsSid: string | null;
 };
-
-type RunCount = { slug: string; day: string; status: ReportStatus; count: number };
 
 const iso = (date: Date | null | undefined) => (date ? new Date(date).toISOString() : '');
 
@@ -200,19 +200,32 @@ async function loadSyncInfo(): Promise<SyncInfo | null> {
     await connectDB();
     const state = await SyncState.findById(SYNC_STATE_ID).lean();
 
-    return state?.lastSuccessAt ? { mode: state.mode, lastSuccessAt: iso(state.lastSuccessAt), lastError: state.lastError } : null;
+    return state?.lastSuccessAt
+        ? { mode: state.mode, lastSuccessAt: iso(state.lastSuccessAt), lastError: state.lastError, timeZone: state.timeZone || 'UTC' }
+        : null;
+}
+
+// Lays out a month of runs, so it's worth keeping until the reports change.
+async function loadScheduleLoad(schedules: Pick<ReportListItem, 'title' | 'cron' | 'history'>[], timeZone: string): Promise<ScheduleLoad> {
+    'use cache';
+    cacheTag('reports');
+    cacheLife('minutes');
+
+    return scheduleLoad(schedules, timeZone);
 }
 
 // ---------------------------------------------------------------------------
 // What the signed-in user may see
 
-export async function getVisibleReports(): Promise<ReportListItem[]> {
+// Wrapped in React cache(): the home page's parts each ask for the reports,
+// and one request filters them once.
+export const getVisibleReports = cache(async (): Promise<ReportListItem[]> => {
     const viewer = await getViewer();
 
     return (await loadReports())
         .filter(({ allowedGroups }) => canView(viewer, allowedGroups))
         .map(({ report }) => report);
-}
+});
 
 // A report the viewer may not see comes back as null, the same as a missing
 // one, so its name doesn't leak.
@@ -238,23 +251,34 @@ export async function getVisibleReportsWithResults(): Promise<SplunkReport[]> {
     }));
 }
 
-const DAY_MS = 86_400_000;
+// The run counts of the viewer's reports, once per request for both views below.
+const visibleRunCounts = cache(async (): Promise<{ reports: ReportListItem[]; counts: RunCount[] }> => {
+    const reports = await getVisibleReports();
+    const visible = new Set(reports.map(({ slug }) => slug));
+
+    return { reports, counts: (await loadRunCounts()).filter(({ slug }) => visible.has(slug)) };
+});
 
 // Runs per day by outcome across the viewer's reports, for the days up to the newest run.
 export async function getRunOutcomes(days = 7): Promise<RunOutcomeDay[]> {
-    const visible = new Set((await getVisibleReports()).map(({ slug }) => slug));
-    const counts = (await loadRunCounts()).filter(({ slug }) => visible.has(slug));
-    if (counts.length === 0) return [];
+    const { counts } = await visibleRunCounts();
 
-    const newest = Date.parse(`${counts.reduce((max, { day }) => (day > max ? day : max), '')}T00:00:00Z`);
+    return totalsByDay(counts, lastDays(counts, days));
+}
 
-    return Array.from({ length: days }, (_, i) => {
-        const day = new Date(newest - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10);
-        const total = (status: ReportStatus) =>
-            counts.filter((count) => count.day === day && count.status === status).reduce((sum, count) => sum + count.count, 0);
+// The same days, per report: the home page's run health grid.
+export async function getRunHealth(days = 7): Promise<RunHealth> {
+    const { reports, counts } = await visibleRunCounts();
+    const shown = lastDays(counts, days);
 
-        return { day, success: total('success'), warning: total('warning'), failed: total('failed') };
-    });
+    return { days: shown, rows: runHealthRows(reports, counts, shown) };
+}
+
+// When the viewer's reports run, by time of day, in the schedules' time zone.
+export async function getScheduleLoad(): Promise<ScheduleLoad> {
+    const [reports, sync] = await Promise.all([getVisibleReports(), getSyncInfo()]);
+
+    return loadScheduleLoad(reports.map(({ title, cron, history }) => ({ title, cron, history })), sync?.timeZone ?? 'UTC');
 }
 
 export async function getSyncInfo(): Promise<SyncInfo | null> {

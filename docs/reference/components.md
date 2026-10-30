@@ -144,6 +144,25 @@ A dot per row: the chart's measure up, the scatter's measure across, with an opt
 
 Scheduled runs per day by outcome, as stacked bars, on the home page. Status colors always come with a text label.
 
+### `RunHealthGrid.tsx` (server)
+
+The home page's run health grid: a row per report, a column per day (the same days as `RunOutcomes`), and the worst outcome of each day's runs.
+- **A real table:** the report titles are row headers that link to the report. Each cell has its counts ("Oct 2: 3 healthy, 3 warnings, 1 failed") as hidden text for screen readers and as a `data-tip` on hover.
+- **Marks:** a status color with an icon (check, triangle, X), or an outline for a day without runs. A legend names them.
+- **Order:** failures first, then warnings, then the rest by title (`lib/run-health.ts`).
+- **More than `VISIBLE_ROWS` (10) reports:** the rest sit behind "Show N more reports".
+- **On phones:** titles take two lines; below 360 px the weekdays shorten to two letters.
+
+### `SchedulerLoad.tsx` (client)
+
+"When searches run": a step line of the most searches running at once by time of day, in the schedules' time zone (`lib/schedule-load.ts`).
+- **The tooltip** names the reports running at that time.
+- **Under the chart:**
+  - the busiest times, grouped by how many run at once;
+  - a hint when most reports start on the hour;
+  - a note that only this app's reports are counted.
+- **Show as table:** every time with a search running, sortable.
+
 ### `RunTrend.tsx` (client)
 
 Results per stored run, oldest to newest. Skipped runs are gaps, not zeros.

@@ -58,11 +58,19 @@ export const formatTime = (iso: string) => {
     return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 };
 
+// Minutes after midnight as a time of day: 480 → "08:00", 1440 → "24:00".
+export const formatClock = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+
 export const formatDuration = (seconds: number) =>
     seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
 
 // "1 report", "3 reports".
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
+
+// "a, b, and c".
+export const formatList = (items: string[]) => LIST.format(items);
 
 // The first line of some text, shortened to `max` characters, for titles.
 export const firstLine = (text: string, max = 80) => {
