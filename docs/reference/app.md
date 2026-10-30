@@ -204,8 +204,7 @@ Better Auth's handler, limited to sign-in, sign-out and session lookups.
 1. **Checks:** `prepareTurn` checks everything first.
 2. **Examples:** it finds the most similar example searches (`findSimilarExamples`). It searches with the request plus the one before it, so follow-ups like "only the last 7 days" work. If the AI can't embed right now, the prompt gets every report's search instead.
 3. **The answer:** `generateJson` against the Write SPL schema, with `thinking: 'medium'`.
-4. **The parse:** `validateSpl` parses the search without running it.
-5. **Saving and response:** the turn is saved, and the route returns `{ chatId, message }`.
+4. **Saving and response:** the turn is saved, and the route returns `{ chatId, message }`. The SPL check isn't stored: the page runs it when it shows the answer (`SplAnswer`).
 - `maxDuration = 60`.
 
 ### `api/ai/briefing/route.ts`
