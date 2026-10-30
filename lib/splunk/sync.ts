@@ -213,6 +213,7 @@ export async function syncAll({ transport, mode, timeZone = 'UTC', now = new Dat
             $set: {
                 lastFinishedAt: finishedAt,
                 lastSuccessAt: finishedAt,
+                timeZone,
                 lastError: summary.errors > 0 ? `${summary.errors} report${summary.errors === 1 ? '' : 's'} failed to sync` : null,
                 counts: summary,
             },

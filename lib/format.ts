@@ -58,6 +58,9 @@ export const formatTime = (iso: string) => {
     return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 };
 
+// Minutes after midnight as a time of day: 480 → "08:00", 1440 → "24:00".
+export const formatClock = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+
 export const formatDuration = (seconds: number) =>
     seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
 
