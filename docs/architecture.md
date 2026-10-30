@@ -44,7 +44,7 @@ flowchart LR
 
 | Program | Code | How it runs | Talks to | Secrets it holds |
 |---|---|---|---|---|
-| **Web app** | `app/`, `components/`, `lib/` | `npm run dev` or `npm start`; on Vercel; Docker's `app` service | MongoDB; Gemini (if a key is set); Splunk's parser (only with a parse-only token) | `BETTER_AUTH_SECRET`, `REVALIDATE_SECRET`, `GEMINI_API_KEY`, `SPLUNK_PARSER_TOKEN` |
+| **Web app** | `app/`, `components/`, `lib/` | `npm run dev` or `npm start`; on Vercel; Docker's `app` service | MongoDB; Gemini (if a key is set) | `BETTER_AUTH_SECRET`, `REVALIDATE_SECRET`, `GEMINI_API_KEY` |
 | **Sync worker** | `worker/sync.ts`, `lib/splunk/` | `npm run sync` (once) or `npm run sync:watch`; Docker's `setup` service runs it once | Splunk's REST API (live) or the fixtures; MongoDB; the web app's `/api/revalidate` | `SPLUNK_TOKEN`, `REVALIDATE_SECRET` |
 | **Seed script** | `scripts/seed-demo-users.ts` | `npm run seed`, safe to repeat | MongoDB | `DEMO_PASSWORD`, `BETTER_AUTH_SECRET` |
 | **ML job** | `ml/` | `npm run ml`; Docker's `ml` profile | MongoDB; the web app's `/api/revalidate` | `REVALIDATE_SECRET` |
@@ -210,7 +210,7 @@ sequenceDiagram
 - **One file calls the AI.** `lib/ai/llm.ts` exposes `streamText`, `generateJson` and `embed`. To use another provider (Vertex AI, a company LLM), rewrite only this file. `AI_PROVIDER=fake` returns canned answers with no key.
 - **Two modes.**
   - **Ask about reports** streams Markdown back as NDJSON (`lib/ai/stream.ts`).
-  - **Write SPL** returns JSON checked against a schema (`lib/ai/spl.ts`), then parses the search without running it (`lib/ai/validate.ts`). It uses Splunk's own parser with a parse-only token, or a built-in one.
+  - **Write SPL** returns JSON checked against a schema (`lib/ai/spl.ts`). The page checks the search with a built-in SPL checker each time it shows the answer, without running it (`lib/ai/validate.ts`).
 - **Retrieval for Write SPL.** The request and the example searches become vectors (`lib/ai/retrieval.ts`, `lib/spl-examples.ts`). The examples are the viewer's reports plus saved answers. The 5 closest examples go into the prompt.
 - **Saving.** A question and its answer are saved together, once the answer is complete. An answer that is stopped or fails isn't saved.
 - **Limits.** Per account and site-wide, per UTC day (`lib/ai/usage.ts`). Summaries and briefings are written once per data key, shared, and counted once (`lib/ai/summaries.ts`, `lib/ai/keys.ts`).
@@ -258,7 +258,7 @@ See [configuration.md](configuration.md#build-deploy-and-ci).
 
 - **Secrets.** `.env*` files stay out of git, except `.env.example`.
   - The Splunk token lives only in the worker's environment.
-  - The web app's optional Splunk token can only parse searches.
+  - The web app holds no Splunk token.
 - **Data access.** Every read checks the viewer (`lib/dal.ts`, `lib/chats.ts`, `lib/feedback.ts`, `lib/spl-examples.ts`). `allowedGroups` never leave the server.
 - **Demo mode.** `DEMO_MODE=true` shows the shared demo password on the sign-in page. Use it only with dummy data.
 - **AI.** Free-tier Gemini keys may let Google use the prompts. Use them only with dummy data. For company data, use Vertex AI or the company's own LLM ([ai.md](ai.md#privacy-and-safety)).

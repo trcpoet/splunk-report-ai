@@ -50,8 +50,6 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | `AI_SITE_DAILY_LIMIT` | `1000` | `lib/ai/config.ts` → `lib/ai/usage.ts` | AI requests per UTC day for everyone together, including briefings. |
 | `AI_ALLOW_LIVE_DATA` | off | `lib/ai/config.ts` | With `SPLUNK_MODE=live` data in the database, AI stays off until this is `true`. Set it only once sending report data to the provider is approved. |
 | `SPLUNK_WEB_URL` | none | `lib/ai/config.ts` → `lib/ai/spl.ts` | Splunk Web's address (e.g. `https://splunk.example.com/en-US`), for **Open in Splunk** under Write SPL answers. |
-| `SPLUNK_PARSER_TOKEN` | none | `lib/ai/validate.ts` → `lib/splunk/parser.ts` | A token for a **parse-only** Splunk role (no index access). With `SPLUNK_BASE_URL`, Write SPL checks each search with Splunk's own parser; without them, a built-in parser does. **Never** put the worker's `SPLUNK_TOKEN` here. |
-| `SPLUNK_BASE_URL` | none | `lib/ai/validate.ts` (web app), `worker/sync.ts` (worker) | The search head's management port, e.g. `https://splunk.example.com:8089`. In the web app, only for the parser check. |
 
 ### Sync worker
 

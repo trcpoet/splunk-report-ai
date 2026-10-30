@@ -36,8 +36,6 @@ export const MAX_CHAT_MESSAGES = 100;
 
 const SplStepSchema = new Schema({ code: String, explanation: String }, { _id: false });
 
-const SplValidationSchema = new Schema({ ok: Boolean, by: { type: String, enum: ['splunk', 'demo'] }, message: String }, { _id: false });
-
 const SplAnswerSchema = new Schema<StoredSplAnswer>(
     {
         summary: String,
@@ -46,7 +44,6 @@ const SplAnswerSchema = new Schema<StoredSplAnswer>(
         fields: { type: [String], default: [] },
         assumptions: { type: [String], default: [] },
         followUps: { type: [String], default: [] },
-        validation: { type: SplValidationSchema, default: undefined },
         basedOn: { type: [String], default: undefined },
     },
     { _id: false },

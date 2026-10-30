@@ -37,7 +37,7 @@ The real-Splunk example's scripts ([splunk-example.md](../splunk-example.md)).
 
 ### `eval-spl.ts` and `spl-eval-set.json`
 
-`npm run eval:spl` scores Write SPL on the 10 requests in `spl-eval-set.json`, with the same steps as the tab: retrieval, prompt, AI, parser check.
+`npm run eval:spl` scores Write SPL on the 10 requests in `spl-eval-set.json`, with the same steps as the tab: retrieval, prompt, AI, SPL check.
 - **It scores each answer:** does it parse, does it only read data, does it use the expected index and fields.
 - **It needs no database:** it uses the demo reports.
 - **Use it before and after** changing a prompt, the examples or the model, with a real `GEMINI_API_KEY`. `AI_PROVIDER=fake` only checks that the steps run.

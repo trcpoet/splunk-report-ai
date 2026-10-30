@@ -16,8 +16,6 @@ The sync only reads. Every call asks for `output_mode=json`.
 | `GET /services/search/jobs/<sid>` | One job's facts: state, run time, duration, result count, messages |
 | `GET /services/search/v2/jobs/<sid>/results` | One job's result rows (up to `SYNC_MAX_ROWS`) |
 
-The web app makes one more call, only for Write SPL, and only with a parse-only token: `POST /services/search/parser` (`parser.ts`).
-
 ## `sync.ts`
 
 Copies Splunk scheduled reports and their runs into MongoDB.
@@ -74,10 +72,6 @@ Only the REST fields the sync reads:
 - `SplunkBool`: Splunk sends booleans as `true`/`false` or `"0"`/`"1"`.
 
 Most values arrive as strings, so `map.ts` converts defensively.
-
-## `parser.ts`
-
-`splunkParse({ baseUrl, token, query, timeoutMs = 5000 })` checks a search with Splunk's own parser, `POST /services/search/parser`, without running it. Write SPL uses it through `lib/ai/validate.ts`. It needs `SPLUNK_PARSER_TOKEN`, a token for a role that can't read any index. The worker's `SPLUNK_TOKEN` never reaches the web app.
 
 ## `fixtures/reports.ts`
 

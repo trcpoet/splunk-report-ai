@@ -1,6 +1,6 @@
 // npm run eval:spl: scores Write SPL on the requests in scripts/spl-eval-set.json,
 // with the same steps as the tab: the closest example searches (RAG), the
-// prompt, the AI, and the parser check. It uses the demo reports, so it needs
+// prompt, the AI, and the SPL check. It uses the demo reports, so it needs
 // no database. Run it with a real GEMINI_API_KEY to measure a change to the
 // prompt, the examples or the model; AI_PROVIDER=fake only exercises it.
 import { readFileSync } from 'node:fs';
@@ -42,7 +42,7 @@ async function main() {
         const used = new Set([...pipeCommands(spl), ...(spl.trim().startsWith('|') ? [] : ['search'])]);
 
         const checks = {
-            parses: (await validateSpl(spl)).ok,
+            parses: validateSpl(spl).ok,
             'read-only': checkSpl(spl).readOnly,
             index: indexes.some((index) => new RegExp(`index\\s*=\\s*"?${index}\\b`, 'i').test(spl)),
             fields: fields.every((field) => spl.toLowerCase().includes(field.toLowerCase())),
