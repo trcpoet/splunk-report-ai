@@ -77,7 +77,7 @@ export const reports: FixtureReport[] = [
         resultCount: 117,
         recipients: ['secops@example.com', 'soc-tier1@example.com', 'it-director@example.com'],
         tags: ['security', 'authentication', 'daily'],
-        spl: `index=wineventlog EventCode=4625 OR (index=linux_secure "Failed password")
+        spl: `(index=wineventlog EventCode=4625) OR (index=linux_secure "Failed password")
 | eval user=coalesce(TargetUserName, user)
 | stats count AS failures, dc(src_ip) AS sources, latest(_time) AS last_attempt BY user
 | where failures >= 10
@@ -314,7 +314,7 @@ export const reports: FixtureReport[] = [
         recipients: ['iam-governance@example.com', 'internal-audit@example.com', 'secops@example.com'],
         tags: ['compliance', 'security', 'audit'],
         spl: `index=wineventlog EventCode IN (4728, 4732, 4756, 4729, 4733, 4757)
-| eval action=if(EventCode IN (4728, 4732, 4756), "added", "removed")
+| eval action=if(EventCode=4728 OR EventCode=4732 OR EventCode=4756, "added", "removed")
 | table _time, SubjectUserName, MemberName, TargetUserName, action
 | rename SubjectUserName AS changed_by, MemberName AS member, TargetUserName AS group`,
         highlights: [

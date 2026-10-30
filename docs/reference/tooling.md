@@ -10,7 +10,7 @@ The sync worker's entry point, a plain Node process run with `tsx`, not part of 
   - `npm run sync:watch` syncs every `SYNC_INTERVAL_MINUTES` (default 15) until Ctrl+C or SIGTERM.
 - **Transport:** it picks one from `SPLUNK_MODE`.
   - `fixture`, the default, uses the dummy reports.
-  - `live` uses `httpTransport` with `SPLUNK_BASE_URL` and `SPLUNK_TOKEN`. Either one missing is an error.
+  - `live` uses `httpTransport` with `SPLUNK_BASE_URL` and `SPLUNK_TOKEN`, or the token in the file `SPLUNK_TOKEN_FILE` names. A missing address or token is an error.
 - **Then** it calls `syncAll` (`lib/splunk/sync.ts`), prints a one-line summary, and disconnects.
 - **Only this process holds `SPLUNK_TOKEN`.** Run it beside the web app, never inside it.
 
@@ -21,6 +21,19 @@ The sync worker's entry point, a plain Node process run with `tsx`, not part of 
 `npm run seed`: creates the demo users from `lib/demo-users.ts` and their `user_access` records.
 - **Safe to run again:** existing demo users get the current `DEMO_PASSWORD` and access, so changing the password in `.env.local` and re-running it takes effect.
 - **Sign-up:** the web app turns sign-up off, and Better Auth enforces that inside its sign-up endpoint. So this script uses its own Better Auth instance with sign-up on.
+
+### `splunk-example/`
+
+The real-Splunk example's scripts ([splunk-example.md](../splunk-example.md)).
+- **`admin.ts`:** a small REST client that signs in to a test Splunk as its admin. It keeps trying for 2 minutes while Splunk can't be reached, for example while it restarts. The connector never uses it.
+- **`setup.ts`** (`npm run splunk:setup`) sets the test Splunk up through its REST API:
+  - indexes, and the SSH log's fields;
+  - six scheduled reports;
+  - a read-only role and a service account, with a 30-day token written to `SPLUNK_TOKEN_FILE`. It waits for the KV store, which keeps the tokens;
+  - 24 hours of logs.
+
+  It's safe to run again.
+- **`feed.ts`** (`npm run splunk:feed`) sends each minute's dummy logs just after the minute ends.
 
 ### `eval-spl.ts` and `spl-eval-set.json`
 
@@ -73,16 +86,19 @@ What `score.py` does:
 |---|---|
 | `Dockerfile` | Multi-stage build on `node:24-slim`:<br>• `deps` runs `npm ci`;<br>• `tools` has all the code, for seed and sync;<br>• `build` runs `next build` with placeholders, with `DEMO_MODE` and `DEMO_PASSWORD` as build arguments;<br>• `app` runs the standalone server as user `node` on :3000, with a health check on `/login`. |
 | `docker-compose.yml` | `docker compose up --build`:<br>• `mongo` (7.0, with a health check);<br>• `setup` (seed, then sync, once);<br>• `app`;<br>• `ml`, under `--profile ml`.<br>Every setting has a default ([docker.md](../docker.md)). |
-| `.dockerignore` | Keeps secrets (`.env*` except `.env.example`), `.git`, `.next`, `node_modules`, `ml/.venv`, `ml/out`, `.claude` and logs out of the build context. |
+| `docker-compose.splunk.yml` | The real-Splunk example:<br>• `splunk` (10.0, pinned: from 10.2 the KV store can't start on Linux kernels 6.19+);<br>• `splunk-setup`, `feeder` and `seed`;<br>• `app`;<br>• `connector`, the worker in live mode with the token file;<br>• `mongo`.<br>([splunk-example.md](../splunk-example.md)) |
+| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) with Docker inside, for the Splunk example. `BETTER_AUTH_URL` is set to the codespace's address. |
+| `.dockerignore` | Keeps secrets (`.env*` except `.env.example`, `.splunk-example`), `.git`, `.next`, `node_modules`, `ml/.venv`, `ml/out`, `.claude` and logs out of the build context. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. |
 | `.github/workflows/ci.yml` | On every PR and push to `main`, with newer pushes cancelling older runs:<br>• **"Lint, test and build"**, required by the `main` ruleset;<br>• **"ML (Python)"**, which runs pytest on Python 3.14;<br>• **"Docker"**, which builds, starts, signs in, reads `/api/reports`, then runs the ML job. |
+| `.github/workflows/splunk-example.yml` | "Splunk example" (not required). It runs `docker-compose.splunk.yml` with the reports and sync every minute, then checks:<br>• the six reports arrive with Splunk's results and columns;<br>• the status rules fire;<br>• the sync ran in live mode.<br>It runs when the connector or the example change, on Mondays, and by hand. |
 
 ## Settings and git
 
 | File | What it does |
 |---|---|
 | `.env.example` | Every setting, explained. Copy it to `.env.local`. |
-| `.gitignore` | Ignores `.env*` (except `.env.example`), `.next/`, `node_modules/`, `ml/.venv/`, `ml/out/`, `*.tsbuildinfo` and editor folders. |
+| `.gitignore` | Ignores `.env*` (except `.env.example`), `.next/`, `node_modules/`, `ml/.venv/`, `ml/out/`, `.splunk-example/` (the example's token), `*.tsbuildinfo` and editor folders. |
 | `README.md` | What the app is, how to run it, the scripts, hosting, connecting Splunk, and the docs. |
 | `AGENTS.md`, `CLAUDE.md` | Notes for coding agents: this Next.js is version 16, so read its bundled docs in `node_modules/next/dist/docs/` before writing code. `next dev` re-adds the block in `AGENTS.md`. |
 

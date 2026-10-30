@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 // How the sync worker talks to Splunk. httpTransport calls the REST API on the
 // management port (8089); fixtures/transport.ts answers the same paths from the
 // dummy reports. Only the worker holds the Splunk token.
@@ -16,6 +18,20 @@ export class SplunkHttpError extends Error {
 }
 
 export const isNotFound = (error: unknown) => error instanceof SplunkHttpError && error.status === 404;
+
+// The worker's Splunk token: SPLUNK_TOKEN, or else the file SPLUNK_TOKEN_FILE
+// names, which is how Docker and Kubernetes hand over a secret.
+export function splunkTokenFromEnv(env: Record<string, string | undefined> = process.env): string | undefined {
+    if (env.SPLUNK_TOKEN) return env.SPLUNK_TOKEN;
+    const file = env.SPLUNK_TOKEN_FILE;
+    if (!file) return undefined;
+
+    try {
+        return readFileSync(file, 'utf8').trim() || undefined;
+    } catch (error) {
+        throw new Error(`Can't read SPLUNK_TOKEN_FILE (${file}): ${error instanceof Error ? error.message : error}`);
+    }
+}
 
 type HttpTransportOptions = {
     // e.g. https://splunk.example.com:8089. For an internal CA, set NODE_EXTRA_CA_CERTS

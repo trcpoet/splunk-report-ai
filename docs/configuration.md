@@ -10,7 +10,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 
 | Where | Used by | Notes |
 |---|---|---|
-| `.env.local` (copy of `.env.example`) | `npm run dev`, `build`, `start`; the Node scripts (`sync`, `seed`, `test`, `eval:spl`), which load it with `--env-file-if-exists`; the ML job, through python-dotenv | Git ignores every `.env*` file except `.env.example`. Generate secrets with `openssl rand -base64 32`. Values already in the shell win. |
+| `.env.local` (copy of `.env.example`) | `npm run dev`, `build`, `start`; the Node scripts (`sync`, `seed`, `test`, `eval:spl`, `splunk:setup`, `splunk:feed`), which load it with `--env-file-if-exists`; the ML job, through python-dotenv | Git ignores every `.env*` file except `.env.example`. Generate secrets with `openssl rand -base64 32`. Values already in the shell win. |
 | The shell environment | Everything above, and Claude Code tools (`.mcp.json`, the plugin) | Claude Code reads its tools' settings from the shell, not from `.env.local`. |
 | Vercel → Settings → Environment Variables | The hosted web app | Production only: PR branches don't deploy. New values apply to new deployments, so redeploy after a change. |
 | A `.env` next to `docker-compose.yml` | `docker compose` | Every value has a default ([docker.md](docker.md)). |
@@ -57,11 +57,25 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 |---|---|---|---|
 | `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 9 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
 | `SPLUNK_BASE_URL` | none | `worker/sync.ts` | Required for `live`: the management port, usually `https://<host>:8089`. |
-| `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live`: a service account's authentication token. **Only the worker's environment may hold it.** |
+| `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
+| `SPLUNK_TOKEN_FILE` | none | `worker/sync.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
 | `SPLUNK_TZ` | `UTC` | `worker/sync.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. |
 | `SYNC_INTERVAL_MINUTES` | `15` | `worker/sync.ts` | How often `npm run sync:watch` syncs. Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
 | `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. Not in `.env.example`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
+
+### The Splunk example
+
+Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` ([splunk-example.md](splunk-example.md)).
+
+| Variable | Default | Read by | What it does |
+|---|---|---|---|
+| `SPLUNK_GENERAL_TERMS` | none (required) | `docker-compose.splunk.yml` → Splunk's image | `--accept-sgt-current-at-splunk-com`, once you've read Splunk's General Terms. Splunk won't start without it. |
+| `SPLUNK_PASSWORD` | `splunk-example-2026` | `docker-compose.splunk.yml` | The test Splunk's admin password. |
+| `SPLUNK_ADMIN_URL` | `http://localhost:8089` | `scripts/splunk-example/admin.ts` | The test Splunk's management port, for the setup and the feeder. |
+| `SPLUNK_ADMIN_USER`, `SPLUNK_ADMIN_PASSWORD` | `admin`, none | `scripts/splunk-example/admin.ts` | The test Splunk's admin. Only the setup and the feeder use it; the connector gets a token instead. |
+| `SPLUNK_EXAMPLE_CRON` | `*/5 * * * *` | `scripts/splunk-example/setup.ts` | When the example's six reports run. CI runs them every minute. |
+| `SPLUNK_TOKEN_FILE` | `.splunk-example/token` | `scripts/splunk-example/setup.ts` | Where the setup writes the connector's token, which the connector then reads. |
 
 ### ML job
 
@@ -205,7 +219,10 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. Don't gate deploys on `VERCEL_ENV`: it's empty in the ignore step. |
 | `Dockerfile` | Three stages: `tools` (seed and sync), `build`, `app` (the standalone server, as user `node`, with a health check). |
 | `docker-compose.yml` | Services `mongo` (7.0), `setup` (seed and sync once), `app`, and `ml` behind the `ml` profile ([docker.md](docker.md)). |
+| `docker-compose.splunk.yml` | The real-Splunk example: `splunk` (10.0, pinned), `splunk-setup`, `feeder`, `seed`, `app`, `connector` (the worker in live mode) and `mongo` ([splunk-example.md](splunk-example.md)). |
+| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker inside. |
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
+| `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the six reports arrive from Splunk. It runs when `lib/splunk/`, `worker/` or the example change, on Mondays, and by hand. |
 | `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks. |
 | `tsconfig.json` | `@/*` maps to the repo root. |
 | `package.json` | The scripts. Tests are `lib/**/*.test.ts`, run with `node --test` through `tsx`. |
