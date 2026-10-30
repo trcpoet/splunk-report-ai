@@ -9,9 +9,10 @@ import { adminFromEnv, alreadyThere, expectOk, waitForSplunk, type SplunkAdmin }
 // Sets up a test Splunk for the example (docs/splunk-example.md) through its
 // REST API, the way a Splunk admin would for the app:
 // 1. indexes for the dummy logs, and the SSH log's user and source fields;
-// 2. six scheduled reports (lib/splunk/example/searches.ts);
-// 3. a service account that can read them, and a token for the connector;
-// 4. the last 24 hours of dummy logs (lib/splunk/example/events.ts).
+// 2. the last 24 hours of dummy logs (lib/splunk/example/events.ts), first, so
+//    even the reports' first runs find data;
+// 3. six scheduled reports (lib/splunk/example/searches.ts);
+// 4. a service account that can read them, and a token for the connector.
 // It's safe to run again: it updates what's there, makes a new token, and only
 // sends the old logs once.
 //
@@ -160,6 +161,8 @@ async function main() {
     await addSshFields(admin);
     console.log(`Indexes ready: ${EXAMPLE_INDEXES.join(', ')}.`);
 
+    await backfill(admin);
+
     await saveReports(admin, cron);
     console.log(`Scheduled ${exampleSearches().length} reports to run at "${cron}".`);
 
@@ -167,8 +170,6 @@ async function main() {
     mkdirSync(dirname(tokenFile), { recursive: true });
     writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
     console.log(`Created the ${SERVICE_ACCOUNT} service account, and wrote its token to ${tokenFile}.`);
-
-    await backfill(admin);
     console.log('Done. Splunk runs the reports on schedule, and the connector copies each run into MongoDB.');
 }
 
