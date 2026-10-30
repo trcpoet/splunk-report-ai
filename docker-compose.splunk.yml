@@ -73,8 +73,11 @@ services:
       SPLUNK_TOKEN_FILE: /run/splunk-example/token
     volumes:
       - splunk-token:/run/splunk-example
+    # Healthy means Splunk's image has finished setting itself up, which can
+    # restart Splunk once more after it first answers.
     depends_on:
-      - splunk
+      splunk:
+        condition: service_healthy
 
   # Plays the servers: sends a minute of dummy logs to Splunk every minute.
   feeder:

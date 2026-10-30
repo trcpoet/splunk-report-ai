@@ -11,6 +11,9 @@ type SplunkBody = {
     messages?: { type: string; text: string }[];
 };
 
+// How long a request keeps trying while Splunk can't be reached, as when it restarts.
+const UNREACHABLE_FOR_MS = 2 * 60_000;
+
 export function splunkAdmin({ baseUrl, username, password }: { baseUrl: string; username: string; password: string }) {
     const root = baseUrl.replace(/\/$/, '');
     const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
@@ -20,12 +23,22 @@ export function splunkAdmin({ baseUrl, username, password }: { baseUrl: string; 
         url.searchParams.set('output_mode', 'json');
         for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
 
-        const response = await fetch(url, {
-            method,
-            headers: { Authorization: authorization },
-            body: form ? new URLSearchParams(form) : text,
-            signal: AbortSignal.timeout(120_000),
-        });
+        const deadline = Date.now() + UNREACHABLE_FOR_MS;
+        let response: Response;
+        for (;;) {
+            try {
+                response = await fetch(url, {
+                    method,
+                    headers: { Authorization: authorization },
+                    body: form ? new URLSearchParams(form) : text,
+                    signal: AbortSignal.timeout(120_000),
+                });
+                break;
+            } catch (error) {
+                if (Date.now() > deadline) throw new Error(`Can't reach Splunk at ${root}: ${error instanceof Error ? error.message : error}`);
+                await sleep(5_000);
+            }
+        }
         const raw = await response.text();
         let body: SplunkBody | null = null;
         try {
