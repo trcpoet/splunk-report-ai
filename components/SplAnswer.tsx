@@ -5,6 +5,7 @@ import { BookmarkCheck, BookmarkPlus, CircleX, ExternalLink, ShieldCheck, Triang
 import { saveExampleAction } from "@/app/ai/actions";
 import CopyButton from "@/components/CopyButton";
 import { checkSpl, queryFromSteps, splunkSearchUrl, stepLine, type StoredSplAnswer as Answer } from "@/lib/ai/spl";
+import { validateSpl } from "@/lib/ai/validate";
 
 type Props = {
     answer: Answer;
@@ -64,14 +65,13 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
     const check = checkSpl(query);
     const openUrl = splunkSearchUrl(splunkWebUrl, query);
 
-    // What a parser said before the answer was shown. Older answers have no check.
-    const { validation } = answer;
-    const parser = validation?.by === 'splunk' ? "Splunk's parser" : 'The demo parser';
-    const parseError = validation && !validation.ok ? validation.message ?? "the search doesn't parse." : null;
-    const warnings = [...(parseError ? [`${parser}: ${parseError}`] : []), ...check.warnings];
-    const fix = parseError ? `Fix this search. ${parser} says: ${parseError}` : null;
+    // The built-in SPL checker, run each time, so every answer gets today's checks.
+    const validation = validateSpl(query);
+    const parseError = validation.ok ? null : validation.message ?? "the search doesn't parse.";
+    const warnings = [...(parseError ? [`The SPL checker says: ${parseError}`] : []), ...check.warnings];
+    const fix = parseError ? `Fix this search. The SPL checker says: ${parseError}` : null;
     // Good examples only read data and parse.
-    const canBeExample = Boolean(messageId) && check.readOnly && validation?.ok !== false;
+    const canBeExample = Boolean(messageId) && check.readOnly && validation.ok;
 
     return (
         <article className="spl-card">
@@ -102,13 +102,7 @@ const SplAnswer = ({ answer, splunkWebUrl, reveal = false, onFollowUp, busy = fa
                 <p className="spl-check">Based on similar searches: {answer.basedOn.join('; ')}.</p>
             )}
 
-            {validation?.ok && (
-                <p className="spl-check">
-                    {validation.by === 'splunk'
-                        ? "Checked with Splunk's parser: no errors."
-                        : "Checked with the demo parser (Splunk isn't connected): no errors."}
-                </p>
-            )}
+            {validation.ok && <p className="spl-check">Checked with the built-in SPL checker: no errors found.</p>}
 
             {warnings.length > 0 && (
                 <ul className="spl-warnings">

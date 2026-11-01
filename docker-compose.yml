@@ -80,6 +80,8 @@ services:
     build:
       context: .
       dockerfile: ml/Dockerfile
+    # Root, so --plot can write the chart into the mounted ml/out folder.
+    user: root
     environment:
       <<: *database
       APP_URL: http://app:3000

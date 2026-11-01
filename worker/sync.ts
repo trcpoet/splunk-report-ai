@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { disconnectDB } from '@/lib/mongodb';
 import { fixtureTransport } from '@/lib/splunk/fixtures/transport';
 import { syncAll } from '@/lib/splunk/sync';
-import { httpTransport, type SplunkTransport } from '@/lib/splunk/transport';
+import { httpTransport, splunkTokenFromEnv, type SplunkTransport } from '@/lib/splunk/transport';
 
 // Syncs Splunk scheduled reports into MongoDB. Runs as its own process, not
 // inside Next.js, so it runs once per deployment and only it holds the Splunk token.
@@ -11,7 +11,8 @@ import { httpTransport, type SplunkTransport } from '@/lib/splunk/transport';
 //   npm run sync:watch    sync every SYNC_INTERVAL_MINUTES (default 15)
 //
 // SPLUNK_MODE=fixture (default) serves the dummy reports. SPLUNK_MODE=live calls
-// SPLUNK_BASE_URL (the management port, usually 8089) with SPLUNK_TOKEN.
+// SPLUNK_BASE_URL (the management port, usually 8089) with SPLUNK_TOKEN, or with
+// the token in the file SPLUNK_TOKEN_FILE names.
 
 function transportFromEnv(): { mode: 'fixture' | 'live'; transport: SplunkTransport } {
     const mode = process.env.SPLUNK_MODE || 'fixture';
@@ -20,8 +21,8 @@ function transportFromEnv(): { mode: 'fixture' | 'live'; transport: SplunkTransp
     if (mode !== 'live') throw new Error(`SPLUNK_MODE must be "fixture" or "live", not "${mode}".`);
 
     const baseUrl = process.env.SPLUNK_BASE_URL;
-    const token = process.env.SPLUNK_TOKEN;
-    if (!baseUrl || !token) throw new Error('SPLUNK_MODE=live needs SPLUNK_BASE_URL and SPLUNK_TOKEN.');
+    const token = splunkTokenFromEnv();
+    if (!baseUrl || !token) throw new Error('SPLUNK_MODE=live needs SPLUNK_BASE_URL, and SPLUNK_TOKEN or SPLUNK_TOKEN_FILE.');
 
     return { mode, transport: httpTransport({ baseUrl, token }) };
 }

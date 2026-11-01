@@ -1,0 +1,28 @@
+# The chart's install on a throwaway kind cluster in CI (.github/workflows/helm.yml):
+# the images built there, the dummy reports, the demo accounts and placeholder
+# secrets.
+image:
+  tag: ci
+  pullPolicy: Never
+
+url: http://localhost:3000
+
+demo:
+  enabled: true
+
+# The dummy reports' runs have fixed dates.
+runRetentionDays: 3650
+
+connector:
+  splunk:
+    mode: fixture
+
+ml:
+  enabled: true
+
+secrets:
+  values:
+    MONGODB_URI: mongodb://mongo:27017/splunkevents
+    BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret-0000000000
+    REVALIDATE_SECRET: ci-placeholder-revalidate-secret
+    DEMO_PASSWORD: splunk-demo-2026

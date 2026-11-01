@@ -1,0 +1,6 @@
+apiVersion: v2
+name: splunk-events
+description: SplunkEvents, with the connector that copies Splunk scheduled reports into MongoDB through Splunk's REST API. See docs/kubernetes.md.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

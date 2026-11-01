@@ -1,0 +1,83 @@
+{{- $splunk := .Values.connector.splunk }}
+{{- if not (has $splunk.mode (list "fixture" "live")) }}
+{{- fail "connector.splunk.mode must be fixture or live" }}
+{{- end }}
+# The connector: copies the scheduled reports' new runs from Splunk's REST API
+# into MongoDB (worker/sync.ts), then tells the web app to show them.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "splunk-events.fullname" . }}-connector
+  labels:
+    {{- include "splunk-events.labels" . | nindent 4 }}
+    app.kubernetes.io/component: connector
+spec:
+  schedule: {{ .Values.connector.schedule | quote }}
+  # One at a time. A run that can't start within 5 minutes waits for the next.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            {{- include "splunk-events.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: connector
+        spec:
+          restartPolicy: Never
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- include "splunk-events.podSecurityContext" . | nindent 12 }}
+          containers:
+            - name: connector
+              image: {{ include "splunk-events.image" (dict "root" . "name" .Values.image.worker) }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["node", "--import", "tsx", "worker/sync.ts"]
+              env:
+                - name: SPLUNK_MODE
+                  value: {{ $splunk.mode | quote }}
+                - name: SPLUNK_TZ
+                  value: {{ $splunk.timeZone | quote }}
+                - name: APP_URL
+                  value: {{ include "splunk-events.webUrl" . | quote }}
+                {{- include "splunk-events.retentionEnv" . | nindent 16 }}
+                {{- include "splunk-events.secretEnv" (dict "root" . "key" "MONGODB_URI") | nindent 16 }}
+                {{- include "splunk-events.secretEnv" (dict "root" . "key" "REVALIDATE_SECRET") | nindent 16 }}
+                {{- if eq $splunk.mode "live" }}
+                - name: SPLUNK_BASE_URL
+                  value: {{ required "Set connector.splunk.baseUrl for live mode" $splunk.baseUrl | quote }}
+                # The service account's token. Only this job gets it.
+                - name: SPLUNK_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ required "Set connector.splunk.tokenSecret.name for live mode" $splunk.tokenSecret.name }}
+                      key: {{ $splunk.tokenSecret.key }}
+                {{- end }}
+                {{- if .Values.connector.caBundle.configMap }}
+                # Your company's certificate authority, for Splunk's certificate.
+                - name: NODE_EXTRA_CA_CERTS
+                  value: /etc/splunk-events/ca/{{ .Values.connector.caBundle.key }}
+                {{- end }}
+              {{- if .Values.connector.caBundle.configMap }}
+              volumeMounts:
+                - name: ca
+                  mountPath: /etc/splunk-events/ca
+                  readOnly: true
+              {{- end }}
+              resources:
+                {{- toYaml .Values.connector.resources | nindent 16 }}
+              securityContext:
+                {{- include "splunk-events.containerSecurityContext" . | nindent 16 }}
+          {{- with .Values.connector.caBundle.configMap }}
+          volumes:
+            - name: ca
+              configMap:
+                name: {{ . }}
+          {{- end }}

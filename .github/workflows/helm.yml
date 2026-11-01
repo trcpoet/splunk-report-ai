@@ -1,0 +1,97 @@
+# Checks the Helm chart (deploy/helm/splunk-events, docs/kubernetes.md):
+# lints and renders it, then installs it on a throwaway Kubernetes cluster
+# (kind) with the images built here, the dummy reports and the demo accounts,
+# runs the connector and the ML job once, and signs in.
+# Not required for merging. It runs when the chart or the images change, and by hand.
+name: Helm
+
+on:
+  pull_request:
+    paths:
+      - deploy/**
+      - Dockerfile
+      - ml/Dockerfile
+      - worker/**
+      - .github/workflows/helm.yml
+  push:
+    branches: [main]
+    paths:
+      - deploy/**
+      - Dockerfile
+      - ml/Dockerfile
+      - worker/**
+      - .github/workflows/helm.yml
+  workflow_dispatch:
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  helm:
+    name: Helm
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CHART: deploy/helm/splunk-events
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.3.0
+      - name: Lint and render the chart
+        run: |
+          helm lint "$CHART" -f deploy/helm/ci/values.yaml
+          helm lint "$CHART" -f "$CHART/values-openshift-example.yaml"
+          helm template ci "$CHART" -f deploy/helm/ci/values.yaml > /dev/null
+          helm template work "$CHART" -f "$CHART/values-openshift-example.yaml" > openshift.yaml
+          grep -q 'kind: Route' openshift.yaml
+          # The Splunk token goes to the connector only, never to the web app.
+          if helm template work "$CHART" -f "$CHART/values-openshift-example.yaml" -s templates/web-deployment.yaml | grep -q SPLUNK_TOKEN; then
+            echo "The web app must not get SPLUNK_TOKEN"
+            exit 1
+          fi
+      - name: Build the images
+        run: |
+          docker build --target app -t splunk-events-app:ci .
+          docker build --target worker -t splunk-events-worker:ci .
+          docker build -f ml/Dockerfile -t splunk-events-ml:ci .
+      - uses: helm/kind-action@v1.15.1
+        with:
+          version: v0.33.0
+          cluster_name: kind
+      - name: Load the images and start a throwaway MongoDB
+        run: |
+          kind load docker-image splunk-events-app:ci splunk-events-worker:ci splunk-events-ml:ci --name kind
+          kubectl apply -f deploy/helm/ci/mongo.yaml
+          kubectl rollout status deployment/mongo --timeout=180s
+      - name: Install the chart
+        run: helm install splunk-events "$CHART" -f deploy/helm/ci/values.yaml --wait --timeout 6m
+      - name: Run the connector and the ML job once
+        run: |
+          kubectl create job sync-now --from=cronjob/splunk-events-connector
+          kubectl wait --for=condition=complete job/sync-now --timeout=180s
+          kubectl create job ml-now --from=cronjob/splunk-events-ml
+          kubectl wait --for=condition=complete job/ml-now --timeout=300s
+      - name: Sign in and read the reports
+        run: |
+          kubectl port-forward service/splunk-events-web 3000:3000 > port-forward.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:3000/login && break
+            sleep 2
+          done
+          curl -fsS -c cookies.txt -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' \
+            -d '{"email":"admin@example.com","password":"splunk-demo-2026"}' \
+            http://localhost:3000/api/auth/sign-in/email > /dev/null
+          curl -fsS -b cookies.txt http://localhost:3000/api/reports | grep -q '"failed-logins-by-user"'
+      - name: Show what happened
+        if: failure()
+        run: |
+          kubectl get pods,jobs,cronjobs -o wide
+          kubectl describe pods | tail -100
+          kubectl logs deployment/splunk-events-web --tail=80 || true
+          kubectl logs job/sync-now --tail=80 || true
+          kubectl logs job/ml-now --tail=80 || true

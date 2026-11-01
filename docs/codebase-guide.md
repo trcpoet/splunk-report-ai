@@ -44,7 +44,7 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
 
 **Secrets.**
 - `.env*` files stay out of git.
-- `SPLUNK_TOKEN` lives in the sync worker's environment only. The web app's `SPLUNK_PARSER_TOKEN` must be for a parse-only role.
+- `SPLUNK_TOKEN` lives in the sync worker's environment only. The web app has no Splunk token.
 - Use `DEMO_MODE` only with dummy data.
 - Never put a real company's Splunk address, token or data in this public repo.
 

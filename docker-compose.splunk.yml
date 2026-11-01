@@ -1,0 +1,162 @@
+# SplunkEvents reading a real Splunk: Splunk Enterprise's free trial in Docker,
+# with dummy logs and six scheduled reports, and the connector (the sync worker
+# in live mode) copying their runs into MongoDB through Splunk's REST API, just
+# as it would read your company's Splunk. See docs/splunk-example.md.
+#
+#   docker compose -f docker-compose.splunk.yml up --build
+#
+# It needs SPLUNK_GENERAL_TERMS set (below). Then open http://localhost:3000 and
+# pick a demo account (password splunk-demo-2026), and http://localhost:8000 to
+# see the same reports in Splunk (user admin, password splunk-example-2026).
+# Splunk's image runs on Intel/AMD (x86) machines only.
+
+name: splunk-events-live
+
+x-database: &database
+  MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/splunkevents}
+
+x-auth: &auth
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-docker-only-change-me-0000000000000}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-splunk-demo-2026}
+
+# The test Splunk's admin. Only the setup and the feeder sign in as it; the
+# connector gets a read-only token instead.
+x-splunk-admin: &splunk-admin
+  SPLUNK_ADMIN_URL: http://splunk:8089
+  SPLUNK_ADMIN_PASSWORD: ${SPLUNK_PASSWORD:-splunk-example-2026}
+
+services:
+  mongo:
+    # 7.0 for the same reason as in docker-compose.yml.
+    image: mongo:7.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  splunk:
+    # Splunk Enterprise, which runs as a 60-day trial. x86 only.
+    # 10.0, not 10.2 or later: from 10.2, the KV store that keeps the tokens
+    # runs MongoDB 8.0, which can't start on Linux kernels 6.19 and newer (the
+    # same bug as in docker-compose.yml). The REST API the connector uses is the same.
+    image: splunk/splunk:10.0.11
+    platform: linux/amd64
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      # Starting Splunk means accepting Splunk's General Terms. Read them, then
+      # set this yourself, for example in a .env file next to this one.
+      SPLUNK_GENERAL_TERMS: "${SPLUNK_GENERAL_TERMS:?Read Splunk's General Terms (https://www.splunk.com/en_us/legal/splunk-general-terms.html), then set SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com}"
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-splunk-example-2026}
+      # Plain HTTP on 8089, inside this private network only. A company Splunk
+      # uses HTTPS: see "Company certificates" in docs/connecting-live-splunk.md.
+      SPLUNKD_SSL_ENABLE: "false"
+      SPLUNK_CERT_PREFIX: http
+    # Only this computer can reach Splunk.
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8089:8089"
+    volumes:
+      - splunk-etc:/opt/splunk/etc
+      - splunk-var:/opt/splunk/var
+
+  # Runs once: the indexes, the scheduled reports, the connector's service
+  # account and token, and the last day of logs.
+  splunk-setup:
+    build:
+      context: .
+      target: tools
+    command: ["node", "--import", "tsx", "scripts/splunk-example/setup.ts"]
+    environment:
+      <<: *splunk-admin
+      SPLUNK_EXAMPLE_CRON: "${SPLUNK_EXAMPLE_CRON:-*/5 * * * *}"
+      SPLUNK_TOKEN_FILE: /run/splunk-example/token
+    volumes:
+      - splunk-token:/run/splunk-example
+    # Healthy means Splunk's image has finished setting itself up, which can
+    # restart Splunk once more after it first answers.
+    depends_on:
+      splunk:
+        condition: service_healthy
+
+  # Plays the servers: sends a minute of dummy logs to Splunk every minute.
+  feeder:
+    build:
+      context: .
+      target: tools
+    command: ["node", "--import", "tsx", "scripts/splunk-example/feed.ts"]
+    environment: *splunk-admin
+    restart: unless-stopped
+    depends_on:
+      splunk-setup:
+        condition: service_completed_successfully
+
+  # Runs once: the demo users.
+  seed:
+    build:
+      context: .
+      target: tools
+    command: ["npm", "run", "seed"]
+    environment:
+      <<: [*database, *auth]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: app
+      args:
+        DEMO_MODE: ${DEMO_MODE:-true}
+        DEMO_PASSWORD: ${DEMO_PASSWORD:-splunk-demo-2026}
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      <<: [*database, *auth]
+      DEMO_MODE: ${DEMO_MODE:-true}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-docker-revalidate-secret}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_MODEL: ${AI_MODEL:-}
+      # This Splunk only holds dummy logs, so Ask AI may read its reports.
+      AI_ALLOW_LIVE_DATA: "true"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+
+  # The connector: reads the reports' runs through the REST API with the
+  # service account's token, and copies them into MongoDB every few minutes.
+  connector:
+    build:
+      context: .
+      target: tools
+    command: ["node", "--import", "tsx", "worker/sync.ts", "--watch"]
+    environment:
+      <<: *database
+      SPLUNK_MODE: live
+      SPLUNK_BASE_URL: http://splunk:8089
+      SPLUNK_TOKEN_FILE: /run/splunk-example/token
+      SPLUNK_TZ: UTC
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-2}
+      APP_URL: http://app:3000
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-docker-revalidate-secret}
+    volumes:
+      - splunk-token:/run/splunk-example:ro
+    restart: unless-stopped
+    depends_on:
+      splunk-setup:
+        condition: service_completed_successfully
+      app:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+  splunk-etc:
+  splunk-var:
+  splunk-token:

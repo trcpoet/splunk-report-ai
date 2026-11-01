@@ -249,7 +249,7 @@ These cost little now and save work at the move:
 - **Naming:** a naming rule for scheduled queries, so each maps to a report slug.
 - **Overlap:** will each application's logs go to both Splunk and Google Cloud for a few weeks?
 - **Location:** the region, and the data-residency rules for logs and query results.
-- **Credentials:** where the sync worker and the web app will run, and whether they can use Workload Identity Federation instead of service-account keys.
+- **Credentials:** where the sync worker and the web app will run (on Kubernetes or OpenShift, that's the Helm chart's pods: [kubernetes.md](kubernetes.md)), and whether they can use Workload Identity Federation instead of service-account keys.
 - **Roles:** which roles to request for the worker and for Write SQL, and through which AD groups.
 - **AI:** is Vertex AI approved for report data, and in which project?
 

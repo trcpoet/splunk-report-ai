@@ -1,0 +1,43 @@
+{{- if .Values.demo.enabled }}
+# The demo accounts (lib/demo-users.ts), after each install and upgrade. Only
+# for dummy data: they all share one password.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "splunk-events.fullname" . }}-seed
+  labels:
+    {{- include "splunk-events.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "splunk-events.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: seed
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "splunk-events.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: seed
+          image: {{ include "splunk-events.image" (dict "root" . "name" .Values.image.worker) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "--import", "tsx", "scripts/seed-demo-users.ts"]
+          env:
+            - name: BETTER_AUTH_URL
+              value: {{ .Values.url | quote }}
+            {{- include "splunk-events.retentionEnv" . | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "MONGODB_URI") | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "BETTER_AUTH_SECRET") | nindent 12 }}
+            {{- include "splunk-events.secretEnv" (dict "root" . "key" "DEMO_PASSWORD") | nindent 12 }}
+          securityContext:
+            {{- include "splunk-events.containerSecurityContext" . | nindent 12 }}
+{{- end }}

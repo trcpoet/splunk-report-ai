@@ -1,0 +1,19 @@
+{{- if .Values.route.enabled }}
+# OpenShift: the app's address, with TLS ended at the router.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "splunk-events.fullname" . }}
+  labels:
+    {{- include "splunk-events.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.route.host | default (urlParse .Values.url).host | quote }}
+  to:
+    kind: Service
+    name: {{ include "splunk-events.fullname" . }}-web
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+{{- end }}
