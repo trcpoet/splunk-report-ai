@@ -252,7 +252,7 @@ The bar above the chat.
 - **The panel button:** Reports, with the attention count, or Searches (`SidePanel`).
 - **On phones:** Your chats and New chat.
 - **`NewChatLink`** is used here and in the sidebar. In the open mode it sends `NEW_CHAT`, which stops an answer on its way and clears the chat, then navigates if the address names a chat.
-- **Exports:** `ModeSwitch`, `NewChatLink`, `AiTopBarFallback`, `AiTopBar` (default).
+- **Exports:** `NewChatLink`, `AiTopBarFallback`, `AiTopBar` (default).
 
 ### `AiPanels.tsx` (server)
 

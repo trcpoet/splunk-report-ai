@@ -4,7 +4,7 @@ import type { Role } from '@/lib/access';
 // Who may see which reports. Kept apart from the auth library's user record so
 // that changing the auth library or the identity provider never touches access.
 
-export interface IUserAccess {
+interface IUserAccess {
     email: string;
     role: Role;
     groups: string[];

@@ -5,7 +5,7 @@ import type { ChartPanel, ChartScatter, ChartThreshold, ReportCategory, ReportCh
 // and recomputes the derived fields (latest, history, highlights, chart) on
 // every run. Result rows live in report_runs.
 
-export interface IRunSummary {
+interface IRunSummary {
     sid: string;
     runAt: Date;
     status: ReportStatus;
@@ -142,7 +142,7 @@ const ReportSchema = new Schema<IReport>(
         recipients: { type: [String], default: [] },
         category: { type: String, required: true },
         tags: { type: [String], default: [] },
-        allowedGroups: { type: [String], default: [], index: true },
+        allowedGroups: { type: [String], default: [] },
         chart: { type: ChartSchema, default: null },
         nextRun: { type: Date, default: null },
         disabled: { type: Boolean, default: false },

@@ -20,7 +20,7 @@ export type FlagDetails = {
     runAt?: string;
 };
 
-export interface IAiFeedback {
+interface IAiFeedback {
     userId: string;
     kind: FeedbackKind;
     // A message id (answer), a summary key (summary) or "<slug>:<runAt>:<reason>" (flag).

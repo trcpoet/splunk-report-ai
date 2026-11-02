@@ -18,7 +18,7 @@ import type { SplunkReport } from '@/lib/reports';
 // Like lib/dal.ts, everything here is scoped to who is asking.
 
 // How many examples go into the prompt.
-export const SIMILAR_EXAMPLES = 5;
+const SIMILAR_EXAMPLES = 5;
 
 // The newest saved searches considered for each request.
 const MAX_SAVED = 500;

@@ -25,7 +25,7 @@ const LAST_STEPS: Record<string, string> = {
         '| rename host AS "Host", last_seen AS "Last seen (UTC)", minutes_silent AS "Minutes silent"',
 };
 
-export type ExampleSearch = {
+type ExampleSearch = {
     name: string;
     search: string;
     description: string;

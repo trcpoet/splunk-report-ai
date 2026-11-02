@@ -62,7 +62,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | `SPLUNK_TOKEN_FILE` | none | `worker/sync.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
 | `SPLUNK_TZ` | `UTC` | `worker/sync.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
 | `SYNC_INTERVAL_MINUTES` | `15` | `worker/sync.ts` | How often `npm run sync:watch` syncs. Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
-| `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. Not in `.env.example`. |
+| `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
 
 ### The Splunk example

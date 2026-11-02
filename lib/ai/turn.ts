@@ -19,7 +19,7 @@ const Body = z.object({
     message: z.string().trim().min(1).max(2000),
 });
 
-export type ReadyTurn = {
+type ReadyTurn = {
     viewer: Viewer;
     // The chat to add to: the existing one, or a new id.
     chatId: string;

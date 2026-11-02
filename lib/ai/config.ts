@@ -2,9 +2,9 @@
 // settings). Pages and routes ask aiStatus() whether answers are available,
 // and why not when they aren't. See docs/ai.md for every setting.
 
-export type AiProvider = 'gemini' | 'fake';
+type AiProvider = 'gemini' | 'fake';
 
-export type AiStatus =
+type AiStatus =
     | { enabled: true; provider: AiProvider; model: string }
     | { enabled: false; reason: 'no-key' | 'turned-off' | 'live-data' };
 
@@ -18,7 +18,7 @@ export const aiModel = (env: Env = process.env) => env.AI_MODEL || DEFAULT_MODEL
 // For finding past searches like a Write SPL request (lib/spl-examples.ts).
 // gemini-embedding-001 also works; its vectors can't be compared with these,
 // which is fine: saved vectors are kept per model.
-export const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-2';
+const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-2';
 export const embeddingModel = (env: Env = process.env) => env.AI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
 
 // Whether AI answers are on. syncMode is how the reports got into MongoDB:

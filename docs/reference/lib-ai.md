@@ -17,7 +17,7 @@ Most files here are **pure**, so the browser, the server and the tests share the
 | `embed(inputs, purpose)` | Turns texts into vectors of `EMBEDDING_DIMENSIONS` (768), for retrieval. `purpose` is `query` or `document`. |
 | `embeddingModelInUse()` | The embedding model's name, part of each saved vector's key. |
 | `AiError` | A failure with a `kind` (`stopped`, `blocked`, `busy`, `key`, `unavailable`, `invalid`) and a message the page shows as it is. |
-| `Turn`, `AskOptions`, `Usage`, `EmbedInput` | The types. `AskOptions` has `system`, `turns`, `thinking` (`low` or `medium`) and an abort `signal`. |
+| `Turn`, `Usage`, `EmbedInput` | The types. Asking takes `system`, `turns`, `thinking` (`low` or `medium`) and an abort `signal`. |
 
 - **`AI_PROVIDER=fake`** answers with canned text, typed out like a real answer. It returns a canned search for Write SPL, and hashed word vectors (`hashedEmbedding`) for embeddings, so everything works with no key.
 - **Stop** ends the app's reading. Gemini still finishes, and bills for, the answer.
@@ -28,7 +28,7 @@ Most files here are **pure**, so the browser, the server and the tests share the
 The AI settings from the environment.
 - **`aiStatus(syncMode)`** says whether answers are on, which provider and model, or why not. The reasons are `turned-off`, `live-data` and `no-key`.
 - **`aiOffMessage(reason)`** is what the page says when they're off. The hosted demo doesn't mention setup.
-- **The rest:** `aiModel()`, `embeddingModel()`, `dailyLimit()`, `siteDailyLimit()`, `splunkWebUrl()`, `DEFAULT_MODEL`, `DEFAULT_EMBEDDING_MODEL`.
+- **The rest:** `aiModel()`, `embeddingModel()`, `dailyLimit()`, `siteDailyLimit()`, `splunkWebUrl()`, `DEFAULT_MODEL`.
 - **Tested:** `config.test.ts`. Every function takes `env`, so tests pass their own.
 
 ### `prompts.ts` (pure)
@@ -61,7 +61,7 @@ The reports as text for the AI.
 4. the chat is the viewer's and of this mode (404), with room (409);
 5. today's limit (429).
 
-It loads the reports last, only for requests that pass. It returns the error `Response`, or a `ReadyTurn`:
+It loads the reports last, only for requests that pass. It returns the error `Response`, or the ready turn:
 - `viewer`;
 - `chatId`: the existing chat, or a new id;
 - `chat`, `question`, `reports`, `sync`.
@@ -118,7 +118,6 @@ Tested.
 The model names a report as `[[report-id]]`.
 - **`linkReports(text, visible, streaming)`** turns markers for visible reports into links, drops the rest, and holds back a half-written marker while streaming.
 - **`replaceReportMarkers`** swaps markers for report titles, for copying.
-- **`mentionedReports`** lists the reports an answer used.
 - **Tested.**
 
 ## Write SPL

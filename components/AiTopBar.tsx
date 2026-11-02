@@ -19,7 +19,7 @@ const modeOf = (pathname: string) => (pathname === '/ai/spl' ? '/ai/spl' : '/ai/
 // Ask about reports or Write SPL, with the current one marked. They're links,
 // so each mode has its own address. The layout also shows this switch
 // unmarked while the address is still unknown.
-export const ModeSwitch = ({ current, hrefs = {} }: { current?: string; hrefs?: Record<string, string> }) => (
+const ModeSwitch = ({ current, hrefs = {} }: { current?: string; hrefs?: Record<string, string> }) => (
     <nav className="mode-switch" aria-label="Ask AI">
         {MODES.map(({ href, label, short, icon: Icon }) => (
             <Link key={href} href={hrefs[href] ?? href} aria-current={href === current ? 'page' : undefined} aria-label={label}>

@@ -5,7 +5,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 // (lib/spl-examples.ts). _id is the answer's message id. A saved search is
 // shared with the groups of the person who saved it, like a report.
 
-export interface ISavedSplExample {
+interface ISavedSplExample {
     _id: string;
     // What was asked, and the answer's summary and search.
     request: string;

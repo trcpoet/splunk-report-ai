@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { readEvents } from "@/lib/ai/stream";
 
-export type Summary = {
+type Summary = {
     status: 'loading' | 'streaming' | 'done' | 'failed';
     text: string;
     // The summary's key, for its 👍 / 👎, once it's complete and saved.

@@ -58,28 +58,8 @@
         "value": "#ffffff",
         "source": "app/globals.css"
       },
-      "--card-foreground": {
-        "value": "oklch(0.145 0 0)",
-        "source": "app/globals.css"
-      },
-      "--popover-foreground": {
-        "value": "oklch(0.145 0 0)",
-        "source": "app/globals.css"
-      },
       "--primary": {
         "value": "#59deca",
-        "source": "app/globals.css"
-      },
-      "--primary-foreground": {
-        "value": "oklch(0.985 0 0)",
-        "source": "app/globals.css"
-      },
-      "--secondary": {
-        "value": "oklch(0.97 0 0)",
-        "source": "app/globals.css"
-      },
-      "--secondary-foreground": {
-        "value": "oklch(0.205 0 0)",
         "source": "app/globals.css"
       },
       "--muted": {
@@ -90,24 +70,8 @@
         "value": "oklch(0.556 0 0)",
         "source": "app/globals.css"
       },
-      "--accent": {
-        "value": "oklch(0.97 0 0)",
-        "source": "app/globals.css"
-      },
-      "--accent-foreground": {
-        "value": "oklch(0.205 0 0)",
-        "source": "app/globals.css"
-      },
-      "--destructive": {
-        "value": "oklch(0.577 0.245 27.325)",
-        "source": "app/globals.css"
-      },
       "--border": {
         "value": "oklch(0.922 0 0)",
-        "source": "app/globals.css"
-      },
-      "--ring": {
-        "value": "oklch(0.708 0 0)",
         "source": "app/globals.css"
       },
       "--chart-1": {
@@ -130,72 +94,12 @@
         "value": "#d55181",
         "source": "app/globals.css"
       },
-      "--sidebar-foreground": {
-        "value": "oklch(0.145 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-primary": {
-        "value": "oklch(0.205 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-primary-foreground": {
-        "value": "oklch(0.985 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-accent": {
-        "value": "oklch(0.97 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-accent-foreground": {
-        "value": "oklch(0.205 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-border": {
-        "value": "oklch(0.922 0 0)",
-        "source": "app/globals.css"
-      },
-      "--sidebar-ring": {
-        "value": "oklch(0.708 0 0)",
-        "source": "app/globals.css"
-      },
       "--color-background": {
         "value": "var(--background)",
         "source": "app/globals.css"
       },
       "--color-foreground": {
         "value": "var(--foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-ring": {
-        "value": "var(--sidebar-ring)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-border": {
-        "value": "var(--sidebar-border)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-accent-foreground": {
-        "value": "var(--sidebar-accent-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-accent": {
-        "value": "var(--sidebar-accent)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-primary-foreground": {
-        "value": "var(--sidebar-primary-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-primary": {
-        "value": "var(--sidebar-primary)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar-foreground": {
-        "value": "var(--sidebar-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-sidebar": {
-        "value": "var(--sidebar)",
         "source": "app/globals.css"
       },
       "--color-chart-5": {
@@ -218,28 +122,8 @@
         "value": "var(--chart-1)",
         "source": "app/globals.css"
       },
-      "--color-ring": {
-        "value": "var(--ring)",
-        "source": "app/globals.css"
-      },
-      "--color-input": {
-        "value": "var(--input)",
-        "source": "app/globals.css"
-      },
       "--color-border": {
         "value": "var(--border)",
-        "source": "app/globals.css"
-      },
-      "--color-destructive": {
-        "value": "var(--destructive)",
-        "source": "app/globals.css"
-      },
-      "--color-accent-foreground": {
-        "value": "var(--accent-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-accent": {
-        "value": "var(--accent)",
         "source": "app/globals.css"
       },
       "--color-muted-foreground": {
@@ -250,36 +134,8 @@
         "value": "var(--muted)",
         "source": "app/globals.css"
       },
-      "--color-secondary-foreground": {
-        "value": "var(--secondary-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-secondary": {
-        "value": "var(--secondary)",
-        "source": "app/globals.css"
-      },
-      "--color-primary-foreground": {
-        "value": "var(--primary-foreground)",
-        "source": "app/globals.css"
-      },
       "--color-primary": {
         "value": "var(--primary)",
-        "source": "app/globals.css"
-      },
-      "--color-popover-foreground": {
-        "value": "var(--popover-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-popover": {
-        "value": "var(--popover)",
-        "source": "app/globals.css"
-      },
-      "--color-card-foreground": {
-        "value": "var(--card-foreground)",
-        "source": "app/globals.css"
-      },
-      "--color-card": {
-        "value": "var(--card)",
         "source": "app/globals.css"
       }
     },
@@ -376,5 +232,5 @@
       "source": "package.json"
     }
   ],
-  "generatedAt": "2026-10-29T16:32:04.554Z"
+  "generatedAt": "2026-11-02T04:05:45.179Z"
 }

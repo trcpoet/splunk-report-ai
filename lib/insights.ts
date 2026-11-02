@@ -21,7 +21,7 @@ import type { Cell, ModelRun, RunRecord } from '@/lib/reports';
 // The ML job (ml/score.py) can flag a run too. It compares the runs of every
 // report at once, so it can notice a run these per-report numbers let pass.
 
-export type UnusualRun = {
+type UnusualRun = {
     measure: 'results' | 'duration';
     value: number;
     usual: number;
@@ -37,8 +37,8 @@ export type UnusualRun = {
     modelScore?: number;
 };
 
-export const MIN_BASELINE = 4;
-export const UNUSUAL_SCORE = 3.5;
+const MIN_BASELINE = 4;
+const UNUSUAL_SCORE = 3.5;
 
 export const median = (values: number[]) => {
     const sorted = [...values].sort((a, b) => a - b);
@@ -117,12 +117,12 @@ export function unusualTrend(history: RunRecord[], unusual: UnusualRun) {
 // ---------------------------------------------------------------------------
 // A quick profile of a results table, for the Explain panel's "At a glance".
 
-export type ColumnProfile =
+type ColumnProfile =
     | { name: string; kind: 'number'; min: number; max: number; median: number; highest: string | null; empty: number }
     | { name: string; kind: 'time'; first: string; last: string; empty: number }
     | { name: string; kind: 'text'; distinct: number; top: string; topCount: number; empty: number };
 
-export type ResultsProfile = {
+type ResultsProfile = {
     // Rows stored, and how many results the run had (it can be more).
     rows: number;
     total: number;
