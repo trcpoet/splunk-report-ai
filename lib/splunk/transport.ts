@@ -17,11 +17,12 @@ export class SplunkHttpError extends Error {
     }
 }
 
-// A reply that isn't JSON. `html` is true for a web page: the address is
-// Splunk Web (usually port 8000), not the REST API.
-export class SplunkNotJsonError extends Error {
-    constructor(readonly html: boolean, message: string) {
-        super(message);
+// A reply that isn't JSON, with its status. `html` is true for a web page:
+// the address is Splunk Web (usually port 8000) or a proxy, not the REST API.
+// It's an HTTP error too, so a proxy's 404 page still counts as "not found".
+export class SplunkNotJsonError extends SplunkHttpError {
+    constructor(status: number, readonly html: boolean, message: string) {
+        super(status, message);
         this.name = 'SplunkNotJsonError';
     }
 }
@@ -102,7 +103,7 @@ export function httpTransport({ baseUrl, token, timeoutMs = 30_000, retries = 3,
                         return JSON.parse(text) as T;
                     } catch {
                         const html = isWebPage(response, text);
-                        throw new SplunkNotJsonError(html, `GET ${url.pathname} answered with ${html ? 'a web page' : 'something'} that isn't JSON.`);
+                        throw new SplunkNotJsonError(response.status, html, `GET ${url.pathname} answered with ${html ? 'a web page' : 'something'} that isn't JSON.`);
                     }
                 }
 
@@ -113,7 +114,7 @@ export function httpTransport({ baseUrl, token, timeoutMs = 30_000, retries = 3,
                 }
 
                 const body = await response.text().catch(() => '');
-                if (isWebPage(response, body)) throw new SplunkNotJsonError(true, `GET ${url.pathname} answered ${response.status} with a web page.`);
+                if (isWebPage(response, body)) throw new SplunkNotJsonError(response.status, true, `GET ${url.pathname} answered ${response.status} with a web page.`);
                 throw new SplunkHttpError(response.status, `GET ${url.pathname} returned ${response.status}: ${body.slice(0, 200)}`);
             }
         },

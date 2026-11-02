@@ -35,9 +35,9 @@ const CERTIFICATE_CODES = new Set([
 // error isn't one of them.
 export function setupHint(error: unknown): string | null {
     if (error instanceof SplunkNotJsonError) {
-        return error.html
-            ? "That address answered with a web page, not Splunk's REST API: it's Splunk Web (usually port 8000), or a proxy. Use the management port, usually 8089."
-            : "Splunk's answer wasn't JSON. Check that SPLUNK_BASE_URL is the management port, usually 8089.";
+        if (!error.html) return "Splunk's answer wasn't JSON. Check that SPLUNK_BASE_URL is the management port, usually 8089.";
+        if (error.status >= 500) return `An error page came back (${error.status}): Splunk, or a proxy in front of it, isn't working right now. Try again in a few minutes.`;
+        return "That address answered with a web page, not Splunk's REST API: it's Splunk Web (usually port 8000), or a proxy. Use the management port, usually 8089.";
     }
 
     if (error instanceof SplunkHttpError) {

@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
-import { httpTransport, SplunkHttpError, SplunkNotJsonError, splunkTokenFromEnv } from '@/lib/splunk/transport';
+import { httpTransport, isNotFound, SplunkHttpError, SplunkNotJsonError, splunkTokenFromEnv } from '@/lib/splunk/transport';
 
 describe('splunkTokenFromEnv', () => {
     test('uses SPLUNK_TOKEN when it is set', () => {
@@ -43,6 +43,13 @@ describe('httpTransport', () => {
         for (const status of [200, 404]) {
             await assert.rejects(answering(page, status, 'text/html').get('/services/apps/local'), (error) => error instanceof SplunkNotJsonError && error.html);
         }
+    });
+
+    test("a proxy's 404 page keeps its status, so a run's expired results still count as not found", async () => {
+        await assert.rejects(
+            answering('<html><body>Not found</body></html>', 404, 'text/html').get('/services/search/v2/jobs/x/results'),
+            (error) => error instanceof SplunkNotJsonError && isNotFound(error),
+        );
     });
 
     test("an API error stays an HTTP error, so a run's expired results still read as 404", async () => {

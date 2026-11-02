@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Pager from "@/components/Pager";
 import ReportCard from "@/components/ReportCard";
 import { formatNumber } from "@/lib/format";
@@ -22,7 +23,9 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
     const [status, setStatus] = useState<ReportHealth | 'all'>('all');
     const [category, setCategory] = useState<ReportCategory | 'all'>('all');
     const [page, setPage] = useState(0);
-    const summary = useRef<HTMLParagraphElement>(null);
+    const list = useRef<HTMLUListElement>(null);
+    // Sorted once, not on every keystroke in the search box.
+    const sorted = useMemo(() => sortByLastRun(reports), [reports]);
 
     // Links to /#reports ("All Reports", "← All reports") should land on this
     // list. Next scrolls to it once, when the page appears, but the list can
@@ -47,15 +50,16 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
     };
 
     // Another page starts at the top of the list, with the keyboard focus on
-    // "Showing 21 to 40 of 312 reports", so the next Tab reaches its first card.
+    // its first card. "Showing 21 to 40 of 312 reports" is read out by itself
+    // (aria-live), so focusing it would read it twice.
     const goTo = (next: number) => {
-        setPage(next);
-        summary.current?.focus({ preventScroll: true });
+        flushSync(() => setPage(next));
         document.getElementById('reports')?.scrollIntoView({ behavior: 'instant' });
+        list.current?.querySelector<HTMLElement>('.report-card')?.focus({ preventScroll: true });
     };
 
     const search = query.trim().toLowerCase();
-    const visible = sortByLastRun(reports).filter((report) => {
+    const visible = sorted.filter((report) => {
         if (status !== 'all' && report.status !== status) return false;
         if (category !== 'all' && report.category !== category) return false;
         if (!search) return true;
@@ -107,14 +111,14 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 </div>
             </div>
 
-            <p ref={summary} tabIndex={-1} className="text-light-200 text-sm focus:outline-none" aria-live="polite">
+            <p className="text-light-200 text-sm" aria-live="polite">
                 {shown.pages > 1
                     ? `Showing ${formatNumber(shown.first)} to ${formatNumber(shown.last)} of ${formatNumber(visible.length)} ${visible.length < reports.length ? 'matching ' : ''}reports, newest run first`
                     : `Showing ${formatNumber(visible.length)} of ${formatNumber(reports.length)} reports`}
             </p>
 
             {shown.items.length > 0 ? (
-                <ul className="reports">
+                <ul ref={list} className="reports">
                     {shown.items.map((report) => (
                         <li key={report.slug} className="list-none">
                             <ReportCard report={report} />

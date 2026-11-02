@@ -141,7 +141,7 @@ The report types shared by the app and the worker:
 - `MAX_CHART_BARS`, `MAX_CHART_POINTS`, `MAX_CHART_SERIES`: the most a chart draws.
 
 Helpers:
-- **`toSummary(report)`:** the fields the browser gets for lists, plus `headline`: the first highlight (label, value, note) for the card, or `null` before the first results.
+- **`toSummary(report)`:** the fields the browser gets for lists, plus `headline`: the first highlight (label, value, note) for the card, or `null` before the first results. Its `from` is the results' run time when that's older than the last run.
 - **`sortByLastRun(reports)`:** the list's order: newest last run first, no run last, ties by title.
 - **`paginate(items, page, size = REPORTS_PER_PAGE)`:** one page (20 by default) with where it is (`first`, `last`, `total`, `pages`). A page past the end shows the last one.
 - **`getCategories(reports)`:** in a fixed order.

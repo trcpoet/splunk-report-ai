@@ -22,7 +22,7 @@ const HISTORY_LOOKBACK = 50;
 const HISTORY_SIZE = 7;
 const MAX_ROWS = Number(process.env.SYNC_MAX_ROWS) || 5_000;
 
-type ScheduledReport = {
+export type ScheduledReport = {
     entry: SplunkEntry<SavedSearchContent>;
     meta: ReportMeta;
     config?: ReportConfig;
@@ -82,7 +82,7 @@ type NewRuns = {
 };
 
 // One job's facts and results, or null while it's still running.
-async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledReport, sid: string): Promise<RunFacts | null> {
+export async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledReport, sid: string): Promise<RunFacts | null> {
     const job = (await transport.get<SplunkFeed<JobContent>>(`/services/search/jobs/${encodeURIComponent(sid)}`)).entry[0];
     if (!job || !isFinished(job.content)) return null;
 
@@ -105,21 +105,26 @@ async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledR
     return mapRun({ reportSlug: meta.slug, job, results, resultsExpired, rule: config?.statusRule });
 }
 
-// Runs in the report's Splunk history that aren't in `knownSids` yet. Jobs still
-// running are skipped; the next sync picks them up.
-export async function fetchNewRuns(transport: SplunkTransport, report: ScheduledReport, knownSids: Set<string>): Promise<NewRuns> {
-    const { entry } = report;
+// The sids of a report's scheduled runs in Splunk's history, newest first.
+// Runs someone started by hand don't count.
+export async function scheduledRunSids(transport: SplunkTransport, { entry }: ScheduledReport, count = HISTORY_LOOKBACK): Promise<string[]> {
     const owner = encodeURIComponent(entry.acl?.owner ?? 'nobody');
     const app = encodeURIComponent(entry.acl?.app ?? 'search');
     const history = await transport.get<SplunkFeed<HistoryContent>>(
         `/servicesNS/${owner}/${app}/saved/searches/${encodeURIComponent(entry.name)}/history`,
-        { count: HISTORY_LOOKBACK },
+        { count },
     );
 
-    const sids = history.entry
+    return history.entry
         .filter((job) => job.content.isScheduled === undefined || toBool(job.content.isScheduled))
-        .map((job) => job.name)
-        .filter((sid) => !knownSids.has(sid));
+        .toSorted((a, b) => (b.published ?? '').localeCompare(a.published ?? ''))
+        .map((job) => job.name);
+}
+
+// Runs in the report's Splunk history that aren't in `knownSids` yet. Jobs still
+// running are skipped; the next sync picks them up.
+export async function fetchNewRuns(transport: SplunkTransport, report: ScheduledReport, knownSids: Set<string>): Promise<NewRuns> {
+    const sids = (await scheduledRunSids(transport, report)).filter((sid) => !knownSids.has(sid));
 
     const runs: RunFacts[] = [];
     let unreadable = 0;

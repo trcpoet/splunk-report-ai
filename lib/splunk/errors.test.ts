@@ -48,7 +48,11 @@ describe('setupHint', () => {
     });
 
     test('a web page instead of JSON means Splunk Web, not the REST API', () => {
-        assert.match(setupHint(new SplunkNotJsonError(true, 'GET /x answered with a web page'))!, /Splunk Web \(usually port 8000\), or a proxy/);
+        assert.match(setupHint(new SplunkNotJsonError(200, true, 'GET /x answered with a web page'))!, /Splunk Web \(usually port 8000\), or a proxy/);
+    });
+
+    test("an error page from a proxy says Splunk isn't working right now, not that the port is wrong", () => {
+        assert.match(setupHint(new SplunkNotJsonError(503, true, 'GET /x answered 503 with a web page'))!, /isn't working right now/);
     });
 
     test('says nothing for errors it has no advice for', () => {

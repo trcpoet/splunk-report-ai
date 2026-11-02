@@ -25,7 +25,7 @@ Four layers, each filling in what the one before leaves open:
 | 4. Worked out automatically | Anything not set: the first column labels the rows, the first number column is the measure, `_time` first means lines over time. The headline numbers are the result count (with its change since the previous run), the top row, and the search time. | `lib/splunk/map.ts` |
 
 **On screen:**
-- **The report card** on the home page shows the first headline number, such as "Overall error rate 1.21%, Budget: 2%".
+- **The report card** on the home page shows the first headline number, such as "Overall error rate 1.21%, Budget: 2%". When the last run had no results, the card says which run the number is from.
 - **The report page** shows every headline number, the chart, the results table, the SPL and the run history.
 - **The status** (Healthy, Warning, Failed) comes from the run: a failed search fails; a status rule can warn; otherwise Splunk's own warnings warn.
 

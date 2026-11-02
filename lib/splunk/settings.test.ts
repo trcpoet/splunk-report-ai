@@ -46,8 +46,12 @@ describe('readSyncSettings', () => {
         assert.deepEqual(problems({ SYNC_REPORTS: 'all' }), ['SYNC_REPORTS must be "emailed" or "configured", not "all".']);
     });
 
-    test('refuses an interval that is not a number of minutes above 0', () => {
-        for (const value of ['0', '-5', 'ten']) assert.match(problems({ SYNC_INTERVAL_MINUTES: value })[0]!, /SYNC_INTERVAL_MINUTES must be a number of minutes above 0/);
+    test('refuses an interval that is not a number of minutes above 0 and up to a day', () => {
+        // Past a day, Node's timers overflow and fire at once: the sync would never rest.
+        for (const value of ['0', '-5', 'ten', '43200', 'Infinity']) {
+            assert.match(problems({ SYNC_INTERVAL_MINUTES: value })[0]!, /SYNC_INTERVAL_MINUTES must be a number of minutes above 0 and at most 1440/);
+        }
+        assert.equal(readSyncSettings({ SYNC_INTERVAL_MINUTES: '1440' }).intervalMinutes, 1440);
     });
 
     test('refuses a time zone the runtime does not know', () => {

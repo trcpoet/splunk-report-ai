@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 import { allPassed, checkSplunk, type CheckResult } from '@/lib/splunk/check';
 import { reports } from '@/lib/splunk/fixtures/reports';
 import { fixtureTransport } from '@/lib/splunk/fixtures/transport';
-import { SplunkHttpError, type SplunkTransport } from '@/lib/splunk/transport';
+import { SplunkHttpError, SplunkNotJsonError, type SplunkTransport } from '@/lib/splunk/transport';
 
 const options = { where: 'http://localhost:8089', syncReports: 'emailed' as const };
 const outcomes = (results: CheckResult[]) => results.map(({ outcome }) => outcome);
@@ -18,7 +18,7 @@ describe('checkSplunk', () => {
         assert.deepEqual(outcomes(results), ['pass', 'pass', 'pass', 'pass', 'pass']);
         assert.match(results[1]!.text, /signed in as splunk-events-sync, with roles splunk_events_reader/);
         assert.match(results[2]!.text, new RegExp(`can see ${reports.length} scheduled searches\\. The sync takes ${reports.length}`));
-        assert.match(results[4]!.text, /Read the results of "[^"]+"'s newest run: \d+ rows/);
+        assert.match(results[4]!.text, /Read the newest finished run of "[^"]+": \d+ rows, of \d+ results/);
         assert.ok(allPassed(results));
     });
 
@@ -53,5 +53,34 @@ describe('checkSplunk', () => {
 
         assert.match(warning!.text, new RegExp(`^${reports.length - 3} of the \\d+ reports in lib/report-config.ts`));
         assert.ok(allPassed(results));
+    });
+
+    test("a web page at the address isn't Splunk's REST API, and says so without blaming the token", async () => {
+        const results = await checkSplunk(failing(new SplunkNotJsonError(404, true, 'GET /x answered 404 with a web page.')), options);
+
+        assert.deepEqual(outcomes(results), ['fail']);
+        assert.match(results[0]!.text, /^Something answers at http:\/\/localhost:8089, but it isn't Splunk's REST API/);
+        assert.match(results[0]!.hint!, /Splunk Web/);
+    });
+
+    test('a run that is still going is skipped for the newest finished one, as the sync does', async () => {
+        const fixtures = fixtureTransport();
+        // Splunk's history lists a newer run of every report, still running;
+        // reading its results would get an empty reply.
+        const running: SplunkTransport = {
+            get: async <T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> => {
+                if (path.endsWith('/history')) {
+                    const history = await fixtures.get<{ entry: { name: string; published?: string }[] }>(path, params);
+                    return { ...history, entry: [{ name: 'still_running', published: '2099-01-01T00:00:00Z', content: {} }, ...history.entry] } as T;
+                }
+                if (path.endsWith('/jobs/still_running')) return { entry: [{ name: 'still_running', content: { dispatchState: 'RUNNING', isDone: false } }] } as T;
+                if (path.includes('/jobs/still_running/')) throw new SplunkNotJsonError(204, false, 'GET /results answered with something that isn\'t JSON.');
+                return fixtures.get<T>(path, params);
+            },
+        };
+        const results = await checkSplunk(running, options);
+
+        assert.ok(allPassed(results));
+        assert.match(results.at(-1)!.text, /^Read the newest finished run of/);
     });
 });

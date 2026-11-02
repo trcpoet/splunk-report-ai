@@ -570,6 +570,11 @@
         .note {
             @apply text-light-200 text-xs;
         }
+
+        /* The newest run had no results, so the number is an older run's. */
+        .from {
+            @apply w-full text-amber-300 text-xs;
+        }
     }
 
     .run-history {

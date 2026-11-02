@@ -56,6 +56,7 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
                     <span className="label">{report.headline.label}</span>
                     <span className="value">{report.headline.value}</span>
                     {report.headline.note && <span className="note">{report.headline.note}</span>}
+                    {report.headline.from && <span className="from">From the run at {formatDateTime(report.headline.from)}</span>}
                 </p>
             )}
 
