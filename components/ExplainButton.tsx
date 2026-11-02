@@ -46,6 +46,12 @@ function modelSentence(run: ModelRun, attention?: number) {
     return score + where + learned;
 }
 
+// What changes between Explain and "Explain report and SPL".
+const MODES = {
+    report: { label: 'Explain', Icon: MessageCircleQuestion, heading: 'In plain words', query: '', lines: 4 },
+    spl: { label: 'Explain report and SPL', Icon: BookOpenText, heading: 'The report and its search, in plain words', query: '?with=spl', lines: 8 },
+} as const;
+
 // What's inside the panel. It mounts when the panel opens, so nothing loads
 // for the cards nobody opens. With withSpl ("Explain report and SPL"), the AI
 // also walks through the search, and the panel shows the search instead of
@@ -53,12 +59,15 @@ function modelSentence(run: ModelRun, attention?: number) {
 type ContentProps = { slug: string; title: string; given?: SplunkReport; withSpl: boolean; headingId: string; close: () => void };
 
 function ExplainContent({ slug, title, given, withSpl, headingId, close }: ContentProps) {
-    const summary = useSummary(`/api/ai/explain/${slug}${withSpl ? '?with=spl' : ''}`);
+    const mode = withSpl ? MODES.spl : MODES.report;
+    const summary = useSummary(`/api/ai/explain/${slug}${mode.query}`);
     const { report, error } = useReport(slug, given);
 
-    const unusual = report ? findUnusualRun(report.history, report.modelRun) : null;
-    const trend = report && unusual ? unusualTrend(report.history, unusual) : null;
-    const profile = report ? profileResults(report.columns, report.rows, report.resultCount) : null;
+    // The statistics for "At a glance", which "Explain report and SPL" doesn't show.
+    const glance = report && !withSpl ? report : null;
+    const unusual = glance ? findUnusualRun(glance.history, glance.modelRun) : null;
+    const trend = glance && unusual ? unusualTrend(glance.history, unusual) : null;
+    const profile = glance ? profileResults(glance.columns, glance.rows, glance.resultCount) : null;
     // The summary may name the report as [[slug]], which shows as its chip.
     const chips = report ? { [report.slug]: { slug: report.slug, title: report.title, status: report.status } } : {};
 
@@ -75,9 +84,9 @@ function ExplainContent({ slug, title, given, withSpl, headingId, close }: Conte
             </header>
 
             <section className="explain-section" aria-busy={summary.status === 'loading' || summary.status === 'streaming'}>
-                <h3>{withSpl ? 'The report and its search, in plain words' : 'In plain words'}</h3>
+                <h3>{mode.heading}</h3>
                 {summary.status === 'loading' ? (
-                    <SkeletonParagraph count={withSpl ? 8 : 4} className="text-sm" />
+                    <SkeletonParagraph count={mode.lines} className="text-sm" />
                 ) : summary.status === 'failed' && !summary.text ? (
                     <p className="ai-notice">{summary.error}</p>
                 ) : (
@@ -141,7 +150,8 @@ function ExplainContent({ slug, title, given, withSpl, headingId, close }: Conte
                 <div className="chips">
                     {/* Close first: a page left behind with the panel open would block the next one. */}
                     <Link href={`/ai/reports?about=${slug}`} className="chip" onClick={close}>Ask about this report</Link>
-                    <Link href={`/ai/spl?explain=${slug}`} className="chip" onClick={close}>Explain its search step by step</Link>
+                    {/* "Explain report and SPL" has just done that. */}
+                    {!withSpl && <Link href={`/ai/spl?explain=${slug}`} className="chip" onClick={close}>Explain its search step by step</Link>}
                     <Link href={`/reports/${slug}`} className="chip" onClick={close}>Open the report</Link>
                 </div>
             </section>
@@ -167,6 +177,7 @@ type Props = {
 const ExplainButton = ({ slug, title, report, withSpl = false, className = 'explain-trigger' }: Props) => {
     const panel = usePanel();
     const headingId = useId();
+    const mode = withSpl ? MODES.spl : MODES.report;
 
     const show = () => {
         panel.show();
@@ -176,8 +187,8 @@ const ExplainButton = ({ slug, title, report, withSpl = false, className = 'expl
     return (
         <>
             <button type="button" className={className} onClick={show} aria-haspopup="dialog">
-                {withSpl ? <BookOpenText aria-hidden="true" /> : <MessageCircleQuestion aria-hidden="true" />}
-                {withSpl ? 'Explain report and SPL' : 'Explain'}<span className="sr-only"> {title}</span>
+                <mode.Icon aria-hidden="true" />
+                {mode.label}<span className="sr-only"> {title}</span>
             </button>
             <dialog {...panel.dialogProps} className="explain-panel" aria-labelledby={headingId}>
                 {panel.open && <ExplainContent slug={slug} title={title} given={report} withSpl={withSpl} headingId={headingId} close={panel.close} />}

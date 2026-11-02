@@ -230,7 +230,9 @@ async function ReportDetails({ params }: Props) {
                     </div>
                 </div>
 
-                <div className="sidebar">
+                {/* A labelled section, not an <aside>: an aside inside <main> isn't a
+                    top-level landmark, which screen readers expect of it. */}
+                <section className="sidebar" aria-label="Report details and delivery">
                     <div className="side-card">
                         <h2>Report details</h2>
                         <dl>
@@ -271,7 +273,7 @@ async function ReportDetails({ params }: Props) {
                             explain={<ExplainButton slug={report.slug} title={report.title} report={report} withSpl className="btn-secondary" />}
                         />
                     </div>
-                </div>
+                </section>
             </div>
 
             {similarReports.length > 0 && (

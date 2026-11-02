@@ -3,7 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { ApiError, FinishReason, GoogleGenAI, ThinkingLevel, type Content, type GenerateContentResponseUsageMetadata } from '@google/genai';
 import { z } from 'zod';
 import { aiModel, embeddingModel } from '@/lib/ai/config';
-import { EXPLAIN_REPORT_AND_SPL } from '@/lib/ai/prompts';
+import { EXPLAIN_REPORT, EXPLAIN_REPORT_AND_SPL, WRITE_BRIEFING } from '@/lib/ai/prompts';
 import { hashedEmbedding } from '@/lib/ai/retrieval';
 
 // The only file that talks to the AI provider (Google Gemini). The rest of the
@@ -231,11 +231,11 @@ async function fakeStream(options: AskOptions, onText: (text: string) => void) {
         '**How the search works:**',
         '1. `index=… sourcetype=…`: the base search, which finds the events.',
         '2. `stats count BY …`: one item per pipe command, each in plain words.',
-    ].join('\n') : question === 'Explain this report.' ? [
+    ].join('\n') : question === EXPLAIN_REPORT ? [
         '**Test mode:** a canned summary, not written by an AI.',
         '',
         'A real one would say what the latest run found, quote its numbers, compare them with the recent runs, and say what to do next.',
-    ].join('\n') : question === 'Write my briefing.' ? [
+    ].join('\n') : question === WRITE_BRIEFING ? [
         '**Test mode:** a canned briefing, not written by an AI.',
         '',
         ids.length > 0 ? `A real one would start with what needs attention in ${ids.map((id) => `[[${id}]]`).join(' and ')}, quote its numbers, and say what to do next.` : 'A real one would start with what needs attention.',

@@ -36,9 +36,9 @@ async function findTarget(kind: FeedbackKind, targetId: string): Promise<Target 
         // "report:<slug>:…" (Explain), "report-spl:<slug>:…" (Explain report
         // and SPL) or "briefing:<hash>:…" (lib/ai/keys.ts).
         const slug = summarySlug(targetId);
-        if (slug && !visible(slug)) return null;
+        if (slug !== undefined && !visible(slug)) return null;
         if (!(await AiSummary.exists({ _id: targetId }))) return null;
-        return slug ? { reportSlug: slug } : {};
+        return slug !== undefined ? { reportSlug: slug } : {};
     }
 
     // A flag: "<slug>:<runAt>:<reason>" (flagId in lib/ai/keys.ts).
