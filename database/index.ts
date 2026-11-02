@@ -12,14 +12,7 @@ export { default as AiEmbedding } from './ai-embedding.model';
 export { default as SavedSplExample } from './spl-example.model';
 
 // TypeScript interfaces exports
-export type { IReport, IRunSummary } from './report.model';
-export type { IReportRun } from './report-run.model';
-export type { IUserAccess } from './user-access.model';
-export type { ISyncState } from './sync-state.model';
+export type { IReport } from './report.model';
 export type { ChatKind, IChat, IChatMessage } from './chat.model';
-export type { IAiUsage } from './ai-usage.model';
-export type { IAiSummary } from './ai-summary.model';
-export type { FeedbackKind, FlagDetails, IAiFeedback, Vote } from './ai-feedback.model';
+export type { FeedbackKind, FlagDetails, Vote } from './ai-feedback.model';
 export type { IMlReportScore, IMlRunScore } from './ml-score.model';
-export type { IAiEmbedding } from './ai-embedding.model';
-export type { ISavedSplExample } from './spl-example.model';

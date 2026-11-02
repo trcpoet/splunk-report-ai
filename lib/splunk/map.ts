@@ -94,7 +94,7 @@ export function runsPerWeek(cron: string, timeZone = 'UTC') {
     }
 }
 
-export function nextRunFromCron(cron: string, timeZone: string, after: Date) {
+function nextRunFromCron(cron: string, timeZone: string, after: Date) {
     try {
         return new Cron(cron, { timezone: timeZone, paused: true }).nextRun(after);
     } catch {
@@ -173,7 +173,7 @@ const CHART_TYPES: Record<string, ChartType> = { bar: 'bar', column: 'column', l
 
 // The chart the report's author picked in Splunk, or null for a table.
 // Other Splunk chart types (pie, scatter, ...) fall back to columns.
-export function chartTypeFromDisplay(content: SavedSearchContent): ChartType | null {
+function chartTypeFromDisplay(content: SavedSearchContent): ChartType | null {
     if (content['display.general.type'] !== 'visualizations') return null;
     if (content['display.visualizations.show'] !== undefined && !toBool(content['display.visualizations.show'])) return null;
     if ((content['display.visualizations.type'] ?? 'charting') !== 'charting') return null;
@@ -293,7 +293,7 @@ export function runStatus(job: JobContent, results: ResultSet | null, rule?: Sta
 }
 
 // Scheduled sids end in "_at_<epoch seconds>_<n>": the time the scheduler ran it.
-export function runTime(sid: string, published?: string) {
+function runTime(sid: string, published?: string) {
     const scheduled = sid.match(/_at_(\d+)_\d+$/)?.[1];
     if (scheduled) return new Date(Number(scheduled) * 1000);
 
@@ -383,7 +383,7 @@ const changeNote = (delta: number) =>
 
 // Result count with the change since the previous run and a sparkline of the
 // recent runs, the top row by the charted measure, and how long the search took.
-export function defaultHighlights({ columns, rows, resultCount, previousResultCount, resultTrend, durationSec, chart }: HighlightInput): ReportHighlight[] {
+function defaultHighlights({ columns, rows, resultCount, previousResultCount, resultTrend, durationSec, chart }: HighlightInput): ReportHighlight[] {
     const highlights: ReportHighlight[] = [{
         label: 'Results',
         value: formatNumber(resultCount),

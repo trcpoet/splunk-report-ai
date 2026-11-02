@@ -6,7 +6,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 // so an old summary is simply never asked for again. MongoDB deletes them
 // after 30 days.
 
-export interface IAiSummary {
+interface IAiSummary {
     _id: string;
     kind: 'report' | 'briefing';
     text: string;

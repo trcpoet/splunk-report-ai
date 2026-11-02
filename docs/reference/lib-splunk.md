@@ -28,7 +28,6 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 | `syncAll({ transport, mode, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
 | `listScheduledReports(transport, timeZone, now)` | The scheduled searches that email their results, plus any listed in `report-config`, each mapped to `ReportMeta` with its config. |
 | `fetchNewRuns(transport, report, knownSids)` | The runs in a report's history that aren't stored yet, with their results. Jobs still running are skipped; the next sync picks them up. A job whose results expired in between is stored with `resultsExpired`. |
-| `ScheduledReport`, `SyncOptions`, `SyncSummary` | The types. |
 
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
@@ -89,7 +88,7 @@ The 9 dummy reports the demo runs on.
 - only the newest finished run still has results; older ones answer 404, like results deleted after `dispatch.ttl`;
 - result values arrive as strings.
 
-`SPLUNK_MODE=fixture` (the default) uses it, so the whole pipeline runs without Splunk. It exports `APP_IDS`, `TIME_RANGES` and `CHARTS`, which the Splunk example reuses.
+`SPLUNK_MODE=fixture` (the default) uses it, so the whole pipeline runs without Splunk. It exports `TIME_RANGES` and `CHARTS`, which the Splunk example reuses.
 
 ## `example/`: the Splunk example's reports and logs
 

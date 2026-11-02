@@ -19,7 +19,3 @@ export function linkReports(markdown: string, visibleSlugs: ReadonlySet<string>,
     const text = streaming ? markdown.replace(PARTIAL_MARKER, '') : markdown;
     return replaceReportMarkers(text, (slug) => (visibleSlugs.has(slug) ? `[](/reports/${slug})` : ''));
 }
-
-// The report ids an answer mentions, in order, each once.
-export const mentionedReports = (markdown: string, visibleSlugs: ReadonlySet<string>) =>
-    [...new Set([...markdown.matchAll(MARKER)].map(([, slug]) => slug))].filter((slug) => visibleSlugs.has(slug));

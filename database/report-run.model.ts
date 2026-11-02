@@ -4,7 +4,7 @@ import type { Cell, ReportStatus } from '@/lib/reports';
 // One document per scheduled run (Splunk search job), keyed by its sid. This
 // is the long-term history: Splunk deletes job results after dispatch.ttl.
 
-export interface IReportRun {
+interface IReportRun {
     sid: string;
     reportSlug: string;
     runAt: Date;

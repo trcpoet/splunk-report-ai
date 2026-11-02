@@ -3,7 +3,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 // A single document (_id 'splunk') describing the latest sync, for the
 // "Data as of" line, the home page's scheduler chart and troubleshooting.
 
-export interface ISyncState {
+interface ISyncState {
     _id: string;
     mode: 'fixture' | 'live';
     // The time zone the reports' crons run in (the worker's SPLUNK_TZ).

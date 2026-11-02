@@ -38,7 +38,7 @@ export type ChatSummary = { id: string; kind: ChatKind; title: string; updatedAt
 
 const DAY_MS = 86_400_000;
 
-export function chatGroup(updatedAt: Date, now: Date): ChatGroup {
+function chatGroup(updatedAt: Date, now: Date): ChatGroup {
     const age = Math.floor(now.getTime() / DAY_MS) - Math.floor(updatedAt.getTime() / DAY_MS);
     return age <= 0 ? 'Today' : age === 1 ? 'Yesterday' : age < 7 ? 'Last 7 days' : 'Older';
 }
@@ -62,7 +62,7 @@ const plainText = (markdown: string) => replaceReportMarkers(markdown, (slug) =>
 export const newChatId = () => new Types.ObjectId().toHexString();
 
 // A chat is named after its first question. People can rename it.
-export const chatTitle = (question: string) => firstLine(question, 80);
+const chatTitle = (question: string) => firstLine(question, 80);
 
 const toMessage = ({ _id, role, text, spl, createdAt }: IChatMessage): ChatMessage => ({
     id: String(_id),
@@ -106,7 +106,7 @@ export async function getChat(id: string): Promise<ChatDetail | null> {
     return chat ? { id: String(chat._id), kind: chat.kind, title: chat.title, messages: chat.messages.map(toMessage) } : null;
 }
 
-export type Turn = {
+type Turn = {
     chatId: string;
     kind: ChatKind;
     question: string;

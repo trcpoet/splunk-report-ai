@@ -5,7 +5,7 @@ import type { EventBatch } from '@/lib/splunk/example/events';
 // example's setup and feeder use it (docs/splunk-example.md). The connector
 // never does: it reads Splunk with its own read-only token.
 
-export type SplunkReply = { status: number; body: SplunkBody | null };
+type SplunkReply = { status: number; body: SplunkBody | null };
 type SplunkBody = {
     entry?: { name: string; content?: Record<string, unknown> }[];
     messages?: { type: string; text: string }[];

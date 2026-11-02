@@ -11,7 +11,7 @@
 
 export type EventBatch = { index: string; sourcetype: string; host: string; source: string; lines: string[] };
 
-export type EventOptions = {
+type EventOptions = {
     // false while filling in the past (the setup's backfill), true for the
     // feeder's minute-by-minute logs.
     live?: boolean;

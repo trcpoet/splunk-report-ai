@@ -25,7 +25,7 @@ export const SplAnswerSchema = z.object({
 });
 
 export type SplAnswer = z.infer<typeof SplAnswerSchema>;
-export type SplStep = SplAnswer['steps'][number];
+type SplStep = SplAnswer['steps'][number];
 
 // What the built-in SPL checker says about a search (lib/ai/validate.ts).
 export type SplValidation = { ok: boolean; message?: string };
@@ -94,7 +94,7 @@ const ACTION_COMMANDS: Record<string, string> = {
     rest: 'reads Splunk settings through the REST API',
 };
 
-export type SplCheck = {
+type SplCheck = {
     // True when the search only reads events.
     readOnly: boolean;
     // Plain-English notes, worst first.

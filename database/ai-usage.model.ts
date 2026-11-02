@@ -5,7 +5,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 // _id is '<user id>:<YYYY-MM-DD>', or 'site:<YYYY-MM-DD>' for the total.
 // MongoDB deletes them after a week.
 
-export interface IAiUsage {
+interface IAiUsage {
     _id: string;
     requests: number;
     // As Gemini reported them, to see what the AI costs.

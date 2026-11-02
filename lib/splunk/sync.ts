@@ -20,7 +20,7 @@ const HISTORY_LOOKBACK = 50;
 const HISTORY_SIZE = 7;
 const MAX_ROWS = Number(process.env.SYNC_MAX_ROWS) || 5_000;
 
-export type ScheduledReport = {
+type ScheduledReport = {
     entry: SplunkEntry<SavedSearchContent>;
     meta: ReportMeta;
     config?: ReportConfig;
@@ -165,7 +165,7 @@ async function refreshAppCache(log: (message: string) => void) {
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-export type SyncOptions = {
+type SyncOptions = {
     transport: SplunkTransport;
     mode: 'fixture' | 'live';
     timeZone?: string;
@@ -174,7 +174,7 @@ export type SyncOptions = {
     log?: (message: string) => void;
 };
 
-export type SyncSummary = {
+type SyncSummary = {
     reports: number;
     newRuns: number;
     errors: number;

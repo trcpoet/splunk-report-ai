@@ -11,7 +11,7 @@ import { reports, type FixtureReport } from './reports';
 //   like job artifacts deleted after dispatch.ttl
 // - result values arrive as strings
 
-export const APP_IDS: Record<string, string> = {
+const APP_IDS: Record<string, string> = {
     'Search & Reporting': 'search',
     'Splunk Enterprise Security': 'SplunkEnterpriseSecuritySuite',
     'Monitoring Console': 'splunk_monitoring_console',

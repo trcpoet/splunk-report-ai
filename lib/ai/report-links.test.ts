@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { linkReports, mentionedReports, replaceReportMarkers } from '@/lib/ai/report-links';
+import { linkReports, replaceReportMarkers } from '@/lib/ai/report-links';
 
 const visible = new Set(['web-5xx-error-rate', 'disk-space-over-85']);
 
@@ -23,14 +23,5 @@ describe('linkReports', () => {
 describe('replaceReportMarkers', () => {
     test('replaces every marker with what the function returns', () => {
         assert.equal(replaceReportMarkers('[[a-b]] and [[c]]', (slug) => slug.toUpperCase()), 'A-B and C');
-    });
-});
-
-describe('mentionedReports', () => {
-    test('lists each visible report once, in order', () => {
-        assert.deepEqual(
-            mentionedReports('[[disk-space-over-85]], [[web-5xx-error-rate]], [[disk-space-over-85]], [[hidden-report]]', visible),
-            ['disk-space-over-85', 'web-5xx-error-rate'],
-        );
     });
 });

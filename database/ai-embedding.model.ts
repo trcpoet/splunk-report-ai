@@ -5,7 +5,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 // hash of the model, the vector size, the purpose and the text, so a changed
 // text or another model gets a new vector. MongoDB deletes them after 90 days.
 
-export interface IAiEmbedding {
+interface IAiEmbedding {
     _id: string;
     vector: number[];
     model: string;

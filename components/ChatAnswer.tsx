@@ -11,7 +11,7 @@ import type { ReportStatus } from "@/lib/reports";
 export type ReportChipData = { slug: string; title: string; status: ReportStatus };
 
 // A report named in an answer: its status and name, linking to the report.
-export const ReportChip = ({ report }: { report: ReportChipData }) => (
+const ReportChip = ({ report }: { report: ReportChipData }) => (
     <Link href={`/reports/${report.slug}`} className="report-chip" transitionTypes={PAGE_TRANSITION}>
         <span className={`dot dot-${report.status}`} aria-hidden="true" />
         {report.title}

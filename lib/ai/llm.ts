@@ -14,7 +14,7 @@ import { hashedEmbedding } from '@/lib/ai/retrieval';
 
 export type Turn = { role: 'user' | 'assistant'; text: string };
 
-export type AskOptions = {
+type AskOptions = {
     // The instructions and the reports. Keep it the same for every question in
     // a chat: Gemini caches a prompt's start, so follow-ups cost less.
     system: string;

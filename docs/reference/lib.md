@@ -92,7 +92,7 @@ Saved Ask AI chats. Every function checks the owner; for anyone else, a chat doe
 | `saveTurn(viewer, { chatId, kind, question, answer })` | Saves a question and its answer together, in one update. A new chat is upserted. A full chat, or someone else's, saves nothing and returns `null`. |
 | `renameChat(id, title)`, `deleteChat(id)` | Owner-checked. |
 | `isOwnAnswer(messageId)` | Whether an answer is in one of the viewer's chats, for votes. |
-| `turnsLeft(chat)`, `chatTitle(question)`, `newChatId()`, `chatGroup(updatedAt, now)`, `CHAT_ID` | Helpers. `CHAT_ID` is the 24-hex-digit id pattern every input is checked against. |
+| `turnsLeft(chat)`, `newChatId()`, `CHAT_ID` | Helpers. `CHAT_ID` is the 24-hex-digit id pattern every input is checked against. |
 
 - **Demo mode:** with `DEMO_MODE`, new chats get `expiresAt` 24 h out, and MongoDB deletes them.
 - **Also exports:** the `ChatMessage`, `ChatDetail`, `ChatSummary` and `ChatGroup` types, which client components import as types only.
