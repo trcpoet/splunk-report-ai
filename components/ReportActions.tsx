@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Download } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -12,6 +12,8 @@ type Props = {
     spl: string;
     columns: string[];
     rows: Cell[][];
+    // Shown under Copy SPL query: the report page's "Explain report and SPL".
+    explain?: ReactNode;
 };
 
 type Feedback = 'idle' | 'done' | 'failed';
@@ -26,7 +28,7 @@ const toCsv = (columns: string[], rows: Cell[][]) =>
             .join(','))
         .join('\n');
 
-const ReportActions = ({ slug, lastRun, spl, columns, rows }: Props) => {
+const ReportActions = ({ slug, lastRun, spl, columns, rows, explain }: Props) => {
     const [download, setDownload] = useState<Feedback>('idle');
     const [copy, setCopy] = useState<Feedback>('idle');
     const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -78,6 +80,7 @@ const ReportActions = ({ slug, lastRun, spl, columns, rows }: Props) => {
                 {copy === 'done' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 {copy === 'done' ? 'Copied' : 'Copy SPL query'}
             </button>
+            {explain}
             <p className={copy === 'failed' ? 'action-error' : 'sr-only'} aria-live="polite">{status}</p>
         </div>
     )

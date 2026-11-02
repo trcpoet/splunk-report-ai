@@ -1,14 +1,17 @@
 import { Schema, model, models, type Model } from 'mongoose';
 
 // AI text made once and shown to everyone it applies to: a report's Explain
-// summary, or the briefing for a set of reports. _id is the cache key from
+// summary ('report'), its "Explain report and SPL" text ('report-spl'), or the
+// briefing for a set of reports. _id is the cache key from
 // lib/ai/keys.ts, which changes when the report data or the prompt changes,
 // so an old summary is simply never asked for again. MongoDB deletes them
 // after 30 days.
 
+export type SummaryKind = 'report' | 'report-spl' | 'briefing';
+
 interface IAiSummary {
     _id: string;
-    kind: 'report' | 'briefing';
+    kind: SummaryKind;
     text: string;
     // The model that wrote it.
     model: string;
@@ -18,7 +21,7 @@ interface IAiSummary {
 const AiSummarySchema = new Schema<IAiSummary>(
     {
         _id: { type: String, required: true },
-        kind: { type: String, enum: ['report', 'briefing'], required: true },
+        kind: { type: String, enum: ['report', 'report-spl', 'briefing'], required: true },
         text: { type: String, required: true },
         model: String,
         createdAt: { type: Date, default: Date.now },

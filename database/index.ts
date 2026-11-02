@@ -15,4 +15,5 @@ export { default as SavedSplExample } from './spl-example.model';
 export type { IReport } from './report.model';
 export type { ChatKind, IChat, IChatMessage } from './chat.model';
 export type { FeedbackKind, FlagDetails, Vote } from './ai-feedback.model';
+export type { SummaryKind } from './ai-summary.model';
 export type { IMlReportScore, IMlRunScore } from './ml-score.model';

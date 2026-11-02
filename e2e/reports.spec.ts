@@ -86,3 +86,35 @@ test('a report page shows its chart and its results table', async ({ page }) => 
     await screenshot(page, `report-${charted.slug}`);
     expect(errors).toEqual([]);
 });
+
+test('"Explain report and SPL" sits under Copy SPL query, and opens a panel with the search', async ({ page }) => {
+    const errors = watchForErrors(page);
+    const { reports } = (await (await page.request.get('/api/reports')).json()) as { reports: ReportSummary[] };
+    const [first] = reports.toSorted(byLastRun);
+    expect(first, 'the admin should see at least one report').toBeDefined();
+    if (!first) return;
+    const { report } = (await (await page.request.get(`/api/reports/${first.slug}`)).json()) as { report: SplunkReport };
+
+    await page.goto(`/reports/${report.slug}`);
+    const actions = page.locator('.report-actions').filter({ visible: true });
+    const labels = await actions.evaluate((group) => [...group.children].filter((child) => child.tagName === 'BUTTON').map((button) => button.textContent.trim()));
+    expect(labels[1]).toBe('Copy SPL query');
+    expect(labels[2]).toMatch(/^Explain report and SPL/);
+
+    const button = actions.getByRole('button', { name: /Explain report and SPL/ });
+    await button.click();
+    const panel = page.locator('dialog.explain-panel[open]');
+    await expect(panel.getByRole('heading', { name: 'The search (SPL)' })).toBeVisible();
+    await expect(panel.locator('pre.spl')).toContainText(report.spl.split('\n')[0] ?? '');
+    // The AI's text, or why there is none (CI has no AI key).
+    await expect(panel.locator('.explain-section').first().locator('p').first()).not.toBeEmpty({ timeout: 20_000 });
+
+    await screenshot(page, `explain-${report.slug}`);
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(button).toBeFocused();
+
+    // With AI off, the explain request answers 503 and the panel says AI is off;
+    // the browser logs that 503 as a console error, which is expected here.
+    expect(errors.filter((error) => !error.includes('status of 503'))).toEqual([]);
+});

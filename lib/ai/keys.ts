@@ -16,6 +16,16 @@ const modelFlag = (modelRun?: ReportListItem['modelRun']) => (modelRun?.unusual 
 export const reportSummaryKey = ({ slug, lastRun, resultsRunAt, modelRun }: ReportRun) =>
     `report:${slug}:${lastRun}:${resultsRunAt ?? ''}:${modelFlag(modelRun)}:v${PROMPT_VERSION}`;
 
+// One report's "Explain report and SPL" text, for its current run and search:
+// someone may edit the search in Splunk before it runs again.
+export const reportAndSplKey = ({ slug, lastRun, resultsRunAt, modelRun, spl }: ReportRun & Pick<ReportListItem, 'spl'>) =>
+    `report-spl:${slug}:${lastRun}:${resultsRunAt ?? ''}:${modelFlag(modelRun)}:${createHash('sha256').update(spl).digest('hex').slice(0, 12)}:v${PROMPT_VERSION}`;
+
+// The report a saved summary is about, from its key ("report:<slug>:…" or
+// "report-spl:<slug>:…"), or undefined for a briefing. Votes on a summary
+// check that the voter can see that report.
+export const summarySlug = (key: string) => key.match(/^report(?:-spl)?:([a-z0-9-]+):/)?.[1];
+
 // The briefing for one set of reports. People who see the same reports share it,
 // since it's written only from those reports. The order they come in doesn't
 // matter. What the ML job learned from votes counts in tenths, so small

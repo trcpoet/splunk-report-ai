@@ -83,6 +83,8 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - **At a glance:** plain statistics. These are the unusual run if there is one, the status message, and one sentence per results column (its range, its highest row, or its most common value).
 - **Ask more:** links into Ask about reports and Write SPL, with the question filled in.
 
+**Explain report and SPL** sits under **Copy SPL query** in each report page's Delivery card. Its panel has a longer AI text in three parts: what the report is for and what its columns mean, what the latest run found, and how the search works, one pipe command at a time. The search itself follows, then the same Ask more links. Like Explain, it's written once per run (and again if the search changes), then shared, and it has 👍 / 👎.
+
 Each report page's SPL section also has **Explain it step by step**, which opens Write SPL with that search.
 
 **Unusual runs, in plain statistics** (`lib/insights.ts`):

@@ -618,19 +618,25 @@
                 @apply flex flex-[2] flex-col gap-10 min-w-0 max-lg:w-full;
             }
 
+            /* Pinned beside the results on wide screens. When it's taller than
+               the window, it scrolls by itself, so nothing at its bottom (the
+               report's buttons) ends up out of reach. The padding keeps the
+               cards' shadows and focus rings from being cut off. */
             .sidebar {
-                @apply flex flex-1 flex-col gap-6 w-full lg:sticky lg:top-24;
+                @apply flex flex-1 flex-col gap-6 w-full lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:-m-2 lg:p-2;
             }
         }
 
         .side-card {
             @apply bg-dark-100 border border-dark-200 card-shadow flex w-full flex-col gap-5 rounded-[10px] border px-5 py-6;
 
-            p {
+            /* Direct children only: the Explain panel opens from inside this
+               card, and shouldn't take its styles. */
+            & > p {
                 @apply text-sm;
             }
 
-            dl {
+            & > dl {
                 @apply flex flex-col gap-3 text-sm;
 
                 div {
@@ -759,7 +765,8 @@
     .report-actions {
         @apply flex flex-col gap-3;
 
-        button {
+        /* Direct children only: not the buttons inside the Explain panel. */
+        & > button {
             @apply w-full;
         }
 

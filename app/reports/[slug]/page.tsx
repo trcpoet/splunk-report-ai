@@ -199,7 +199,8 @@ async function ReportDetails({ params }: Props) {
                                 Explain it step by step
                             </Link>
                         </div>
-                        <pre className="spl"><code>{report.spl}</code></pre>
+                        {/* Focusable, so the keyboard can scroll a long line sideways. */}
+                        <pre className="spl" tabIndex={0} role="region" aria-label="Search query (SPL)"><code>{report.spl}</code></pre>
                     </section>
 
                     <section className="flex-col-gap-3">
@@ -229,7 +230,7 @@ async function ReportDetails({ params }: Props) {
                     </div>
                 </div>
 
-                <aside className="sidebar">
+                <div className="sidebar">
                     <div className="side-card">
                         <h2>Report details</h2>
                         <dl>
@@ -267,9 +268,10 @@ async function ReportDetails({ params }: Props) {
                             spl={report.spl}
                             columns={report.columns}
                             rows={report.rows}
+                            explain={<ExplainButton slug={report.slug} title={report.title} report={report} withSpl className="btn-secondary" />}
                         />
                     </div>
-                </aside>
+                </div>
             </div>
 
             {similarReports.length > 0 && (

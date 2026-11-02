@@ -33,7 +33,7 @@ The AI settings from the environment.
 
 ### `prompts.ts` (pure)
 
-What the model is told, in plain English: `REPORTS_PROMPT` (Ask about reports), `SPL_PROMPT` (Write SPL), `REPORT_SUMMARY_PROMPT` (Explain) and `BRIEFING_PROMPT`.
+What the model is told, in plain English: `REPORTS_PROMPT` (Ask about reports), `SPL_PROMPT` (Write SPL), `REPORT_SUMMARY_PROMPT` (Explain), `REPORT_AND_SPL_PROMPT` (Explain report and SPL, which asks `EXPLAIN_REPORT_AND_SPL`) and `BRIEFING_PROMPT`.
 - **The prompts are fixed text**, followed by the reports, so the start of the prompt is the same for every question and Gemini can reuse its cache.
 - **Bump `PROMPT_VERSION`** after changing the summary or briefing prompts. It's part of their cache keys, so the old summaries are never asked for again.
 
@@ -164,5 +164,7 @@ Finding the example searches most like a request (RAG).
 
 Names for cached AI text and for things people vote on.
 - **`reportSummaryKey(report)`** and **`briefingKey(reports)`** change when what the text was written from changes: a new run, a status, the prompt version.
+- **`reportAndSplKey(report)`** names Explain report and SPL's text. It also changes with the search, which someone may edit in Splunk before the report runs again.
+- **`summarySlug(key)`** is the report a saved summary is about (either kind), so a vote on it checks the voter can see that report (`lib/feedback.ts`).
 - **`flagId(slug, runAt, reason)`** names a briefing flag for its vote.
 - **Tested.**

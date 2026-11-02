@@ -3,6 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { ApiError, FinishReason, GoogleGenAI, ThinkingLevel, type Content, type GenerateContentResponseUsageMetadata } from '@google/genai';
 import { z } from 'zod';
 import { aiModel, embeddingModel } from '@/lib/ai/config';
+import { EXPLAIN_REPORT_AND_SPL } from '@/lib/ai/prompts';
 import { hashedEmbedding } from '@/lib/ai/retrieval';
 
 // The only file that talks to the AI provider (Google Gemini). The rest of the
@@ -220,7 +221,17 @@ const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
 async function fakeStream(options: AskOptions, onText: (text: string) => void) {
     const question = options.turns.at(-1)?.text ?? '';
     const ids = [...options.system.matchAll(/<report id="([a-z0-9-]+)">/g)].map(([, id]) => id).slice(0, 2);
-    const text = question === 'Explain this report.' ? [
+    const text = question === EXPLAIN_REPORT_AND_SPL ? [
+        '**Test mode:** a canned explanation, not written by an AI.',
+        '',
+        "**What it's for:** a real one would say what question the report answers, and what its columns mean.",
+        '',
+        '**What the latest run found:** the most important number, whether it needs attention, and how it compares with the recent runs.',
+        '',
+        '**How the search works:**',
+        '1. `index=… sourcetype=…`: the base search, which finds the events.',
+        '2. `stats count BY …`: one item per pipe command, each in plain words.',
+    ].join('\n') : question === 'Explain this report.' ? [
         '**Test mode:** a canned summary, not written by an AI.',
         '',
         'A real one would say what the latest run found, quote its numbers, compare them with the recent runs, and say what to do next.',

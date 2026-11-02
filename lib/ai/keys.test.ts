@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { briefingKey, flagId, reportSummaryKey } from '@/lib/ai/keys';
+import { briefingKey, flagId, reportAndSplKey, reportSummaryKey, summarySlug } from '@/lib/ai/keys';
 import { PROMPT_VERSION } from '@/lib/ai/prompts';
 
 const reports = [
@@ -45,5 +45,33 @@ describe('reportSummaryKey and flagId', () => {
             `report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z:model:v${PROMPT_VERSION}`,
         );
         assert.equal(flagId('failed-logins-by-user', '2026-10-03T06:00:00.000Z', 'unusual'), 'failed-logins-by-user:2026-10-03T06:00:00.000Z:unusual');
+    });
+});
+
+describe('reportAndSplKey', () => {
+    const run = { slug: 'web-5xx-error-rate', lastRun: '2026-10-02T09:00:00.000Z', resultsRunAt: '2026-10-02T09:00:00.000Z', spl: 'index=web | stats count BY host' };
+
+    test("never shares a cache entry with the report's Explain summary", () => {
+        assert.notEqual(reportAndSplKey(run), reportSummaryKey(run));
+        assert.match(reportAndSplKey(run), /^report-spl:web-5xx-error-rate:/);
+    });
+
+    test('changes when the search changes, before the report runs again', () => {
+        assert.notEqual(reportAndSplKey({ ...run, spl: 'index=web | stats count BY status' }), reportAndSplKey(run));
+    });
+
+    test('changes with a new run, like the Explain summary', () => {
+        assert.notEqual(reportAndSplKey({ ...run, lastRun: '2026-10-02T10:00:00.000Z' }), reportAndSplKey(run));
+    });
+});
+
+describe('summarySlug', () => {
+    test('finds the report in either kind of report summary, so a vote checks it can be seen', () => {
+        assert.equal(summarySlug(reportSummaryKey({ slug: 'disk-space-over-85', lastRun: '', resultsRunAt: null })), 'disk-space-over-85');
+        assert.equal(summarySlug(reportAndSplKey({ slug: 'disk-space-over-85', lastRun: '', resultsRunAt: null, spl: 'index=os' })), 'disk-space-over-85');
+    });
+
+    test('a briefing is about no single report', () => {
+        assert.equal(summarySlug(briefingKey(reports)), undefined);
     });
 });

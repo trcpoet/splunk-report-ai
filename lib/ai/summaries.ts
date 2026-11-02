@@ -1,6 +1,6 @@
 import 'server-only';
 import { after } from 'next/server';
-import { AiSummary, type Vote } from '@/database';
+import { AiSummary, type SummaryKind, type Vote } from '@/database';
 import type { Viewer } from '@/lib/access';
 import { aiModel } from '@/lib/ai/config';
 import { AiError, streamText } from '@/lib/ai/llm';
@@ -17,7 +17,7 @@ import connectDB from '@/lib/mongodb';
 type SummaryRequest = {
     viewer: Viewer;
     key: string;
-    kind: 'report' | 'briefing';
+    kind: SummaryKind;
     // The prompt plus the report data. It's only called when a new summary is
     // written, so showing a saved one doesn't load any results.
     system: () => Promise<string>;

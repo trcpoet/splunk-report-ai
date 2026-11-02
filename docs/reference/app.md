@@ -217,7 +217,7 @@ Better Auth's handler, limited to sign-in, sign-out and session lookups.
 
 ### `api/ai/explain/[slug]/route.ts`
 
-`POST /api/ai/explain/[slug]`: Explain's summary of one report's latest run, streamed.
+`POST /api/ai/explain/[slug]`: Explain's summary of one report's latest run, streamed. With `?with=spl`, Explain report and SPL's longer text, which also walks through the search one pipe command at a time (`REPORT_AND_SPL_PROMPT`).
 - **Errors:** 401, 404 for missing or hidden, 503 when AI is off.
-- **Sharing:** keyed by `reportSummaryKey(report)`, so it's written once per run and then reused.
+- **Sharing:** keyed by `reportSummaryKey(report)`, or `reportAndSplKey(report)` with `?with=spl`, so each is written once per run and then reused.
 - **What the AI sees:** only this report.
