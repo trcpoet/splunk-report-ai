@@ -31,6 +31,12 @@ describe('syncProblem', () => {
         assert.equal(syncProblem({ ...sync, lastSuccessAt: '2026-10-02T06:00:00.000Z' }, now), 'No new data since Oct 2, 06:00 UTC. The sync may have stopped.');
     });
 
+    test('follows a slower schedule', () => {
+        const fiveHoursOld = { ...sync, lastSuccessAt: '2026-10-02T07:00:00.000Z' };
+        assert.match(syncProblem(fiveHoursOld, now) ?? '', /No new data/);
+        assert.equal(syncProblem(fiveHoursOld, now, 6), null);
+    });
+
     test('never calls dummy data stale', () => {
         assert.equal(syncProblem({ ...sync, mode: 'fixture', lastSuccessAt: '2026-01-01T00:00:00.000Z' }, now), null);
     });

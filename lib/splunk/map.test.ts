@@ -337,6 +337,11 @@ describe('charts of live results', () => {
         assert.deepEqual(chart?.series, ['b', 'd', 'e', 'f']);
     });
 
+    test("Splunk's OTHER and NULL columns join the Other line instead of taking a color", () => {
+        const chart = resolveChart('line', overTime(['web-01', 'web-02', 'OTHER', 'NULL'], 3, (column) => [1, 2, 900, 3][column]));
+        assert.deepEqual(chart?.series, ['web-01', 'web-02']);
+    });
+
     test('a measure picked in report-config stays one measure', () => {
         const chart = resolveChart('column', overTime(['web-01', 'web-02']), { y: 'web-02' });
 
@@ -403,6 +408,13 @@ describe('saved searches that share a name', () => {
         assert.match(logged[0], /Skipped "Disk check" in search\/j\.smith/);
     });
 
+    test('a private search alone under a configured name stays admin-only', async () => {
+        const entry = { ...search('search', 'j.smith', 'user', 'index=mine'), name: 'Failed Login Attempts by User' };
+        const [report] = await listScheduledReports(listing([entry]), 'UTC', now);
+
+        assert.deepEqual(report.meta.allowedGroups, []);
+    });
+
     test('with no shared one, keep one and always the same one', async () => {
         const first = search('alpha', 'nobody', 'app', 'index=alpha');
         const second = search('beta', 'nobody', 'app', 'index=beta');
@@ -460,6 +472,11 @@ describe('errorMessage', () => {
     test('says why fetch failed, such as a certificate it could not verify', () => {
         const error = new TypeError('fetch failed', { cause: new Error('unable to verify the first certificate') });
         assert.equal(errorMessage(error), 'fetch failed: unable to verify the first certificate');
+    });
+
+    test('falls back to the code when the cause has no message, as a refused connection does', () => {
+        const cause = Object.assign(new AggregateError([], ''), { code: 'ECONNREFUSED' });
+        assert.equal(errorMessage(new TypeError('fetch failed', { cause })), 'fetch failed: ECONNREFUSED');
     });
 
     test('passes other errors through', () => {

@@ -146,6 +146,6 @@ describe('unusualTrend', () => {
 describe('describeColumn for Splunk times', () => {
     test('reads them in UTC', () => {
         const column = { name: '_time', kind: 'time' as const, first: '2026-10-02T05:15:00.000+00:00', last: '2026-10-02T09:00:00.000+00:00', empty: 0 };
-        assert.equal(describeColumn(column, 16), 'Oct 2, 05:15 UTC to Oct 2, 09:00 UTC.');
+        assert.equal(describeColumn(column, 16), '2026-10-02 05:15:00 UTC to 2026-10-02 09:00:00 UTC.');
     });
 });

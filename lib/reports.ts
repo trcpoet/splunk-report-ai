@@ -80,8 +80,8 @@ export type ReportChart = {
     // A second chart, drawn below the first.
     scatter?: ChartScatter;
     // Over time with several measures (Splunk's `timechart ... BY host`): one
-    // line per column here, in the results' order, so a column keeps its color
-    // from run to run. Any other numeric columns add up to one "Other" line.
+    // line per column here, in the results' order. Any other numeric columns add
+    // up to one "Other" line.
     series?: string[];
 };
 
@@ -205,14 +205,15 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
 // page's count, the briefing and Ask AI's Reports button all use this.
 export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status === 'warning' || report.status === 'failed';
 
-// On the default 15-minute schedule, this means several syncs in a row didn't happen.
-const STALE_AFTER_MS = 2 * 3_600_000;
+const HOUR_MS = 3_600_000;
 
 // Why the reports may be out of date, for the home page. Dummy data doesn't
-// change, so only live data can go stale.
-export function syncProblem({ mode, lastSuccessAt, lastError }: SyncInfo, now: number): string | null {
+// change, so only live data can go stale. On the default 15-minute schedule, 2
+// hours means several syncs in a row didn't happen. Slower schedules set their
+// own limit (SYNC_STALE_HOURS).
+export function syncProblem({ mode, lastSuccessAt, lastError }: SyncInfo, now: number, staleHours = 2): string | null {
     if (lastError) return 'The last sync had problems, so some reports may be out of date.';
-    if (mode === 'live' && lastSuccessAt && now - Date.parse(lastSuccessAt) > STALE_AFTER_MS) {
+    if (mode === 'live' && lastSuccessAt && now - Date.parse(lastSuccessAt) > staleHours * HOUR_MS) {
         return `No new data since ${formatDateTime(lastSuccessAt)}. The sync may have stopped.`;
     }
     return null;

@@ -20,8 +20,9 @@ export const MAX_ROWS = 20;
 const clean = (value: Cell | string) => String(value).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
 
 // SPL keeps its angle brackets (where count>5), but it comes from people, so it
-// mustn't be able to close the tag around it.
-const safeSpl = (spl: string) => spl.replace(/<\/?(report|search)/gi, '');
+// mustn't be able to close the tag around it. Escaping, because deleting the
+// tag can join the text on either side into a new one.
+const safeSpl = (spl: string) => spl.replace(/<(?=\/?(report|search))/gi, '&lt;');
 
 const bySlug = (a: { slug: string }, b: { slug: string }) => a.slug.localeCompare(b.slug);
 

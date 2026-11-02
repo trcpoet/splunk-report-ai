@@ -28,7 +28,7 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 | `syncAll({ transport, mode, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
 | `listScheduledReports(transport, timeZone, now, log)` | The scheduled searches that email their results, plus any listed in `report-config`, each mapped to `ReportMeta` with its config. Searches that share a name would share a slug, so one stays (a shared one before a private copy) and the rest are logged. |
 | `fetchNewRuns(transport, report, knownSids)` | The runs in a report's history that aren't stored yet, with their results. Jobs still running are skipped; the next sync picks them up. A job whose results expired in between is stored with `resultsExpired`. Returns `{ runs, unreadable, failure }`: `unreadable` counts the jobs Splunk answered 404 for, and `failure` is what stopped the fetch early, so the runs before it are still saved. |
-| `errorMessage(error)` | An error as text, with the cause `fetch` hides, such as a certificate it couldn't verify. |
+| `errorMessage(error)` | An error as text, with the cause `fetch` hides, such as a certificate it couldn't verify or `ECONNREFUSED`. |
 
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
@@ -57,7 +57,7 @@ Turns Splunk's REST JSON into the app's models, with no I/O, so all of it is uni
 | Values | `toBool`, `toCell` (keeps "007" and IPs as text), `mapResults` (drops Splunk's internal `_` fields except `_time`) |
 | Schedules and times | `describeCron` (short phrasing for common schedules, `cronstrue` for the rest), `runsPerWeek`, `nextRunFromCron`, `parseSplunkTime`, `describeTimeRange` ("Last 24 hours") |
 | Searches | `describeIndexes` (`index=web sourcetype=access_combined` → "web (access_combined)"), `parseRecipients`, `groupsFromRecipients` (`secops@example.com` → `secops`), `chartTypeFromDisplay` |
-| Reports | `mapSavedSearch` (a saved search plus its config → `ReportMeta`) |
+| Reports | `mapSavedSearch` (a saved search plus its config → `ReportMeta`). A private search with a configured name stays admin-only, so it can't take on the report's groups. |
 | Runs | `isFinished`, `isFailed`, `runStatus` (applies the report's status rule), `runTime`, `mapRun` (a job → `RunFacts`) |
 | Derived fields | `resolveChart` (picks the chart; results over time with several measures get `series`, a line per column), `defaultHighlights` (results with the change since the previous run, the chart's top row, and the search time), `deriveReportFields` (latest run, history, highlights, chart, for the `reports` document) |
 

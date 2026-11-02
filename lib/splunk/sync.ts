@@ -206,7 +206,11 @@ async function refreshAppCache(log: (message: string) => void) {
 // couldn't verify or a refused connection, is in its cause.
 export function errorMessage(error: unknown) {
     if (!(error instanceof Error)) return String(error);
-    return error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message;
+
+    // For a refused connection, Node's cause has a code and an empty message.
+    const { cause } = error;
+    const reason = cause instanceof Error ? cause.message || (cause as NodeJS.ErrnoException).code : undefined;
+    return reason ? `${error.message}: ${reason}` : error.message;
 }
 
 type SyncOptions = {
@@ -265,7 +269,8 @@ export async function syncAll({ transport, mode, timeZone = 'UTC', now = new Dat
         await SyncState.updateOne({ _id: SYNC_STATE_ID }, {
             $set: {
                 lastFinishedAt: finishedAt,
-                lastSuccessAt: finishedAt,
+                // A sync that read nothing brought no new data, so "Data as of" stays put.
+                ...(summary.reports > 0 ? { lastSuccessAt: finishedAt } : {}),
                 timeZone,
                 lastError: nothingListed ? 'Splunk listed no scheduled reports. Check what the token can read.' : summary.errors > 0 ? failed : null,
                 counts: summary,

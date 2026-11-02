@@ -204,9 +204,12 @@ function labeledLines(data: LinePoint[], keys: string[]) {
     return labeled;
 }
 
-// Results over time: one line per series, in the chart colors in the results'
-// order, so a series keeps its color from run to run. Series past the last
-// color add up to one neutral "Other" line. An empty cell is a gap in the line,
+// Results over time: one line per series, in the chart colors' fixed order. That
+// order is what's validated for color-blind readers (some pairs apart in it are
+// hard to tell apart), so a color doesn't come from a series' name, and a series
+// can change color when the set of lines changes. The legend and the names carry
+// identity. Series past the last color add up to one neutral "Other" line, with
+// Splunk's own OTHER and NULL columns. An empty cell is a gap in the line,
 // not a zero. The legend names every line; names at the line ends add to it where they fit.
 const LineSeriesChart = ({ chart, columns, rows }: Props) => {
     const series = chart.series ?? [chart.y];
@@ -284,13 +287,18 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
     );
 }
 
-// Bars show the first rows, which a report sorts to put what matters on top.
-// Lines run oldest to newest, so they show the newest.
-function shownRows(chart: ChartSpec, rows: Cell[][]) {
+// Charts keep the first rows, which a report sorts to put what matters on top.
+// A line over time instead runs oldest to newest, whatever order Splunk sent,
+// and keeps the newest. Rows with no time, such as a totals row, aren't points on it.
+function shownRows(chart: ChartSpec, columns: string[], rows: Cell[][]) {
     const isBars = chart.type === 'bar' || chart.type === 'column';
     const limit = isBars ? MAX_CHART_BARS : MAX_CHART_POINTS;
+    if (isBars || !isTimeAxis(chart)) return { limit, which: 'first', total: rows.length, shown: rows.slice(0, limit) };
 
-    return { limit, which: isBars ? 'first' : 'newest', shown: isBars ? rows.slice(0, limit) : rows.slice(-limit) };
+    const x = columns.indexOf(chart.x);
+    const time = (row: Cell[]) => Date.parse(String(row[x]));
+    const timed = rows.filter((row) => Number.isFinite(time(row))).toSorted((a, b) => time(a) - time(b));
+    return { limit, which: 'newest', total: timed.length, shown: timed.slice(-limit) };
 }
 
 // With panels, one small chart per measure (small multiples). Each keeps the
@@ -312,13 +320,13 @@ function ChartBody({ chart, columns, rows }: Props) {
 }
 
 const ReportChart = ({ chart, columns, rows }: Props) => {
-    const { limit, which, shown } = shownRows(chart, rows);
+    const { limit, which, total, shown } = shownRows(chart, columns, rows);
 
     return (
         <>
             <ChartBody chart={chart} columns={columns} rows={shown} />
-            {shown.length < rows.length && (
-                <p className="chart-subtitle">Showing the {which} {limit} of {formatNumber(rows.length)} rows.</p>
+            {shown.length < total && (
+                <p className="chart-subtitle">Showing the {which} {limit} of {formatNumber(total)} rows.</p>
             )}
         </>
     );

@@ -146,7 +146,7 @@ Helpers:
 - **`getSimilarReports(report, reports, limit = 3)`:** same category or shared tags.
 - **`needsAttention(report)`:** warning or failed. One rule for the home page's count, the briefing, the suggestions and the Reports button.
 - **`getReportStats(reports)`:** the headline numbers.
-- **`syncProblem(sync, now)`:** why the reports may be out of date, or `null`. Dummy data never counts as stale.
+- **`syncProblem(sync, now, staleHours = 2)`:** why the reports may be out of date, or `null`. Dummy data never counts as stale.
 
 ### `report-config.ts`
 

@@ -315,7 +315,7 @@ export async function getSyncNotice(): Promise<{ message: string; detail: string
     await connection();
 
     const [viewer, sync] = await Promise.all([getViewer(), getSyncInfo()]);
-    const message = sync && syncProblem(sync, Date.now());
+    const message = sync && syncProblem(sync, Date.now(), Number(process.env.SYNC_STALE_HOURS) || undefined);
 
     return sync && message ? { message, detail: viewer.role === 'admin' ? sync.lastError : null } : null;
 }

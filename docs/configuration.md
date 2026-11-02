@@ -56,6 +56,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
+| `SYNC_STALE_HOURS` | `2` | `lib/dal.ts` (web app) | With live data, the home page warns when no sync has finished for this long. Keep it above how often you sync. |
 | `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 10 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
 | `SPLUNK_BASE_URL` | none | `worker/sync.ts` | Required for `live`: the management port, usually `https://<host>:8089`. |
 | `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
@@ -204,7 +205,7 @@ Uncached reads (chats, votes) must start with `await connection()` inside `<Susp
 | Chart styling | `lib/chart-theme.ts` | Axes, gridlines, tooltip, bar size, threshold line. |
 | Chart limits | `lib/reports.ts` | `MAX_CHART_BARS` (25), `MAX_CHART_POINTS` (500), `MAX_CHART_SERIES` (5). Charts say what they leave out, and the results table has every row. |
 | Table page size | `components/ResultsTable.tsx` | `PAGE_SIZE` (50). Filtering and sorting cover every row. |
-| Stale-data warning | `lib/reports.ts` | `STALE_AFTER_MS` (2 hours). Live data only. |
+| Stale-data warning | `lib/reports.ts` | 2 hours by default (`SYNC_STALE_HOURS`). Live data only. |
 | Typefaces | `app/fonts.ts` | Schibsted Grotesk (headings) and Martian Mono (code), from `app/font-files/`, so a build needs no access to Google Fonts. Body text uses the system font. |
 | Component styles | `app/globals.css`, grouped by area | Plain CSS with Tailwind 4's `@apply`, in `@layer components`. |
 | shadcn/ui | `components.json` | Used for the chart wrapper in `components/ui/`. `npx shadcn add <item>` adds more. |

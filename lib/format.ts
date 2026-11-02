@@ -41,10 +41,18 @@ export const parseNumber = (cell: string | number): number | null => {
 // Splunk's _time, such as "2026-10-02T06:00:00.000+00:00".
 const SPLUNK_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
+// In UTC, the way Splunk's own tables write it. Events seconds apart stay apart,
+// and results from another year say so.
+const formatSplunkTime = (time: string) => {
+    const iso = new Date(time).toISOString();
+    const fraction = iso.slice(19, 23);
+    return `${iso.slice(0, 19).replace('T', ' ')}${fraction === '.000' ? '' : fraction} UTC`;
+};
+
 // A results cell as it's shown.
 export const formatCell = (cell: string | number) => {
     if (typeof cell === 'number') return formatNumber(cell);
-    return SPLUNK_TIME.test(cell) ? formatDateTime(cell) : cell;
+    return SPLUNK_TIME.test(cell) && !Number.isNaN(Date.parse(cell)) ? formatSplunkTime(cell) : cell;
 };
 
 // A results column's name as it's shown.
@@ -72,14 +80,19 @@ export const formatTime = (iso: string) => {
 
 const DAY_MS = 86_400_000;
 
-// Axis labels for a run of times, as short as their span allows.
+// Axis labels for a run of times, as short as their span allows. Times between
+// minutes keep their seconds, or the ticks would repeat. A cell that isn't a
+// time, such as a totals row's, stays as it is and doesn't count toward the span.
 export function timeAxisLabels(times: string[]) {
-    const stamps = times.map((time) => Date.parse(time));
+    const stamps = times.map((time) => Date.parse(time)).filter(Number.isFinite);
     const span = Math.max(...stamps) - Math.min(...stamps);
+    const seconds = stamps.some((stamp) => stamp % 60_000 !== 0);
+    const clock = (time: string) => (seconds ? new Date(time).toISOString().slice(11, 19) : formatTime(time));
 
     return times.map((time) => {
-        if (span <= DAY_MS) return formatTime(time);
-        return span <= 4 * DAY_MS ? `${formatDay(time)} ${formatTime(time)}` : formatDay(time);
+        if (Number.isNaN(Date.parse(time))) return time;
+        if (span <= DAY_MS) return clock(time);
+        return span <= 4 * DAY_MS ? `${formatDay(time)} ${clock(time)}` : formatDay(time);
     });
 }
 

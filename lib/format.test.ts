@@ -47,9 +47,18 @@ describe('formatCell', () => {
     });
 
     test('shows Splunk times in UTC, whatever offset they came with', () => {
-        assert.equal(formatCell('2026-10-02T06:00:00.000+00:00'), 'Oct 2, 06:00 UTC');
-        assert.equal(formatCell('2026-10-02T02:00:00.000-04:00'), 'Oct 2, 06:00 UTC');
-        assert.equal(formatCell('2026-10-02T06:00:00Z'), 'Oct 2, 06:00 UTC');
+        assert.equal(formatCell('2026-10-02T06:00:00.000+00:00'), '2026-10-02 06:00:00 UTC');
+        assert.equal(formatCell('2026-10-02T02:00:00.000-04:00'), '2026-10-02 06:00:00 UTC');
+        assert.equal(formatCell('2026-10-02T06:00:00Z'), '2026-10-02 06:00:00 UTC');
+    });
+
+    test('keeps events seconds or milliseconds apart apart', () => {
+        assert.equal(formatCell('2026-10-02T06:00:12.000+00:00'), '2026-10-02 06:00:12 UTC');
+        assert.equal(formatCell('2026-10-02T06:00:12.345+00:00'), '2026-10-02 06:00:12.345 UTC');
+    });
+
+    test('leaves an impossible date as written', () => {
+        assert.equal(formatCell('2026-13-45T06:00:00Z'), '2026-13-45T06:00:00Z');
     });
 
     test('leaves other dates as written', () => {
@@ -67,6 +76,14 @@ describe('columnLabel', () => {
 describe('timeAxisLabels', () => {
     test('uses the time of day within a day', () => {
         assert.deepEqual(timeAxisLabels(['2026-10-02T05:15:00.000+00:00', '2026-10-02T09:00:00.000+00:00']), ['05:15', '09:00']);
+    });
+
+    test('keeps the seconds of times between minutes', () => {
+        assert.deepEqual(timeAxisLabels(['2026-10-02T05:15:00Z', '2026-10-02T05:15:10Z']), ['05:15:00', '05:15:10']);
+    });
+
+    test('a row with no time keeps its cell and leaves the others alone', () => {
+        assert.deepEqual(timeAxisLabels(['2026-10-02T05:15:00Z', '2026-10-02T09:00:00Z', '']), ['05:15', '09:00', '']);
     });
 
     test('adds the date over a few days, and only the date past that', () => {

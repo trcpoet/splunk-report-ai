@@ -235,8 +235,10 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
         recipients,
         category: config?.category ?? 'Other',
         tags: config?.tags ?? [],
-        // Reports missing from report-config are admin-only until someone adds them.
-        allowedGroups: config ? (config.groups ?? groupsFromRecipients(recipients)) : [],
+        // Reports missing from report-config are admin-only until someone adds
+        // them. So is a private search with a configured name: its owner decides
+        // what it runs, so it can't take on the report's groups.
+        allowedGroups: config && acl?.sharing !== 'user' ? (config.groups ?? groupsFromRecipients(recipients)) : [],
         chartType: config?.chart === 'none' ? null : (config?.chart?.type ?? chartTypeFromDisplay(content)),
         nextRun: parseSplunkTime(content.next_scheduled_time) ?? nextRunFromCron(cron, timeZone, now),
         disabled: toBool(content.disabled),
@@ -354,13 +356,19 @@ const columnTotal = (table: ResultTable, column: string) => {
     return table.rows.reduce((total, row) => total + (parseNumber(row[index]) ?? 0), 0);
 };
 
+// What timechart calls the series past its limit, and events with no value.
+// They aren't hosts, so they join the "Other" line instead of taking a color.
+const SPLUNK_ROLLUPS = new Set(['OTHER', 'NULL']);
+
 // The columns that get a line: all of them, or if there are too many, the
 // largest, leaving room for the "Other" line. They stay in the results' order.
 function chartSeries(table: ResultTable, measures: string[]) {
-    if (measures.length <= MAX_CHART_SERIES) return measures;
+    const named = measures.filter((measure) => !SPLUNK_ROLLUPS.has(measure));
+    if (named.length === 0) return measures;
+    if (named.length === measures.length && named.length <= MAX_CHART_SERIES) return named;
 
-    const largest = [...measures].sort((a, b) => columnTotal(table, b) - columnTotal(table, a)).slice(0, MAX_CHART_SERIES - 1);
-    return measures.filter((measure) => largest.includes(measure));
+    const largest = [...named].sort((a, b) => columnTotal(table, b) - columnTotal(table, a)).slice(0, MAX_CHART_SERIES - 1);
+    return named.filter((measure) => largest.includes(measure));
 }
 
 // x is the first column; y is the configured measure or the first numeric

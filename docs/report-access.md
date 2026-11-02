@@ -32,7 +32,7 @@ Group names must match **exactly**: `secops` and `SecOps` are different groups. 
 
 The sync works out each report's groups and saves them in MongoDB (`reports.allowedGroups`):
 
-1. **The report isn't in `report-config.ts`:** no groups, so admins only.
+1. **The report isn't in `report-config.ts`, or it's someone's private search with a configured name:** no groups, so admins only.
 2. **The report is in `report-config.ts` with `groups`:** exactly those groups.
 3. **The report is in `report-config.ts` without `groups`:** the names of the email lists Splunk sends it to. `secops@acme.com, it-director@acme.com` becomes `secops, it-director`.
 
