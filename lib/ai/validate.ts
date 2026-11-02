@@ -35,7 +35,7 @@ function unbalanced(query: string): string | null {
     const closes: Record<string, string> = { ')': '(', ']': '[' };
 
     for (let i = 0; i < query.length; i++) {
-        const char = query[i];
+        const char = query.charAt(i);
         if (quote) {
             if (char === '\\' && quote === '"') i++;
             else if (char === quote) quote = null;

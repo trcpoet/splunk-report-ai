@@ -49,7 +49,7 @@ async function findTarget(kind: FeedbackKind, targetId: string): Promise<Target 
         return { reportSlug: slug, flag: { reason, status: report.status, runAt } };
     }
     const unusual = findUnusualRun(report.history, report.modelRun);
-    if (unusual?.runAt !== runAt) return null;
+    if (!unusual || unusual.runAt !== runAt) return null;
     return {
         reportSlug: slug,
         flag: { reason: 'unusual', measure: unusual.measure, score: unusual.score, runAt, ...(unusual.modelScore !== undefined ? { modelScore: unusual.modelScore } : {}) },

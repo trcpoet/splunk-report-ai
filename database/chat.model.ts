@@ -72,6 +72,6 @@ ChatSchema.index({ userId: 1, updatedAt: -1 });
 // Deletes a chat once its expiresAt passes. Chats without one stay.
 ChatSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-const Chat = (models.Chat as Model<IChat>) || model<IChat>('Chat', ChatSchema);
+const Chat = (models.Chat as Model<IChat> | undefined) ?? model<IChat>('Chat', ChatSchema);
 
 export default Chat;

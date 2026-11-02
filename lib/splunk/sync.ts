@@ -69,7 +69,7 @@ type NewRuns = {
     // Jobs Splunk answered 404 for: they expired, or the token can't read them.
     unreadable: number;
     // What stopped the fetch early. The runs fetched before it are still good.
-    failure?: unknown;
+    failure?: Error;
 };
 
 // One job's facts and results, or null while it's still running.
@@ -121,7 +121,7 @@ export async function fetchNewRuns(transport: SplunkTransport, report: Scheduled
             if (run) runs.push(run);
         } catch (error) {
             if (isNotFound(error)) unreadable++;
-            else return { runs, unreadable, failure: error };
+            else return { runs, unreadable, failure: error instanceof Error ? error : new Error(String(error)) };
         }
     }
 

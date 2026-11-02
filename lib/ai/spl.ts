@@ -65,8 +65,8 @@ export function pipeCommands(spl: string): string[] {
             }
             if (quotes && char === '"') quoted = true;
             else if (char === '|') {
-                const word = spl.slice(i + 1).match(/^\s*([a-zA-Z_][\w-]*)/);
-                if (word) commands.push(word[1].toLowerCase());
+                const word = spl.slice(i + 1).match(/^\s*([a-zA-Z_][\w-]*)/)?.[1];
+                if (word) commands.push(word.toLowerCase());
             }
         }
         return { commands, closed: !quoted };
@@ -107,7 +107,7 @@ export function checkSpl(spl: string): SplCheck {
     const actions = Object.entries(ACTION_COMMANDS).filter(([command]) => commands.has(command));
     const warnings = actions.map(([command, does]) => `${command} ${does}.`);
 
-    const base = spl.trim().split('|')[0];
+    const base = spl.trim().split('|')[0] ?? '';
     const generating = spl.trim().startsWith('|');
     if (!generating && /\bindex\s*=\s*\*/.test(base)) {
         warnings.push('index=* searches every index you can see, which is slow. Name the index instead.');

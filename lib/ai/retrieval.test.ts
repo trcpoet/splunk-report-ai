@@ -47,7 +47,7 @@ describe('examples', () => {
     test('finds the report most like a request, with the stand-in embeddings', () => {
         const examples = fixtures.map(reportExample);
         const vectors = examples.map((example) => hashedEmbedding(`${example.title} ${exampleText(example)}`));
-        const [closest] = topK(hashedEmbedding('which hosts have disk space above 85%'), examples.map((item, i) => ({ item, vector: vectors[i] })), 1);
-        assert.equal(closest.id, 'report:disk-space-over-85');
+        const [closest] = topK(hashedEmbedding('which hosts have disk space above 85%'), examples.map((item, i) => ({ item, vector: vectors[i]! })), 1);
+        assert.equal(closest!.id, 'report:disk-space-over-85');
     });
 });

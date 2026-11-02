@@ -64,5 +64,5 @@ const MlReportScoreSchema = new Schema<IMlReportScore>(
     { collection: 'ml_report_scores', versionKey: false },
 );
 
-export const MlRunScore = (models.MlRunScore as Model<IMlRunScore>) || model<IMlRunScore>('MlRunScore', MlRunScoreSchema);
-export const MlReportScore = (models.MlReportScore as Model<IMlReportScore>) || model<IMlReportScore>('MlReportScore', MlReportScoreSchema);
+export const MlRunScore = (models.MlRunScore as Model<IMlRunScore> | undefined) ?? model<IMlRunScore>('MlRunScore', MlRunScoreSchema);
+export const MlReportScore = (models.MlReportScore as Model<IMlReportScore> | undefined) ?? model<IMlReportScore>('MlReportScore', MlReportScoreSchema);

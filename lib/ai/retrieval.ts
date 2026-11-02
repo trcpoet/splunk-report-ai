@@ -47,9 +47,11 @@ export function cosine(a: number[], b: number[]): number {
     let normA = 0;
     let normB = 0;
     for (let i = 0; i < Math.min(a.length, b.length); i++) {
-        dot += a[i] * b[i];
-        normA += a[i] * a[i];
-        normB += b[i] * b[i];
+        const x = a[i] ?? 0;
+        const y = b[i] ?? 0;
+        dot += x * y;
+        normA += x * x;
+        normB += y * y;
     }
     return normA === 0 || normB === 0 ? 0 : dot / Math.sqrt(normA * normB);
 }
@@ -70,7 +72,8 @@ export function hashedEmbedding(text: string, dimensions = 256): number[] {
     for (const word of text.toLowerCase().match(/[a-z0-9_]+/g) ?? []) {
         let hash = 2166136261;
         for (let i = 0; i < word.length; i++) hash = Math.imul(hash ^ word.charCodeAt(i), 16777619);
-        vector[(hash >>> 0) % dimensions] += 1;
+        const bucket = (hash >>> 0) % dimensions;
+        vector[bucket] = (vector[bucket] ?? 0) + 1;
     }
     return vector;
 }

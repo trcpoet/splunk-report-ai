@@ -24,7 +24,7 @@ describe('splRequests', () => {
         assert.deepEqual(splRequests(security), [
             'Failed logins by source IP in the last 24 hours',
             'Count events by sourcetype in the last hour',
-            explainRequest(security[0]),
+            explainRequest(security[0]!),
         ]);
         assert.ok(splRequests(fixtures).length <= 4);
     });

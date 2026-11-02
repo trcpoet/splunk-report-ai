@@ -210,7 +210,7 @@ describe('fixture pipeline', () => {
     test('reproduces each report status, message and run history', async () => {
         for (const { derived, fixture } of await synced()) {
             assert.equal(derived.latest?.status, fixture.status, fixture.slug);
-            assert.equal(derived.latest?.statusMessage, fixture.statusMessage, fixture.slug);
+            assert.equal(derived.latest.statusMessage, fixture.statusMessage, fixture.slug);
             assert.deepEqual(
                 derived.history.map((run) => [run.runAt.toISOString(), run.status]),
                 fixture.history.map((run) => [new Date(run.runAt).toISOString(), run.status]),
@@ -222,8 +222,8 @@ describe('fixture pipeline', () => {
     test('keeps the newest results and marks older ones expired', async () => {
         for (const { runs, resultsRun, fixture } of await synced()) {
             assert.deepEqual(resultsRun?.columns, fixture.columns, fixture.slug);
-            assert.deepEqual(resultsRun?.rows, fixture.rows, fixture.slug);
-            assert.equal(resultsRun?.resultCount, fixture.resultCount, fixture.slug);
+            assert.deepEqual(resultsRun.rows, fixture.rows, fixture.slug);
+            assert.equal(resultsRun.resultCount, fixture.resultCount, fixture.slug);
 
             const failed = fixture.history.filter((run) => run.status === 'failed').length;
             assert.equal(runs.filter((run) => run.resultsExpired).length, fixture.history.length - 1 - failed, fixture.slug);
@@ -245,7 +245,7 @@ describe('fixture pipeline', () => {
         const firewall = charts['firewall-denied-top-sources']!;
         assert.equal(firewall.y, 'Denied');
         assert.equal(firewall.scatter?.x, 'Distinct ports');
-        assert.equal(firewall.scatter?.log, true);
+        assert.equal(firewall.scatter.log, true);
 
         // Volume and Decline rate are text ("$18,402,117", "1.84%") but still count as numbers.
         const payments = charts['payments-volume-latency']!;
@@ -282,7 +282,7 @@ describe('fixture pipeline', () => {
         const finished = oldestFirst.filter((run) => run.status !== 'failed').map((run) => run.resultCount);
 
         assert.ok(finished.length < oldestFirst.length);
-        assert.deepEqual(disk.derived.highlights[0].trend, finished);
+        assert.deepEqual(disk.derived.highlights[0]!.trend, finished);
     });
 
     test('a second pass finds no new runs', async () => {
@@ -304,7 +304,7 @@ describe('fixture pipeline', () => {
         const runsOf = async (source: typeof fixtures, known: Set<string>) => {
             const transport = fixtureTransport(source);
             const [report] = await listScheduledReports(transport, 'UTC', now);
-            return (await fetchNewRuns(transport, report, known)).runs;
+            return (await fetchNewRuns(transport, report!, known)).runs;
         };
 
         const before = await runsOf([web], new Set());
@@ -325,20 +325,20 @@ describe('charts of live results', () => {
         const chart = resolveChart('column', overTime(['web-01', 'web-02', 'web-03']));
 
         assert.equal(chart?.type, 'line');
-        assert.equal(chart?.x, '_time');
-        assert.deepEqual(chart?.series, ['web-01', 'web-02', 'web-03']);
+        assert.equal(chart.x, '_time');
+        assert.deepEqual(chart.series, ['web-01', 'web-02', 'web-03']);
     });
 
     test('too many series keep the largest, in the results order, with room for Other', () => {
         const hosts = ['a', 'b', 'c', 'd', 'e', 'f'];
         const sizes = [1, 9, 2, 8, 7, 3];
-        const chart = resolveChart('line', overTime(hosts, 3, (column) => sizes[column]));
+        const chart = resolveChart('line', overTime(hosts, 3, (column) => sizes[column]!));
 
         assert.deepEqual(chart?.series, ['b', 'd', 'e', 'f']);
     });
 
     test("Splunk's OTHER and NULL columns join the Other line instead of taking a color", () => {
-        const chart = resolveChart('line', overTime(['web-01', 'web-02', 'OTHER', 'NULL'], 3, (column) => [1, 2, 900, 3][column]));
+        const chart = resolveChart('line', overTime(['web-01', 'web-02', 'OTHER', 'NULL'], 3, (column) => [1, 2, 900, 3][column]!));
         assert.deepEqual(chart?.series, ['web-01', 'web-02']);
     });
 
@@ -346,8 +346,8 @@ describe('charts of live results', () => {
         const chart = resolveChart('column', overTime(['web-01', 'web-02']), { y: 'web-02' });
 
         assert.equal(chart?.type, 'column');
-        assert.equal(chart?.y, 'web-02');
-        assert.equal(chart?.series, undefined);
+        assert.equal(chart.y, 'web-02');
+        assert.equal(chart.series, undefined);
     });
 
     test('time with more points than bars can show draws as a line', () => {
@@ -405,14 +405,14 @@ describe('saved searches that share a name', () => {
         const reports = await listScheduledReports(listing(entries), 'UTC', now, (message) => logged.push(message));
 
         assert.deepEqual(reports.map(({ meta }) => meta.spl), ['index=shared']);
-        assert.match(logged[0], /Skipped "Disk check" in search\/j\.smith/);
+        assert.match(logged[0]!, /Skipped "Disk check" in search\/j\.smith/);
     });
 
     test('a private search alone under a configured name stays admin-only', async () => {
         const entry = { ...search('search', 'j.smith', 'user', 'index=mine'), name: 'Failed Login Attempts by User' };
         const [report] = await listScheduledReports(listing([entry]), 'UTC', now);
 
-        assert.deepEqual(report.meta.allowedGroups, []);
+        assert.deepEqual(report!.meta.allowedGroups, []);
     });
 
     test('with no shared one, keep one and always the same one', async () => {
@@ -449,7 +449,7 @@ describe('fetchNewRuns when a job can\'t be read', () => {
     const fetched = async (sids: string[]) => {
         const transport = transportOf(sids);
         const [report] = await listScheduledReports(transport, 'UTC', now);
-        return fetchNewRuns(transport, report, new Set());
+        return fetchNewRuns(transport, report!, new Set());
     };
 
     test('counts the jobs Splunk answers 404 for, rather than hiding them', async () => {

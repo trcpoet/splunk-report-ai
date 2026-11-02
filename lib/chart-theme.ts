@@ -44,3 +44,7 @@ export const OVER_THRESHOLD_FILL = 'var(--status-warning)';
 
 // The empty part of a meter bar, one step off the chart surface.
 export const METER_TRACK_FILL = 'var(--color-dark-200)';
+
+// A tooltip's heading for a point over time: axis labels are short ("06:00"),
+// so the tooltip says the whole time, which each point keeps as `when`.
+export const tooltipTime = (_: unknown, payload?: readonly { payload?: { when?: string } }[]) => payload?.[0]?.payload?.when;

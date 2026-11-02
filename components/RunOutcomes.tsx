@@ -28,10 +28,13 @@ const byOutcome = (item: { dataKey?: unknown }) => OUTCOMES.indexOf(item.dataKey
 
 // One stacked segment. A 2px surface gap separates it from the segment above,
 // and only the top of the stack gets the rounded data end.
-function StackSegment({ x, y, width, height, fill, payload, outcome }: BarShapeProps & { outcome: Outcome }) {
+// Recharts types each bar's data point as any; here it's one day's counts.
+type SegmentProps = Omit<BarShapeProps, 'payload'> & { outcome: Outcome; payload?: Partial<RunOutcomeDay> };
+
+function StackSegment({ x, y, width, height, fill, payload, outcome }: SegmentProps) {
     if (!height || height <= 0) return <g />;
 
-    const hasAbove = OUTCOMES.slice(OUTCOMES.indexOf(outcome) + 1).some((key) => payload?.[key] > 0);
+    const hasAbove = OUTCOMES.slice(OUTCOMES.indexOf(outcome) + 1).some((key) => (payload?.[key] ?? 0) > 0);
     const top = hasAbove ? y + GAP : y;
     const h = Math.max(0, height - (hasAbove ? GAP : 0));
     const r = hasAbove ? 0 : Math.min(RADIUS, h, width / 2);

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     // 7 days", the request before it says more. Without them (the AI can't
     // compare right now), the prompt has every report's search instead.
     const lastAsked = turn.chat?.messages.findLast(({ role }) => role === 'user')?.text;
-    const examples = await findSimilarExamples(viewer, lastAsked ? `${lastAsked}\n${question}` : question, turn.reports).catch((error) => {
+    const examples = await findSimilarExamples(viewer, lastAsked ? `${lastAsked}\n${question}` : question, turn.reports).catch((error: unknown) => {
         console.error("Couldn't find similar searches, so Write SPL shows the AI every report's search:", error);
         return undefined;
     });

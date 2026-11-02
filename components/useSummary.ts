@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { readEvents } from "@/lib/ai/stream";
+import { replyError } from "@/lib/api-reply";
 
 type Summary = {
     status: 'loading' | 'streaming' | 'done' | 'failed';
@@ -26,33 +27,33 @@ export function useSummary(url: string): Summary {
             try {
                 const response = await fetch(url, { method: 'POST', signal: controller.signal });
                 if (!response.ok || !response.body) {
-                    const body = await response.json().catch(() => null);
-                    setSummary({ status: 'failed', text: '', error: body?.message ?? "Couldn't get a summary. Try again later." });
+                    setSummary({ status: 'failed', text: '', error: (await replyError(response)) ?? "Couldn't get a summary. Try again later." });
                     return;
                 }
 
-                let finished = false;
+                // Set inside the callback, so it's an object: TypeScript can't see that change.
+                const stream = { finished: false };
                 await readEvents(response.body, (event) => {
                     if (event.type === 'text') {
                         text += event.text;
                         setSummary({ status: 'streaming', text });
                     } else if (event.type === 'done') {
-                        finished = true;
+                        stream.finished = true;
                         // A cut-off summary isn't saved, so there's nothing to vote on.
                         setSummary({ status: 'done', text, id: event.cutOff ? undefined : event.messageId, vote: event.vote, cutOff: event.cutOff });
                     } else if (event.type === 'error') {
-                        finished = true;
+                        stream.finished = true;
                         setSummary({ status: 'failed', text, error: event.message });
                     }
                 });
-                if (!finished && !controller.signal.aborted) {
+                if (!stream.finished && !controller.signal.aborted) {
                     setSummary({ status: 'failed', text, error: 'The summary stopped before it finished. Try again later.' });
                 }
             } catch {
                 if (!controller.signal.aborted) setSummary({ status: 'failed', text, error: "Couldn't reach the app. Check your connection." });
             }
         };
-        follow();
+        void follow();
 
         return () => controller.abort();
     }, [url]);

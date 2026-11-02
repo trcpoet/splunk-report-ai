@@ -51,12 +51,12 @@ const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
 
 // Numbers sort by value, including ones Splunk sent as text such as "$1,234",
 // "1.84%" or "12G"; everything else in natural order.
-const compareCells = (a: Cell, b: Cell) => {
+const compareCells = (a: Cell | undefined, b: Cell | undefined) => {
     const [first, second] = [parseNumber(a), parseNumber(b)];
-    return first !== null && second !== null ? first - second : collator.compare(String(a), String(b));
+    return first !== null && second !== null ? first - second : collator.compare(String(a ?? ''), String(b ?? ''));
 };
 
-const isNumeric = (cell: Cell) => parseNumber(cell) !== null;
+const isNumeric = (cell: Cell | undefined) => parseNumber(cell) !== null;
 
 // Matches the text on screen ("48,210") as well as the raw number ("48210").
 const matchesFilter: FilterFn<typeof features, Cell[]> = (row, columnId, filterValue) => {
@@ -101,7 +101,8 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
         initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
     });
 
-    const query: string = table.state.globalFilter ?? '';
+    const filter: unknown = table.state.globalFilter;
+    const query = typeof filter === 'string' ? filter : '';
     const shown = table.getRowModel().rows;
     const matches = table.getFilteredRowModel().rows.length;
     const firstRow = table.state.pagination.pageIndex * PAGE_SIZE + 1;

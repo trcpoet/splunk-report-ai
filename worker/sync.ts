@@ -60,7 +60,7 @@ async function main() {
 }
 
 main()
-    .catch((error) => {
+    .catch((error: unknown) => {
         console.error(errorMessage(error));
         process.exitCode = 1;
     })

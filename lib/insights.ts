@@ -40,10 +40,13 @@ type UnusualRun = {
 const MIN_BASELINE = 4;
 const UNUSUAL_SCORE = 3.5;
 
+// The middle value, or halfway between the two middle ones. 0 for no values.
 export const median = (values: number[]) => {
     const sorted = [...values].sort((a, b) => a - b);
     const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    const upper = sorted[middle];
+    if (upper === undefined) return 0;
+    return sorted.length % 2 ? upper : ((sorted[middle - 1] ?? upper) + upper) / 2;
 };
 
 // How far `value` is from the baseline's median, in robust standard deviations
@@ -130,7 +133,8 @@ type ResultsProfile = {
 };
 
 const TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/;
-const isEmpty = (cell: Cell) => cell === '' || cell === null || cell === undefined;
+// A missing cell (a short row) counts as empty.
+const isFilled = (cell: Cell | undefined): cell is Cell => cell !== undefined && cell !== '';
 
 // Null when there are no rows to profile.
 export function profileResults(columns: string[], rows: Cell[][], total = rows.length): ResultsProfile | null {
@@ -138,12 +142,12 @@ export function profileResults(columns: string[], rows: Cell[][], total = rows.l
 
     const profiles = columns.map((name, index): ColumnProfile => {
         const cells = rows.map((row) => row[index]);
-        const filled = cells.filter((cell) => !isEmpty(cell));
+        const filled = cells.filter(isFilled);
         const empty = cells.length - filled.length;
 
-        if (filled.length > 0 && filled.every((cell) => typeof cell === 'string' && TIME.test(cell))) {
-            const sorted = [...(filled as string[])].sort();
-            return { name, kind: 'time', first: sorted[0], last: sorted.at(-1)!, empty };
+        const times = filled.filter((cell) => typeof cell === 'string' && TIME.test(cell)).map(String).sort();
+        if (times.length > 0 && times.length === filled.length) {
+            return { name, kind: 'time', first: times[0] ?? '', last: times.at(-1) ?? '', empty };
         }
 
         // A number column: at least 80% of its cells read as numbers ("$1,234" and "1.84%" included).
@@ -159,7 +163,7 @@ export function profileResults(columns: string[], rows: Cell[][], total = rows.l
                 min: Math.min(...numbers),
                 max: Math.max(...numbers),
                 median: median(numbers),
-                highest: highestRow ? String(highestRow[0]) : null,
+                highest: highestRow ? String(highestRow[0] ?? '') : null,
                 empty,
             };
         }

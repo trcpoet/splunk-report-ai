@@ -119,7 +119,9 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run sync:watch` | Sync every `SYNC_INTERVAL_MINUTES` (default 15) |
 | `npm run seed` | Create the demo users and their access (safe to run again) |
 | `npm test` | Unit tests, plus the full sync pipeline against the fixtures |
-| `npm run lint` | ESLint |
+| `npm run lint` | ESLint, with typescript-eslint's strictest type-aware rules |
+| `npm run typecheck` | TypeScript, with its strictest checks |
+| `npm run check` | The type check, ESLint and the tests, in that order. Run it before every pull request |
 | `npm run ml` / `ml:plot` | Score the runs with the ML job (`ml:plot` also draws a chart). Set up its Python environment first: [ml/README.md](ml/README.md) |
 | `npm run test:ml` | The ML job's tests |
 | `npm run eval:spl` | Score Write SPL on 10 requests over the demo reports (needs a Gemini key; see [docs/ai.md](docs/ai.md#how-write-spl-learns-from-your-searches)) |
@@ -128,7 +130,7 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 ### Working on the code
 
 - **Next.js 16** differs from older versions: read the bundled guide for what you touch, in `node_modules/next/dist/docs/`. The rules that are easy to break are in the [codebase guide](docs/codebase-guide.md#before-you-change-things).
-- **Before a pull request:** run `npm run lint`, `npm test` and `npm run build`. Add `npm run test:ml` if you changed `ml/`.
+- **Before a pull request:** run `npm run check` and `npm run build`. Add `npm run test:ml` if you changed `ml/`.
 - **`main` is protected.**
   - Changes go through a pull request.
   - CI's "Lint, test and build" job must pass. CI also runs "ML (Python)" and "Docker".

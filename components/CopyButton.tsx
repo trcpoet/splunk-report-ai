@@ -31,7 +31,7 @@ const CopyButton = ({ text, label, className = 'btn-secondary', iconOnly = false
     const words = state === 'done' ? 'Copied' : state === 'failed' ? "Couldn't copy" : label;
 
     return (
-        <button type="button" className={className} onClick={copy} aria-label={iconOnly ? words : undefined} data-tip={iconOnly ? words : undefined}>
+        <button type="button" className={className} onClick={() => void copy()} aria-label={iconOnly ? words : undefined} data-tip={iconOnly ? words : undefined}>
             {state === 'done' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
             {!iconOnly && words}
         </button>

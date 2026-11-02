@@ -29,7 +29,7 @@ export function splunkTokenFromEnv(env: Record<string, string | undefined> = pro
     try {
         return readFileSync(file, 'utf8').trim() || undefined;
     } catch (error) {
-        throw new Error(`Can't read SPLUNK_TOKEN_FILE (${file}): ${error instanceof Error ? error.message : error}`);
+        throw new Error(`Can't read SPLUNK_TOKEN_FILE (${file}): ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 

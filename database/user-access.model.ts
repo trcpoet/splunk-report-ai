@@ -24,6 +24,6 @@ const UserAccessSchema = new Schema<IUserAccess>(
     { timestamps: true, collection: 'user_access' },
 );
 
-const UserAccess = (models.UserAccess as Model<IUserAccess>) || model<IUserAccess>('UserAccess', UserAccessSchema);
+const UserAccess = (models.UserAccess as Model<IUserAccess> | undefined) ?? model<IUserAccess>('UserAccess', UserAccessSchema);
 
 export default UserAccess;

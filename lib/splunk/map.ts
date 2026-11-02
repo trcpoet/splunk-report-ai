@@ -21,7 +21,7 @@ export function toCell(value: unknown): Cell {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.map(String).join(', ');
 
-    const text = String(value);
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
     return NUMBER.test(text) ? Number(text) : text;
 }
 
@@ -50,7 +50,8 @@ const pad = (field: string) => field.padStart(2, '0');
 // Short phrasing for the schedules Splunk users pick most often, cronstrue for the rest.
 export function describeCron(cron: string, timeZone = 'UTC') {
     const fields = cron.trim().split(/\s+/);
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = fields;
+    // With exactly five fields, none of these defaults is used.
+    const [minute = '', hour = '', dayOfMonth, month, dayOfWeek = ''] = fields;
 
     if (fields.length === 5 && dayOfMonth === '*' && month === '*') {
         const at = `${pad(hour)}:${pad(minute)} ${timeZone}`;
@@ -132,15 +133,15 @@ export function describeTimeRange(earliest = '', latest = '') {
     if (earliest === '@d' && untilNow) return 'Today';
     if ((earliest === '' || earliest === '0') && untilNow) return 'All time';
 
-    const match = earliest.match(/^-(\d+)([a-z]+)$/);
-    const unit = match && TIME_UNITS[match[2]];
-    if (match && unit && untilNow) return `Last ${match[1]} ${match[1] === '1' ? unit[0] : unit[1]}`;
+    const [, amount, unitName = ''] = earliest.match(/^-(\d+)([a-z]+)$/) ?? [];
+    const unit = TIME_UNITS[unitName];
+    if (amount && unit && untilNow) return `Last ${amount} ${amount === '1' ? unit[0] : unit[1]}`;
 
     return `${earliest} to ${latest || 'now'}`;
 }
 
 const valuesOf = (spl: string, field: string) =>
-    [...spl.matchAll(new RegExp(`\\b${field}\\s*=\\s*("[^"]*"|[^\\s|)]+)`, 'gi'))].map(([, value]) => value.replace(/^"|"$/g, ''));
+    [...spl.matchAll(new RegExp(`\\b${field}\\s*=\\s*("[^"]*"|[^\\s|)]+)`, 'gi'))].map(([, value = '']) => value.replace(/^"|"$/g, ''));
 
 // "index=web sourcetype=access_combined" → "web (access_combined)".
 export function describeIndexes(spl: string) {
@@ -162,7 +163,7 @@ export const parseRecipients = (to = '') =>
 // The email lists a report went to are the groups that may see it:
 // secops@example.com → secops.
 export const groupsFromRecipients = (recipients: string[]) =>
-    [...new Set(recipients.map((email) => email.split('@')[0]).filter(Boolean))];
+    [...new Set(recipients.map((email) => email.split('@')[0] ?? '').filter(Boolean))];
 
 const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -337,7 +338,7 @@ export function mapRun({ reportSlug, job, results, resultsExpired, rule }: RunIn
 type RunSummary = Pick<RunFacts, 'sid' | 'runAt' | 'status' | 'statusMessage' | 'durationSec' | 'resultCount'>;
 type ResultsRun = RunSummary & Pick<RunFacts, 'columns' | 'rows'>;
 
-const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text);
+const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 
 type ChartOptions = { y?: string; threshold?: ChartThreshold; max?: number; panels?: ChartPanel[]; scatter?: ChartScatter };
 
@@ -378,13 +379,14 @@ function chartSeries(table: ResultTable, measures: string[]) {
 // Results over time (Splunk's timechart) draw as lines when they have several
 // measures, or more points than bars can show, whatever chart the search saved.
 export function resolveChart(type: ChartType | null, table: ResultTable, { y, threshold, max, panels, scatter }: ChartOptions = {}): ReportChart | null {
-    if (!type || table.columns.length < 2 || table.rows.length === 0) return null;
+    const x = table.columns[0];
+    if (!type || x === undefined || table.columns.length < 2 || table.rows.length === 0) return null;
 
     const measures = table.columns.slice(1).filter((column) => isNumericColumn(table, column));
     const measure = y && table.columns.includes(y) ? y : measures[0];
     if (!measure) return null;
 
-    const overTime = table.columns[0] === '_time';
+    const overTime = x === '_time';
     const series = overTime && !y && measures.length > 1 ? chartSeries(table, measures) : undefined;
     const tooManyBars = overTime && (type === 'bar' || type === 'column') && table.rows.length > MAX_CHART_BARS;
     const shownPanels = panels?.filter((panel) => isNumericColumn(table, panel.y)) ?? [];
@@ -392,7 +394,7 @@ export function resolveChart(type: ChartType | null, table: ResultTable, { y, th
 
     return {
         type: series || tooManyBars ? 'line' : type,
-        x: table.columns[0],
+        x,
         y: measure,
         ...(threshold ? { threshold } : {}),
         ...(max !== undefined ? { max } : {}),
@@ -430,7 +432,7 @@ function defaultHighlights({ columns, rows, resultCount, previousResultCount, re
         const value = (row: Cell[]) => parseNumber(row[y]) ?? Number.NEGATIVE_INFINITY;
         const top = rows.reduce<Cell[] | undefined>((max, row) => (!max || value(row) > value(max) ? row : max), undefined);
 
-        if (top) highlights.push({ label: `Top ${lowerFirst(chart.x)}`, value: String(top[x]), note: `${chart.y}: ${formatCell(top[y])}` });
+        if (top) highlights.push({ label: `Top ${lowerFirst(chart.x)}`, value: String(top[x] ?? ''), note: `${chart.y}: ${formatCell(top[y])}` });
     }
 
     highlights.push({ label: 'Search time', value: formatDuration(durationSec) });

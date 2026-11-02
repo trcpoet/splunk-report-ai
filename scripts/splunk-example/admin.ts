@@ -35,7 +35,7 @@ export function splunkAdmin({ baseUrl, username, password }: { baseUrl: string; 
                 });
                 break;
             } catch (error) {
-                if (Date.now() > deadline) throw new Error(`Can't reach Splunk at ${root}: ${error instanceof Error ? error.message : error}`);
+                if (Date.now() > deadline) throw new Error(`Can't reach Splunk at ${root}: ${error instanceof Error ? error.message : String(error)}`);
                 await sleep(5_000);
             }
         }

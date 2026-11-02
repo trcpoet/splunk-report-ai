@@ -60,6 +60,6 @@ const AiFeedbackSchema = new Schema<IAiFeedback>(
 // One vote per person per thing; changing your mind updates it.
 AiFeedbackSchema.index({ userId: 1, kind: 1, targetId: 1 }, { unique: true });
 
-const AiFeedback = (models.AiFeedback as Model<IAiFeedback>) || model<IAiFeedback>('AiFeedback', AiFeedbackSchema);
+const AiFeedback = (models.AiFeedback as Model<IAiFeedback> | undefined) ?? model<IAiFeedback>('AiFeedback', AiFeedbackSchema);
 
 export default AiFeedback;

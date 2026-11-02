@@ -46,9 +46,9 @@ describe('mergeChats', () => {
         );
 
         assert.deepEqual(merged.map(({ id }) => id), ['b', 'a']);
-        assert.equal(merged[0].title, 'Renamed');
-        assert.equal(merged[0].group, 'Today');
-        assert.equal(merged[0].preview, 'Preview b');
+        assert.equal(merged[0]!.title, 'Renamed');
+        assert.equal(merged[0]!.group, 'Today');
+        assert.equal(merged[0]!.preview, 'Preview b');
     });
 
     test('keeps the server copy when it is as new as the saved one, or newer', () => {

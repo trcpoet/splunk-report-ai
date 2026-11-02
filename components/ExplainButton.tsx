@@ -11,6 +11,7 @@ import Sparkline from "@/components/Sparkline";
 import StatusBadge from "@/components/StatusBadge";
 import { useSummary } from "@/components/useSummary";
 import { track } from "@/lib/analytics";
+import { readJson } from "@/lib/api-reply";
 import { columnLabel, formatDateTime, formatNumber } from "@/lib/format";
 import { describeColumn, findUnusualRun, profileResults, unusualTrend } from "@/lib/insights";
 import type { ModelRun, SplunkReport } from "@/lib/reports";
@@ -25,8 +26,8 @@ function useReport(slug: string, given?: SplunkReport) {
         const controller = new AbortController();
         fetch(`/api/reports/${slug}`, { signal: controller.signal })
             .then(async (response) => {
-                const body = await response.json().catch(() => ({}));
-                setFetched(response.ok ? { report: body.report } : { error: body.message ?? "Couldn't load the report." });
+                const body = await readJson<{ report?: SplunkReport; message?: string }>(response);
+                setFetched(response.ok && body?.report ? { report: body.report } : { error: body?.message ?? "Couldn't load the report." });
             })
             .catch(() => {
                 if (!controller.signal.aborted) setFetched({ error: "Couldn't load the report. Check your connection." });

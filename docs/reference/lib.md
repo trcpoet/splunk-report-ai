@@ -196,15 +196,19 @@ Dates and numbers, always in UTC with fixed English month names, so the server a
 - **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `formatCell`, `columnLabel`, `timeAxisLabels`, `plural`, `firstLine`.
 - **`formatClock(minutes)`** writes minutes after midnight as a time of day: 480 is "08:00".
 - **`formatList(items)`** joins names as "a, b, and c" (`Intl.ListFormat`), for the report page's chart headings and the scheduler chart.
-- **`parseNumber`** reads Splunk's text numbers ("$1,234", "1.84%", "12G").
-- **`formatCell(cell)`** shows a results cell: numbers with separators, and Splunk's `_time` in UTC. **`columnLabel`** names that column "Time". **`timeAxisLabels(times)`** gives axis labels as short as their span allows.
+- **`parseNumber`** reads Splunk's text numbers ("$1,234", "1.84%", "12G"). A missing cell (a short row) is `null`.
+- **`formatCell(cell)`** shows a results cell, and a missing one as empty: numbers with separators, and Splunk's `_time` in UTC. **`columnLabel`** names that column "Time". **`timeAxisLabels(times)`** gives axis labels as short as their span allows.
 - **Rule:** use these instead of `toLocaleString`, which differs between server and browser.
 
 ## Look and analytics
 
 ### `chart-theme.ts`
 
-Shared chart styling, following the dataviz rules: recessive axes, hairline gridlines, text in text colors, the threshold line, the bar size. Used by every chart component.
+Shared chart styling, following the dataviz rules: recessive axes, hairline gridlines, text in text colors, the threshold line, the bar size. Used by every chart component. **`tooltipTime`** heads a tooltip with a point's full time, for charts over time.
+
+### `api-reply.ts`
+
+Reads replies from the app's own API in the browser. **`readJson<T>(response)`** is the JSON body, or null when it isn't JSON. **`replyError(response)`** is an error reply's `message`, or null. Used by `ExplainButton`, `useSummary` and `ChatView`.
 
 ### `analytics.ts`
 
@@ -217,6 +221,7 @@ Shared chart styling, following the dataviz rules: recessive axes, hairline grid
 ## Tests
 
 `npm test` runs every `lib/**/*.test.ts` with Node's test runner through `tsx`. Tests are named as sentences.
-- **Here:** `access`, `chat-list`, `format`, `insights`, `next-path`, `run-health`, `schedule-load`.
+- **Here:** `access`, `chat-list`, `format`, `insights`, `next-path`, `reports`, `run-health`, `schedule-load`.
 - **AI:** `ai/config`, `ai/context`, `ai/keys`, `ai/report-links`, `ai/retrieval`, `ai/spl`, `ai/stream`, `ai/suggestions`, `ai/validate`.
-- **Splunk:** `splunk/map`. This one runs the whole sync pipeline against the fixtures.
+- **Splunk:** `splunk/map`, `splunk/transport` and `splunk/example/events`. `splunk/map` runs the whole sync pipeline against the fixtures.
+- `npm run check` runs the type check and ESLint before the tests.

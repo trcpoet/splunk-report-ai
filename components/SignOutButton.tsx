@@ -13,10 +13,9 @@ const SignOutButton = () => {
     const signOut = async () => {
         setState('pending');
 
-        try {
-            const { error } = await authClient.signOut();
-            if (error) throw error;
-        } catch {
+        // Failed when Better Auth answers with an error, or the request itself fails.
+        const failed = await authClient.signOut().then(({ error }) => Boolean(error), () => true);
+        if (failed) {
             setState('failed');
             return;
         }
@@ -33,7 +32,7 @@ const SignOutButton = () => {
         <button
             type="button"
             className="sign-out"
-            onClick={signOut}
+            onClick={() => void signOut()}
             disabled={state === 'pending'}
             aria-busy={state === 'pending'}
             title={state === 'failed' ? 'Signing out didn’t work. Check your connection and try again.' : undefined}

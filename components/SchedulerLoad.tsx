@@ -116,7 +116,7 @@ const SchedulerLoad = ({ load }: { load: ScheduleLoad }) => {
                                     {listed(times.map((time) => busyTime(time, slotMinutes)), MAX_TIMES, (count) => `${count} more times`)}
                                 </span>
                                 {': '}{atOnce(running)}
-                                {times.length === 1 && ` (${names(times[0].reports)})`}
+                                {times.length === 1 && ` (${names(times[0]?.reports ?? [])})`}
                             </li>
                         ))}
                     </ul>

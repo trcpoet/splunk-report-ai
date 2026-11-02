@@ -173,7 +173,7 @@ async function main() {
     console.log('Done. Splunk runs the reports on schedule, and the connector copies each run into MongoDB.');
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
 });

@@ -83,11 +83,12 @@ export const reportConfig: Record<string, ReportConfig> = {
             const rate = columnIndex(results, 'Error rate %');
             const over = results.rows.filter((row) => Number(row[rate]) > ERROR_BUDGET_PCT);
 
-            if (over.length === 0) return null;
+            const [only] = over;
+            if (!only) return null;
             if (over.length === 1) {
                 return {
                     status: 'warning',
-                    message: `${over[0][host]} is returning ${over[0][rate]}% server errors, above the ${ERROR_BUDGET_PCT}% threshold. The other hosts are within budget.`,
+                    message: `${only[host]} is returning ${only[rate]}% server errors, above the ${ERROR_BUDGET_PCT}% threshold. The other hosts are within budget.`,
                 };
             }
 
