@@ -173,8 +173,10 @@ export type SyncInfo = {
 };
 
 // A report card's headline: the report's first highlight from its newest
-// results, such as "Overall error rate 0.93%, Budget: 2%".
-export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'>;
+// results, such as "Overall error rate 0.93%, Budget: 2%". `from` is set when
+// those results are older than the last run (it failed, or its results
+// expired), so the card can say the number is from an earlier run.
+export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'> & { from?: string };
 
 export type ReportSummary = Pick<
     SplunkReport,
@@ -184,15 +186,21 @@ export type ReportSummary = Pick<
     headline: ReportHeadline | null;
 };
 
-const headlineOf = (highlights: ReportHighlight[]): ReportHeadline | null => {
+const headlineOf = ({ highlights, resultsRunAt, lastRun }: Pick<ReportListItem, 'highlights' | 'resultsRunAt' | 'lastRun'>): ReportHeadline | null => {
     const [first] = highlights;
-    return first ? { label: first.label, value: first.value, ...(first.note ? { note: first.note } : {}) } : null;
+    if (!first) return null;
+    return {
+        label: first.label,
+        value: first.value,
+        ...(first.note ? { note: first.note } : {}),
+        ...(resultsRunAt && resultsRunAt !== lastRun ? { from: resultsRunAt } : {}),
+    };
 };
 
-export const toSummary = ({ slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index, highlights }: ReportListItem): ReportSummary => ({
-    slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index,
-    headline: headlineOf(highlights),
-});
+export const toSummary = (report: ReportListItem): ReportSummary => {
+    const { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index } = report;
+    return { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index, headline: headlineOf(report) };
+};
 
 // The newest last run first, reports with no run yet last, and reports that
 // ran at the same time by title. This is the order of the report list.

@@ -26,6 +26,8 @@ export type SyncSettings = {
 
 type Env = Record<string, string | undefined>;
 
+const MAX_INTERVAL_MINUTES = 1440;
+
 export class SettingsError extends Error {
     constructor(readonly problems: string[]) {
         super(`The sync worker's settings need fixing:\n${problems.map((problem) => `  - ${problem}`).join('\n')}`);
@@ -58,8 +60,11 @@ export function readSyncSettings(env: Env = process.env): SyncSettings {
     const mode = choice('SPLUNK_MODE', env.SPLUNK_MODE, ['fixture', 'live'], 'fixture', problems);
     const syncReports = choice('SYNC_REPORTS', env.SYNC_REPORTS, ['emailed', 'configured'], 'emailed', problems);
 
+    // Up to a day: much longer overflows Node's timers, which then fire at once.
     const intervalMinutes = env.SYNC_INTERVAL_MINUTES ? Number(env.SYNC_INTERVAL_MINUTES) : 15;
-    if (!(intervalMinutes > 0)) problems.push(`SYNC_INTERVAL_MINUTES must be a number of minutes above 0, not "${env.SYNC_INTERVAL_MINUTES ?? ''}".`);
+    if (!(intervalMinutes > 0 && intervalMinutes <= MAX_INTERVAL_MINUTES)) {
+        problems.push(`SYNC_INTERVAL_MINUTES must be a number of minutes above 0 and at most ${MAX_INTERVAL_MINUTES} (a day), not "${env.SYNC_INTERVAL_MINUTES ?? ''}".`);
+    }
 
     const timeZone = env.SPLUNK_TZ || 'UTC';
     if (!isTimeZone(timeZone)) problems.push(`SPLUNK_TZ must be a time zone name such as "UTC" or "America/New_York", not "${timeZone}".`);

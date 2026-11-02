@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import type { ReportSummary, SplunkReport } from '@/lib/reports';
+import { sortByLastRun, type ReportSummary, type SplunkReport } from '@/lib/reports';
 
 // The report list and a report page, signed in as the admin, who sees every
 // report. Works against the dummy reports and against a real Splunk.
@@ -25,12 +25,6 @@ async function screenshot(page: Page, name: string) {
     await page.screenshot({ path: `${folder}/${name}.png`, fullPage: true });
 }
 
-// The list's order: newest last run first, no run last, then by title.
-const byLastRun = (a: ReportSummary, b: ReportSummary) => {
-    const time = ({ lastRun }: ReportSummary) => (lastRun ? Date.parse(lastRun) : Number.NEGATIVE_INFINITY);
-    return time(a) === time(b) ? a.title.localeCompare(b.title) : time(b) - time(a);
-};
-
 test('the home page lists at most 20 reports, newest run first, each with its latest number', async ({ page }) => {
     const errors = watchForErrors(page);
     const response = await page.request.get('/api/reports');
@@ -39,18 +33,21 @@ test('the home page lists at most 20 reports, newest run first, each with its la
     expect(reports.length, 'the admin should see at least one report').toBeGreaterThan(0);
 
     await page.goto('/');
+    // The loading placeholders look like cards, so wait for the real list.
+    await expect(page.locator('#reports').getByText(/^Showing /)).toBeVisible();
     const cards = page.locator('#reports .report-card').filter({ visible: true });
-    await expect(cards.first()).toBeVisible();
 
     const titles = await cards.locator('.title').allInnerTexts();
+    const expected = sortByLastRun(reports).slice(0, MAX_CARDS);
     expect(titles.length).toBeLessThanOrEqual(MAX_CARDS);
-    expect(titles).toEqual(reports.toSorted(byLastRun).slice(0, MAX_CARDS).map(({ title }) => title));
+    expect(titles).toEqual(expected.map(({ title }) => title));
 
-    // A report that has run shows its headline number; one that hasn't says so.
-    for (const card of await cards.all()) {
-        const badge = await card.locator('.status-badge').innerText();
-        if (badge.includes('No runs yet')) continue;
-        await expect(card.locator('.card-headline .value')).not.toBeEmpty();
+    // Each card shows the number its report's latest results give, if any: a
+    // report whose runs all failed, or that hasn't run, has none.
+    for (const [i, summary] of expected.entries()) {
+        const headline = cards.nth(i).locator('.card-headline .value');
+        if (summary.headline) await expect(headline).toHaveText(summary.headline.value);
+        else await expect(headline).toHaveCount(0);
     }
 
     if (reports.length > MAX_CARDS) await expect(page.getByRole('group', { name: 'Report pages' })).toBeVisible();
@@ -65,7 +62,7 @@ test('a report page shows its chart and its results table', async ({ page }) => 
 
     // The first report, newest first, whose latest results have a chart.
     let charted: SplunkReport | undefined;
-    for (const { slug } of reports.toSorted(byLastRun)) {
+    for (const { slug } of sortByLastRun(reports)) {
         const { report } = (await (await page.request.get(`/api/reports/${slug}`)).json()) as { report: SplunkReport };
         if (report.chart && report.rows.length > 0) {
             charted = report;

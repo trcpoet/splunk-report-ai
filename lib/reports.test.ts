@@ -100,4 +100,12 @@ describe('toSummary', () => {
     test('a report with no results has no headline', () => {
         assert.equal(toSummary(listItem([])).headline, null);
     });
+
+    test("says which run the number is from when it's older than the last run", () => {
+        const highlights = [{ label: 'Results', value: '117' }];
+        const item = (resultsRunAt: string | null) => ({ ...listItem(highlights), lastRun: '2026-10-02T10:00:00.000Z', resultsRunAt });
+
+        assert.equal(toSummary(item('2026-10-02T09:00:00.000Z')).headline?.from, '2026-10-02T09:00:00.000Z');
+        assert.equal(toSummary(item('2026-10-02T10:00:00.000Z')).headline?.from, undefined);
+    });
 });
