@@ -76,7 +76,7 @@ erDiagram
 |---|---|---|---|
 | `reports` | sync worker | One document per scheduled report: its Splunk facts, `allowedGroups`, chart, highlights, latest run, last 7 runs | Kept; marked `disabled` once Splunk no longer schedules it |
 | `report_runs` | sync worker | One document per run (by `sid`), with its result rows (up to `SYNC_MAX_ROWS`) | `RUN_RETENTION_DAYS` (TTL index) |
-| `sync_state` | sync worker | When the last sync finished, and its mode | One document |
+| `sync_state` | sync worker | When the last sync finished, its mode, and the schedules' time zone | One document |
 | `user`, `session`, `account`, `verification` | Better Auth | Sign-in accounts and sessions | Better Auth's rules |
 | `user_access` | seed script (later: sign-in from SSO) | Each person's `role` (admin or viewer) and `groups` | Until changed |
 | `chats` | web app | Ask AI conversations, at most 100 messages each | Until deleted; 24 h in `DEMO_MODE` |

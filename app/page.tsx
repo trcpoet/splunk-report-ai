@@ -1,10 +1,12 @@
 import Briefing from "@/components/Briefing";
 import ExploreBtn from "@/components/ExploreBtn";
 import ReportBrowser from "@/components/ReportBrowser";
+import RunHealthGrid from "@/components/RunHealthGrid";
 import RunOutcomes from "@/components/RunOutcomes";
+import SchedulerLoad from "@/components/SchedulerLoad";
 import { BriefingSkeleton, OverviewSkeleton, ReportsSkeleton } from "@/components/Skeletons";
 import { PageTransition, Reveal } from "@/components/Transitions";
-import { getRunOutcomes, getSyncInfo, getVisibleReports } from "@/lib/dal";
+import { getRunHealth, getRunOutcomes, getScheduleLoad, getSyncInfo, getVisibleReports } from "@/lib/dal";
 import { getCategories, getReportStats, toSummary } from "@/lib/reports";
 import { formatDateTime, formatNumber } from "@/lib/format";
 
@@ -35,7 +37,13 @@ const Page = () => {
 
 // Only the reports the signed-in user may see.
 async function Overview() {
-    const [reports, outcomes, sync] = await Promise.all([getVisibleReports(), getRunOutcomes(), getSyncInfo()]);
+    const [reports, outcomes, health, load, sync] = await Promise.all([
+        getVisibleReports(),
+        getRunOutcomes(),
+        getRunHealth(),
+        getScheduleLoad(),
+        getSyncInfo(),
+    ]);
     const stats = getReportStats(reports);
 
     const tiles = [
@@ -64,7 +72,8 @@ async function Overview() {
                 </p>
             )}
 
-            {/* Headline numbers, then what needs attention, then the trend, then the list. */}
+            {/* Headline numbers, then what needs attention, then the runs per day
+                and per report, then when searches run, then the list. */}
             <div className="mt-10">
                 <Reveal fallback={<BriefingSkeleton />}>
                     <Briefing variant="home" />
@@ -72,8 +81,15 @@ async function Overview() {
             </div>
 
             {outcomes.length > 0 && (
-                <div className="mt-10">
+                <div className="overview-charts">
                     <RunOutcomes days={outcomes} />
+                    <RunHealthGrid health={health} />
+                </div>
+            )}
+
+            {load.total > 0 && (
+                <div className="mt-6">
+                    <SchedulerLoad load={load} />
                 </div>
             )}
         </>

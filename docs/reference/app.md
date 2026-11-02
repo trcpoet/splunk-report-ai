@@ -44,11 +44,12 @@ The root layout around every page.
 Home. In order:
 1. "Data as of" and the headline numbers (`getReportStats`);
 2. the briefing (`components/Briefing.tsx`);
-3. runs per day by outcome (`RunOutcomes`, from `getRunOutcomes`);
-4. the report list with search and filters (`ReportBrowser`, fed with `toSummary` so the browser gets summaries only).
+3. runs per day by outcome (`RunOutcomes`, from `getRunOutcomes`), beside the run health grid (`RunHealthGrid`, from `getRunHealth`) on wide screens;
+4. when searches run (`SchedulerLoad`, from `getScheduleLoad`);
+5. the report list with search and filters (`ReportBrowser`, fed with `toSummary` so the browser gets summaries only).
 
 Each part streams into its own `<Reveal>`, with skeletons from `Skeletons.tsx`.
-- **Uses:** `lib/dal.ts` (`getVisibleReports`, `getRunOutcomes`, `getSyncInfo`), `lib/reports.ts`, `lib/format.ts`.
+- **Uses:** `lib/dal.ts` (`getVisibleReports`, `getRunOutcomes`, `getRunHealth`, `getScheduleLoad`, `getSyncInfo`), `lib/reports.ts`, `lib/format.ts`.
 - **Change it when:** you add a section to the overview. Give it a skeleton the same size.
 
 ### `error.tsx`

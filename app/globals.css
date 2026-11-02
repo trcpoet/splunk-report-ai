@@ -215,6 +215,106 @@
         }
     }
 
+    /* The home page's runs-per-day chart and run health grid: side by side on
+       wide screens. min-w-0 lets a chart shrink inside its column. */
+    .overview-charts {
+        @apply mt-10 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0;
+    }
+
+    /* Run health grid (components/RunHealthGrid.tsx): a report per row, a day
+       per column, each day's worst outcome as a small square. */
+    .health-grid {
+        @apply w-full table-fixed border-separate border-spacing-y-1 text-sm;
+
+        col.day {
+            @apply w-7 max-[360px]:w-6;
+        }
+
+        th,
+        td {
+            @apply p-0 font-normal;
+        }
+
+        thead th {
+            @apply pb-1 text-center text-xs leading-tight text-light-200;
+        }
+
+        /* Report titles: one line, cut short, on wide screens; up to two lines
+           on phones, where the column is narrow. 24px tall at least, to tap. */
+        tbody th {
+            @apply pr-3 text-left;
+
+            a {
+                @apply block truncate rounded-[4px] py-0.5 text-light-100 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:break-words max-sm:hyphens-auto max-sm:leading-snug;
+            }
+        }
+
+        td {
+            @apply text-center;
+        }
+    }
+
+    /* A day's mark: a status color with a dark icon, or an empty outline for a
+       day without runs. Text is never colored; the legend and the tooltip name it. */
+    .health-cell {
+        @apply inline-flex size-[22px] items-center justify-center rounded-[5px] border border-transparent align-middle text-background;
+
+        svg {
+            @apply size-3.5 stroke-[3];
+        }
+    }
+
+    .health-success {
+        background: var(--status-success);
+    }
+
+    .health-warning {
+        background: var(--status-warning);
+    }
+
+    .health-failed {
+        background: var(--status-failed);
+    }
+
+    /* At least 3:1 against the card, like the filled marks. */
+    .health-none {
+        @apply border-light-200/50;
+    }
+
+    .health-legend {
+        @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-light-200;
+
+        li {
+            @apply inline-flex items-center gap-1.5;
+        }
+
+        .health-cell {
+            @apply size-3.5 rounded-[3px];
+
+            svg {
+                @apply size-2.5;
+            }
+        }
+    }
+
+    /* Under the "When searches run" chart (components/SchedulerLoad.tsx). */
+    .load-notes {
+        @apply flex flex-col gap-2 text-sm text-light-200;
+
+        /* The bold times lead each line, so no bullets. */
+        ul {
+            @apply flex list-none flex-col gap-1;
+        }
+
+        .when {
+            @apply font-medium text-light-100;
+        }
+
+        .quiet {
+            @apply text-xs;
+        }
+    }
+
     /* Buttons and button-styled links. */
     .btn-primary,
     .btn-secondary {
@@ -1454,6 +1554,12 @@
     [data-tip]:is(:hover, :focus-visible)::after {
         @apply pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-[6px] bg-dark-200 px-2 py-1 text-xs font-normal text-light-100 card-shadow;
         content: attr(data-tip);
+    }
+
+    /* Near the right edge, the tooltip ends at its element instead of
+       centering on it, so it stays on screen. */
+    [data-tip].tip-end:is(:hover, :focus-visible)::after {
+        @apply left-auto right-0 translate-x-0;
     }
 
     /* A tap would leave it showing. */

@@ -9,7 +9,7 @@
 ## What the demo shows
 
 - **Sign-in and per-team access:** each user sees only the reports their groups used to receive by email. Admins see everything.
-- **Overview:** headline numbers for the reports you can see, scheduled runs per day by outcome, and the report list with search and status/category filters.
+- **Overview:** headline numbers for the reports you can see, scheduled runs per day by outcome, a run health grid (each report's worst outcome per day), when the scheduled searches pile up during the day, and the report list with search and status/category filters.
 - **Report page (`/reports/[slug]`):** status and alert message, key numbers, a chart of the latest results (the chart type saved in Splunk), the results table, the SPL query, a results-per-run trend and the run history, schedule details, the distribution lists that used to receive the email, and **Download CSV** / **Copy SPL** buttons.
 - **Briefing and Explain:** the home page says what needs attention and which runs look unusual (plain statistics, `lib/insights.ts`), with a short AI summary. Every report card has **Explain**: an AI summary of the latest run plus a quick look at its results.
 - **ML job (`ml/`):** a Python script that scores every run with an Isolation Forest and learns from the briefing's "Worth flagging?" votes which flags matter. The briefing, Explain and Ask AI use its scores. See [docs/ml.md](docs/ml.md).

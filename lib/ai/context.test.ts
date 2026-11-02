@@ -14,7 +14,7 @@ const toReport = (fixture: FixtureReport): SplunkReport => ({
 });
 
 const reports = fixtures.map(toReport);
-const sync = { mode: 'fixture' as const, lastSuccessAt: '2026-10-02T09:20:00Z', lastError: null };
+const sync = { mode: 'fixture' as const, lastSuccessAt: '2026-10-02T09:20:00Z', lastError: null, timeZone: 'UTC' };
 
 describe('reportsContext', () => {
     test('describes only the reports it is given', () => {

@@ -16,14 +16,11 @@ import { ReportSkeleton } from "@/components/Skeletons";
 import { PAGE_TRANSITION, PageTransition, Reveal } from "@/components/Transitions";
 import { getVisibleReport, getVisibleReports } from "@/lib/dal";
 import { getSimilarReports, toSummary } from "@/lib/reports";
-import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
+import { formatDateTime, formatDuration, formatList, formatNumber } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 
 const STATUS_LABELS = { success: 'Success', warning: 'Warning', failed: 'Failed' } as const;
-
-// "Transactions, Volume, and Decline rate", for small-multiple headings.
-const LIST_FORMAT = new Intl.ListFormat('en', { type: 'conjunction' });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
@@ -131,7 +128,7 @@ async function ReportDetails({ params }: Props) {
                                     {report.chart.panels ? (
                                         <>
                                             <span className="chart-heading">
-                                                {LIST_FORMAT.format(report.chart.panels.map(({ y }) => y))} by {report.chart.x}
+                                                {formatList(report.chart.panels.map(({ y }) => y))} by {report.chart.x}
                                             </span>
                                             <span className="chart-subtitle">
                                                 One chart per measure, with the bars in the same order in each. The largest value in each is labeled, and values past a dashed line are highlighted. Every value is in the table below.
