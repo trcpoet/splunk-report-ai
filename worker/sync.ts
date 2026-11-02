@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { disconnectDB } from '@/lib/mongodb';
 import { fixtureTransport } from '@/lib/splunk/fixtures/transport';
-import { syncAll } from '@/lib/splunk/sync';
+import { errorMessage, syncAll } from '@/lib/splunk/sync';
 import { httpTransport, splunkTokenFromEnv, type SplunkTransport } from '@/lib/splunk/transport';
 
 // Syncs Splunk scheduled reports into MongoDB. Runs as its own process, not
@@ -53,7 +53,7 @@ async function main() {
         try {
             await syncOnce();
         } catch (error) {
-            console.error(`Sync failed: ${error instanceof Error ? error.message : error}`);
+            console.error(`Sync failed: ${errorMessage(error)}`);
         }
         await sleep(minutes * 60_000, undefined, { signal: stop.signal }).catch(() => {});
     }
@@ -61,7 +61,7 @@ async function main() {
 
 main()
     .catch((error) => {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(errorMessage(error));
         process.exitCode = 1;
     })
     .finally(disconnectDB);

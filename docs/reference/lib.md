@@ -17,11 +17,13 @@ Files marked **server-only** start with `import 'server-only'`, so importing the
 | `getVisibleReports()` | `ReportListItem[]`, title order | Every report the viewer may see, without result rows. |
 | `getVisibleReport(slug)` | `SplunkReport` with `columns` and `rows`, or `null` | `null` for missing **and** hidden, so a hidden report looks missing. |
 | `getVisibleReportsWithResults()` | `SplunkReport[]` | Every visible report with its latest results, for the AI's context. |
+| `getReportSyncError(slug)` | `string` or `null` | Why the last sync couldn't refresh this report. Admins only: the text comes from Splunk's answers. |
 | `getRunOutcomes(days = 7)` | `RunOutcomeDay[]` | Runs per day by outcome across the viewer's reports, for the home page chart. The days end on the newest day with a run. |
 | `getRunHealth(days = 7)` | `RunHealth` (`days`, `rows`) | The same days and runs, per report: the home page's run health grid. |
 | `getScheduleLoad()` | `ScheduleLoad` | How many of the viewer's reports' searches run at once, by time of day, in the schedules' time zone (`lib/schedule-load.ts`). |
 | `getSyncInfo()` | `{ mode, lastSuccessAt, lastError, timeZone }` or `null` | For "Data as of", for `aiStatus()` (live data keeps AI off), and the scheduler chart's time zone (`UTC` until a sync saves one). |
 
+- **`getSyncNotice()`:** why the reports may be out of date, or `null`, for `SyncNotice`. It uses `syncProblem`; the detail is for admins only.
 - **Once per request:** `getVisibleReports` and the run counts behind the two home page views are wrapped in React `cache()`, since the home page's parts each ask for them.
 - **Behind them:** five cached loaders, not exported, each with `'use cache'`, tag `reports` and `cacheLife('minutes')`.
   - `loadReports` loads every enabled report once for all viewers, with the ML scores attached as `modelRun` and `attention`.
@@ -126,7 +128,7 @@ Write SPL's examples, used for retrieval: the viewer's reports' searches, plus s
 | `saveExample(viewer, messageId)` / `removeExample(viewer, messageId)` | Saves an answer from the viewer's own chats, if it only reads data and parses, or takes it back. |
 | `savedExampleIds(viewer, ids)` | Which of these answers the viewer has saved. |
 
-- **Embeddings:** example vectors are cached in `ai_embeddings`, so each text is embedded once; requests are embedded fresh. At most `MAX_SAVED` (500) saved searches are considered.
+- **Embeddings:** example vectors are cached in `ai_embeddings`, so each text is embedded once; requests are embedded fresh. At most `MAX_SAVED` (500) saved searches are considered, counted among those the viewer may see.
 
 ## Reports and statistics
 
@@ -135,7 +137,8 @@ Write SPL's examples, used for retrieval: the viewer's reports' searches, plus s
 The report types shared by the app and the worker:
 - `SplunkReport`, `ReportListItem`, `ReportSummary`;
 - `RunRecord`, `ReportHighlight`, `ReportChart` (with `ChartThreshold`, `ChartPanel`, `ChartScatter`);
-- `ModelRun`, `RunOutcomeDay`, `OutcomeCounts`, `RunHealth`, `RunHealthRow`, `SyncInfo`, `ReportStatus`, `ReportCategory`.
+- `ModelRun`, `RunOutcomeDay`, `OutcomeCounts`, `RunHealth`, `RunHealthRow`, `SyncInfo`, `ReportStatus`, `ReportHealth` (a status, or `none` before a run is stored), `ReportCategory`;
+- `MAX_CHART_BARS`, `MAX_CHART_POINTS`, `MAX_CHART_SERIES`: the most a chart draws.
 
 Helpers:
 - **`toSummary(report)`:** the fields the browser gets for lists.
@@ -143,6 +146,7 @@ Helpers:
 - **`getSimilarReports(report, reports, limit = 3)`:** same category or shared tags.
 - **`needsAttention(report)`:** warning or failed. One rule for the home page's count, the briefing, the suggestions and the Reports button.
 - **`getReportStats(reports)`:** the headline numbers.
+- **`syncProblem(sync, now, staleHours = 2)`:** why the reports may be out of date, or `null`. Dummy data never counts as stale.
 
 ### `report-config.ts`
 
@@ -189,10 +193,11 @@ The runs behind the home page's "Scheduled runs per day" chart and its run healt
 ### `format.ts` (pure)
 
 Dates and numbers, always in UTC with fixed English month names, so the server and the browser print the same text.
-- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `plural`, `firstLine`.
+- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `formatCell`, `columnLabel`, `timeAxisLabels`, `plural`, `firstLine`.
 - **`formatClock(minutes)`** writes minutes after midnight as a time of day: 480 is "08:00".
 - **`formatList(items)`** joins names as "a, b, and c" (`Intl.ListFormat`), for the report page's chart headings and the scheduler chart.
 - **`parseNumber`** reads Splunk's text numbers ("$1,234", "1.84%", "12G").
+- **`formatCell(cell)`** shows a results cell: numbers with separators, and Splunk's `_time` in UTC. **`columnLabel`** names that column "Time". **`timeAxisLabels(times)`** gives axis labels as short as their span allows.
 - **Rule:** use these instead of `toLocaleString`, which differs between server and browser.
 
 ## Look and analytics

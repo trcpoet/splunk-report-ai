@@ -1,5 +1,5 @@
 // Dummy logs for the example Splunk (docs/splunk-example.md), as if from a small
-// company's servers: what the example's six reports search. All made up: users
+// company's servers: what the example's seven reports search. All made up: users
 // are invented names, IPs come from the documentation ranges (192.0.2.0/24,
 // 198.51.100.0/24, 203.0.113.0/24), and so do the hosts.
 //

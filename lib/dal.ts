@@ -2,12 +2,13 @@ import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { cache } from 'react';
 import { MlReportScore, MlRunScore, Report, ReportRun, SyncState, SYNC_STATE_ID, UserAccess, type IMlReportScore, type IMlRunScore, type IReport } from '@/database';
 import { canView, type Viewer } from '@/lib/access';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
-import type { Cell, ChartThreshold, ModelRun, ReportChart, ReportHighlight, ReportListItem, RunHealth, RunOutcomeDay, SplunkReport, SyncInfo } from '@/lib/reports';
+import { syncProblem, type Cell, type ChartThreshold, type ModelRun, type ReportChart, type ReportHighlight, type ReportListItem, type RunHealth, type RunOutcomeDay, type SplunkReport, type SyncInfo } from '@/lib/reports';
 import { lastDays, runHealthRows, totalsByDay, type RunCount } from '@/lib/run-health';
 import { scheduleLoad, type ScheduleLoad } from '@/lib/schedule-load';
 
@@ -67,6 +68,7 @@ type StoredReport = {
     report: ReportListItem;
     allowedGroups: string[];
     resultsSid: string | null;
+    syncError: string | null;
 };
 
 const iso = (date: Date | null | undefined) => (date ? new Date(date).toISOString() : '');
@@ -82,7 +84,7 @@ const toHighlight = ({ label, value, note, meter, trend }: ReportHighlight): Rep
 
 const toThreshold = ({ value, label }: ChartThreshold): ChartThreshold => ({ value, label });
 
-const toChart = ({ type, x, y, threshold, max, panels, scatter }: ReportChart): ReportChart => ({
+const toChart = ({ type, x, y, threshold, max, panels, scatter, series }: ReportChart): ReportChart => ({
     type,
     x,
     y,
@@ -92,6 +94,7 @@ const toChart = ({ type, x, y, threshold, max, panels, scatter }: ReportChart): 
         ? { panels: panels.map((panel) => ({ y: panel.y, ...(panel.threshold ? { threshold: toThreshold(panel.threshold) } : {}) })) }
         : {}),
     ...(scatter ? { scatter: { x: scatter.x, caption: scatter.caption, ...(scatter.log ? { log: true } : {}) } } : {}),
+    ...(series && series.length > 0 ? { series: [...series] } : {}),
 });
 
 // What the ML job (ml/score.py) said about each report's newest run, and what
@@ -136,7 +139,7 @@ function toListItem(doc: IReport, model: ModelScores): ReportListItem {
         index: doc.index,
         lastRun: iso(doc.latest?.runAt),
         nextRun: iso(doc.nextRun),
-        status: doc.latest?.status ?? 'success',
+        status: doc.latest?.status ?? 'none',
         statusMessage: doc.latest?.statusMessage || undefined,
         resultCount: doc.results?.resultCount ?? 0,
         recipients: [...doc.recipients],
@@ -160,7 +163,7 @@ async function loadReports(): Promise<StoredReport[]> {
     const docs = await Report.find({ disabled: false }).sort({ title: 1 }).lean<IReport[]>();
     const model = await loadModelScores(docs);
 
-    return docs.map((doc) => ({ report: toListItem(doc, model), allowedGroups: [...doc.allowedGroups], resultsSid: doc.results?.sid ?? null }));
+    return docs.map((doc) => ({ report: toListItem(doc, model), allowedGroups: [...doc.allowedGroups], resultsSid: doc.results?.sid ?? null, syncError: doc.syncError }));
 }
 
 async function loadResults(sid: string): Promise<{ columns: string[]; rows: Cell[][] } | null> {
@@ -174,13 +177,23 @@ async function loadResults(sid: string): Promise<{ columns: string[]; rows: Cell
     return run ? { columns: [...run.columns], rows: run.rows } : null;
 }
 
+// The home page shows 7 days. One more covers the part of a day before the
+// newest run's time of day. MongoDB then reads a week of runs, rows and all,
+// rather than the whole retention period.
+const RUN_COUNT_DAYS = 8;
+
 async function loadRunCounts(): Promise<RunCount[]> {
     'use cache';
     cacheTag('reports');
     cacheLife('minutes');
 
     await connectDB();
+    const newest = await ReportRun.findOne({}, { runAt: 1 }).sort({ runAt: -1 }).lean();
+    if (!newest) return [];
+
+    const since = new Date(newest.runAt.getTime() - RUN_COUNT_DAYS * 86_400_000);
     const groups = await ReportRun.aggregate<{ _id: Omit<RunCount, 'count'>; count: number }>([
+        { $match: { runAt: { $gte: since } } },
         {
             $group: {
                 _id: { slug: '$reportSlug', day: { $dateToString: { format: '%Y-%m-%d', date: '$runAt' } }, status: '$status' },
@@ -200,7 +213,7 @@ async function loadSyncInfo(): Promise<SyncInfo | null> {
     await connectDB();
     const state = await SyncState.findById(SYNC_STATE_ID).lean();
 
-    return state?.lastSuccessAt
+    return state
         ? { mode: state.mode, lastSuccessAt: iso(state.lastSuccessAt), lastError: state.lastError, timeZone: state.timeZone || 'UTC' }
         : null;
 }
@@ -236,6 +249,15 @@ export async function getVisibleReport(slug: string): Promise<SplunkReport | nul
 
     const results = stored.resultsSid ? await loadResults(stored.resultsSid) : null;
     return { ...stored.report, columns: results?.columns ?? [], rows: results?.rows ?? [] };
+}
+
+// Why the last sync couldn't refresh this report. For admins only: the text
+// comes from Splunk's answers, and can name its address.
+export async function getReportSyncError(slug: string): Promise<string | null> {
+    const viewer = await getViewer();
+    if (viewer.role !== 'admin') return null;
+
+    return (await loadReports()).find(({ report }) => report.slug === slug)?.syncError ?? null;
 }
 
 // Every report the viewer may see, each with its latest results, for the AI's
@@ -284,4 +306,16 @@ export async function getScheduleLoad(): Promise<ScheduleLoad> {
 export async function getSyncInfo(): Promise<SyncInfo | null> {
     await getViewer();
     return loadSyncInfo();
+}
+
+// Why the reports may be out of date, or null when they aren't. Only admins get
+// the detail: it comes from Splunk's answers, and can name its address.
+export async function getSyncNotice(): Promise<{ message: string; detail: string | null } | null> {
+    // It depends on the time of this request, not of a prerender.
+    await connection();
+
+    const [viewer, sync] = await Promise.all([getViewer(), getSyncInfo()]);
+    const message = sync && syncProblem(sync, Date.now(), Number(process.env.SYNC_STALE_HOURS) || undefined);
+
+    return sync && message ? { message, detail: viewer.role === 'admin' ? sync.lastError : null } : null;
 }

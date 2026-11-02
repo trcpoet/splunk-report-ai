@@ -42,7 +42,7 @@ The root layout around every page.
 ### `page.tsx`
 
 Home. In order:
-1. "Data as of" and the headline numbers (`getReportStats`);
+1. "Data as of", a warning if the reports may be out of date (`SyncNotice`), and the headline numbers (`getReportStats`);
 2. the briefing (`components/Briefing.tsx`);
 3. runs per day by outcome (`RunOutcomes`, from `getRunOutcomes`), beside the run health grid (`RunHealthGrid`, from `getRunHealth`) on wide screens;
 4. when searches run (`SchedulerLoad`, from `getScheduleLoad`);
@@ -68,7 +68,7 @@ For addresses that match no page. Missing or hidden reports have their own page 
 
 ### `fonts.ts`
 
-Schibsted Grotesk and Martian Mono through `next/font/google`, exported as `fontVariables`. Shared by `layout.tsx` and `global-error.tsx`. Body text uses the system font.
+Schibsted Grotesk and Martian Mono through `next/font/local`, from `font-files/` (with their licenses, SIL OFL 1.1), exported as `fontVariables`. A build needs no access to Google Fonts. Shared by `layout.tsx` and `global-error.tsx`. Body text uses the system font.
 
 ### `globals.css`
 
@@ -101,7 +101,7 @@ Sign-in.
 
 One report.
 - **What it shows, in order:**
-  1. **Header:** the status badge and status message, then Explain.
+  1. **Header:** the status badge and status message, then Explain. Admins also see why the last sync couldn't refresh the report (`getReportSyncError`).
   2. **Highlights:** headline tiles, with `Meter` and `Sparkline` where set.
   3. **Latest results:** the chart (`ReportChart`, small multiples, or `ReportScatter`, inside `ChartBoundary`), then the sortable, filterable results table (`ResultsTable`).
   4. **Search query (SPL):** with **Explain it step by step**, which opens Write SPL.

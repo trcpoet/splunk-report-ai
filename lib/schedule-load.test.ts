@@ -49,9 +49,9 @@ describe('scheduleLoad', () => {
     });
 
     test('counts only the reports that always start on the hour', () => {
-        // Not License (00:30), Forwarders (:15) or Disk (every 30 minutes).
+        // Not License (00:30), Forwarders (:15), Web requests (:05) or Disk (every 30 minutes).
         assert.equal(load.onTheHour, 6);
-        assert.equal(load.total, 9);
+        assert.equal(load.total, 10);
 
         // A search every 5 or 15 minutes reaches :00 wherever it starts.
         const often = scheduleLoad([report('Five', '*/5 * * * *'), report('Fifteen', '*/15 * * * *'), report('Nightly', '0 3 * * *')]);

@@ -104,6 +104,8 @@ const ChartSchema = new Schema<ReportChart>(
         // Left out rather than stored empty.
         panels: { type: [PanelSchema], default: undefined },
         scatter: ScatterSchema,
+        // Left out rather than stored empty.
+        series: { type: [String], default: undefined },
     },
     { _id: false },
 );

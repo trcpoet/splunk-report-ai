@@ -48,7 +48,7 @@ The app never reads Splunk or the fixtures directly. It reads MongoDB through th
    - `index`: overrides the index text parsed from the SPL.
    - `statusRule`: turns results into a warning with a one- or two-sentence message, e.g. "warn when any host is above 2%".
    - `highlights`: custom headline numbers. The default is the result count with its change since the previous run (and a sparkline of the recent runs), the top row by the charted measure, and the search time. A highlight with `meter` (the share of a limit, where 1 is the limit) shows a meter under its value, as on the license usage report.
-3. **Chart saved in Splunk:** add the slug to `CHARTS` in the fixture transport (`'bar'`, `'column'` or `null` for a statistics table).
+3. **Chart saved in Splunk:** add the slug to `CHARTS` in the fixture transport (`'bar'`, `'column'`, `'line'` or `null` for a statistics table). Results with `_time` first and several measures draw a line per measure by themselves.
 4. **Check:** run `npm test`. The fixture pipeline test round-trips every report and fails on mismatched schedules, statuses or history. Then `npm run sync`, and open the report while signed in as a user who can see it.
 
 Status rules and highlight functions look columns up by header name, so they must match the report's `columns` (in live mode, its Splunk field names).
@@ -82,6 +82,6 @@ Set `SPLUNK_MODE=live`, `SPLUNK_BASE_URL` (management port, usually 8089), `SPLU
 
 The worker only reads runs the scheduler already made; it never dispatches searches. Results expire after `dispatch.ttl` (two schedule periods by default), so the worker must sync more often than that. A 404 on results means they expired, and the run is stored without rows.
 
-The worker can read its token from a file instead: `SPLUNK_TOKEN_FILE` (a mounted secret). To try live mode without a company Splunk, `docker-compose.splunk.yml` runs Splunk Enterprise's trial with six of the dummy reports and their logs (`lib/splunk/example/`, set up by `scripts/splunk-example/`) and the worker reading it: see `docs/splunk-example.md`. Its searches are the fixture SPL plus a `rename` step, so keep the fixture SPL runnable.
+The worker can read its token from a file instead: `SPLUNK_TOKEN_FILE` (a mounted secret). To try live mode without a company Splunk, `docker-compose.splunk.yml` runs Splunk Enterprise's trial with seven of the dummy reports and their logs (`lib/splunk/example/`, set up by `scripts/splunk-example/`) and the worker reading it: see `docs/splunk-example.md`. Its searches are the fixture SPL plus a `rename` step, so keep the fixture SPL runnable.
 
 Read the Next.js guides in `node_modules/next/dist/docs/` before changing data fetching, caching or auth code: this Next.js version differs from older ones (see AGENTS.md). Report reads are cached with `'use cache'` and the `reports` tag; the worker clears them through `POST /api/revalidate`.

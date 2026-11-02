@@ -1,8 +1,13 @@
+import { formatDateTime } from '@/lib/format';
+
 // Report types and pure helpers shared by the app and the sync worker. Report
 // data comes from MongoDB through lib/dal.ts; the dummy data the sync loads in
 // fixture mode lives in lib/splunk/fixtures/reports.ts.
 
 export type ReportStatus = 'success' | 'warning' | 'failed';
+
+// What a report shows: its newest run's status, or 'none' until a run is stored.
+export type ReportHealth = ReportStatus | 'none';
 
 // 'Other' is for scheduled searches found in Splunk that lib/report-config.ts doesn't list yet.
 export type ReportCategory = 'Security' | 'Operations' | 'Infrastructure' | 'Business' | 'Compliance' | 'Other';
@@ -28,6 +33,14 @@ export type ReportHighlight = {
 export type Cell = string | number;
 
 export type ChartType = 'bar' | 'column' | 'line' | 'area';
+
+// The most a chart draws; the results table has every row. Beyond this many
+// bars can't be read, and 5,000 rows would make a chart 180,000px tall.
+export const MAX_CHART_BARS = 25;
+export const MAX_CHART_POINTS = 500;
+
+// The most lines on a chart: the validated chart colors (--chart-1 to --chart-5).
+export const MAX_CHART_SERIES = 5;
 
 // A limit drawn across a chart, such as an error budget. Values past it are highlighted.
 export type ChartThreshold = {
@@ -66,6 +79,10 @@ export type ReportChart = {
     panels?: ChartPanel[];
     // A second chart, drawn below the first.
     scatter?: ChartScatter;
+    // Over time with several measures (Splunk's `timechart ... BY host`): one
+    // line per column here, in the results' order. Any other numeric columns add
+    // up to one "Other" line.
+    series?: string[];
 };
 
 export type SplunkReport = {
@@ -83,7 +100,7 @@ export type SplunkReport = {
     // Empty until the report's first run is synced.
     lastRun: string;
     nextRun: string;
-    status: ReportStatus;
+    status: ReportHealth;
     statusMessage?: string;
     // Results of the run whose rows are shown (it can be more than the rows).
     resultCount: number;
@@ -148,6 +165,7 @@ export type RunHealth = {
 
 export type SyncInfo = {
     mode: 'fixture' | 'live';
+    // Empty until a sync has finished.
     lastSuccessAt: string;
     lastError: string | null;
     // The time zone the schedules run in: the sync worker's SPLUNK_TZ.
@@ -185,7 +203,21 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
 
 // A report needs attention when its latest run warns or failed. The home
 // page's count, the briefing and Ask AI's Reports button all use this.
-export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status !== 'success';
+export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status === 'warning' || report.status === 'failed';
+
+const HOUR_MS = 3_600_000;
+
+// Why the reports may be out of date, for the home page. Dummy data doesn't
+// change, so only live data can go stale. On the default 15-minute schedule, 2
+// hours means several syncs in a row didn't happen. Slower schedules set their
+// own limit (SYNC_STALE_HOURS).
+export function syncProblem({ mode, lastSuccessAt, lastError }: SyncInfo, now: number, staleHours = 2): string | null {
+    if (lastError) return 'The last sync had problems, so some reports may be out of date.';
+    if (mode === 'live' && lastSuccessAt && now - Date.parse(lastSuccessAt) > staleHours * HOUR_MS) {
+        return `No new data since ${formatDateTime(lastSuccessAt)}. The sync may have stopped.`;
+    }
+    return null;
+}
 
 export const getReportStats = (reports: ReportListItem[]) => ({
     total: reports.length,

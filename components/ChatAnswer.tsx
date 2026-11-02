@@ -6,9 +6,9 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PAGE_TRANSITION } from "@/components/Transitions";
 import { linkReports } from "@/lib/ai/report-links";
-import type { ReportStatus } from "@/lib/reports";
+import type { ReportHealth } from "@/lib/reports";
 
-export type ReportChipData = { slug: string; title: string; status: ReportStatus };
+export type ReportChipData = { slug: string; title: string; status: ReportHealth };
 
 // A report named in an answer: its status and name, linking to the report.
 const ReportChip = ({ report }: { report: ReportChipData }) => (

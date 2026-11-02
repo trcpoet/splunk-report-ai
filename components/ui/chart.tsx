@@ -61,6 +61,7 @@ function ChartContainer({
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        role="group"
         data-slot="chart"
         data-chart={chartId}
         className={cn(

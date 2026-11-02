@@ -26,14 +26,15 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 | Export | What it does |
 |---|---|
 | `syncAll({ transport, mode, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
-| `listScheduledReports(transport, timeZone, now)` | The scheduled searches that email their results, plus any listed in `report-config`, each mapped to `ReportMeta` with its config. |
-| `fetchNewRuns(transport, report, knownSids)` | The runs in a report's history that aren't stored yet, with their results. Jobs still running are skipped; the next sync picks them up. A job whose results expired in between is stored with `resultsExpired`. |
+| `listScheduledReports(transport, timeZone, now, log)` | The scheduled searches that email their results, plus any listed in `report-config`, each mapped to `ReportMeta` with its config. Searches that share a name would share a slug, so one stays (a shared one before a private copy) and the rest are logged. |
+| `fetchNewRuns(transport, report, knownSids)` | The runs in a report's history that aren't stored yet, with their results. Jobs still running are skipped; the next sync picks them up. A job whose results expired in between is stored with `resultsExpired`. Returns `{ runs, unreadable, failure }`: `unreadable` counts the jobs Splunk answered 404 for, and `failure` is what stopped the fetch early, so the runs before it are still saved. |
+| `errorMessage(error)` | An error as text, with the cause `fetch` hides, such as a certificate it couldn't verify or `ECONNREFUSED`. |
 
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
 2. It lists the scheduled reports, then fetches each one's new runs into `report_runs`.
 3. It recomputes each `reports` document: the latest run, the last `HISTORY_SIZE` (7) runs, highlights and the chart (`map.ts`).
-4. It marks reports that are no longer scheduled as `disabled`.
+4. It marks reports that are no longer scheduled as `disabled`. If live Splunk lists no reports at all, it hides nothing and records an error instead: that's more likely a token that lost its access.
 5. It records the finish and the time zone (`SPLUNK_TZ`) in `sync_state`, then calls `POST /api/revalidate` twice, `SECOND_REFRESH_MS` (3 s) apart, when `APP_URL` and `REVALIDATE_SECRET` are set.
 
 **Tests:** `map.test.ts` runs `syncAll` against the fixture transport end to end.
@@ -56,9 +57,9 @@ Turns Splunk's REST JSON into the app's models, with no I/O, so all of it is uni
 | Values | `toBool`, `toCell` (keeps "007" and IPs as text), `mapResults` (drops Splunk's internal `_` fields except `_time`) |
 | Schedules and times | `describeCron` (short phrasing for common schedules, `cronstrue` for the rest), `runsPerWeek`, `nextRunFromCron`, `parseSplunkTime`, `describeTimeRange` ("Last 24 hours") |
 | Searches | `describeIndexes` (`index=web sourcetype=access_combined` → "web (access_combined)"), `parseRecipients`, `groupsFromRecipients` (`secops@example.com` → `secops`), `chartTypeFromDisplay` |
-| Reports | `mapSavedSearch` (a saved search plus its config → `ReportMeta`) |
+| Reports | `mapSavedSearch` (a saved search plus its config → `ReportMeta`). A private search with a configured name stays admin-only, so it can't take on the report's groups. |
 | Runs | `isFinished`, `isFailed`, `runStatus` (applies the report's status rule), `runTime`, `mapRun` (a job → `RunFacts`) |
-| Derived fields | `resolveChart`, `defaultHighlights` (results with the change since the previous run, the chart's top row, and the search time), `deriveReportFields` (latest run, history, highlights, chart, for the `reports` document) |
+| Derived fields | `resolveChart` (picks the chart; results over time with several measures get `series`, a line per column), `defaultHighlights` (results with the change since the previous run, the chart's top row, and the search time), `deriveReportFields` (latest run, history, highlights, chart, for the `reports` document) |
 
 **Change it when:** Splunk sends a field in a new shape, or a report needs a new kind of derived field. Add a test in `map.test.ts` with the real JSON.
 
@@ -74,7 +75,7 @@ Most values arrive as strings, so `map.ts` converts defensively.
 
 ## `fixtures/reports.ts`
 
-The 9 dummy reports the demo runs on.
+The 10 dummy reports the demo runs on.
 - **What each holds:** a saved search (name, SPL, cron, email recipients, app, owner), result columns and rows, and a run history built by `buildHistory`.
 - **Everything is fake:** emails use `example.com`, and IPs come from the documentation ranges (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24).
 - **The spike:** the failed-logins report has a spike in its newest run (117 accounts against about 38), so there's always an unusual run to see.

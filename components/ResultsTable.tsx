@@ -6,15 +6,17 @@ import {
     columnFilteringFeature,
     createColumnHelper,
     createFilteredRowModel,
+    createPaginatedRowModel,
     createSortedRowModel,
     globalFilteringFeature,
+    rowPaginationFeature,
     rowSortingFeature,
     tableFeatures,
     useTable,
     type FilterFn,
     type SortFn,
 } from "@tanstack/react-table";
-import { formatNumber, parseNumber } from "@/lib/format";
+import { columnLabel, formatCell, formatNumber, parseNumber } from "@/lib/format";
 
 type Cell = string | number;
 
@@ -33,9 +35,14 @@ const features = tableFeatures({
     rowSortingFeature,
     columnFilteringFeature,
     globalFilteringFeature,
+    rowPaginationFeature,
     sortedRowModel: createSortedRowModel(),
     filteredRowModel: createFilteredRowModel(),
+    paginatedRowModel: createPaginatedRowModel(),
 });
+
+// Live reports can have thousands of rows. Sorting and filtering cover them all.
+const PAGE_SIZE = 50;
 
 const columnHelper = createColumnHelper<typeof features, Cell[]>();
 
@@ -51,14 +58,12 @@ const compareCells = (a: Cell, b: Cell) => {
 
 const isNumeric = (cell: Cell) => parseNumber(cell) !== null;
 
-const display = (cell: Cell) => (typeof cell === 'number' ? formatNumber(cell) : cell);
-
 // Matches the text on screen ("48,210") as well as the raw number ("48210").
 const matchesFilter: FilterFn<typeof features, Cell[]> = (row, columnId, filterValue) => {
     const cell = row.getValue<Cell>(columnId);
     const query = String(filterValue).trim().toLowerCase();
 
-    return [String(cell), display(cell)].some((text) => text.toLowerCase().includes(query));
+    return [String(cell), formatCell(cell)].some((text) => text.toLowerCase().includes(query));
 };
 
 const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const;
@@ -78,8 +83,8 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
 
             return columnHelper.accessor((row) => row[i], {
                 id: String(i),
-                header: name,
-                cell: ({ getValue }) => display(getValue()),
+                header: columnLabel(name),
+                cell: ({ getValue }) => formatCell(getValue()),
                 sortFn,
                 sortDescFirst: numeric[i],
             });
@@ -93,10 +98,21 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
         columns: columnDefs,
         data: rows,
         globalFilterFn: matchesFilter,
+        initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
     });
 
     const query: string = table.state.globalFilter ?? '';
     const shown = table.getRowModel().rows;
+    const matches = table.getFilteredRowModel().rows.length;
+    const firstRow = table.state.pagination.pageIndex * PAGE_SIZE + 1;
+
+    // aria-disabled, not disabled: a disabled button loses the keyboard focus,
+    // which would drop someone paging through the table at its last page.
+    const pageButton = (label: string, canGo: boolean, go: () => void) => (
+        <button type="button" className="btn-secondary btn-small" aria-disabled={!canGo} onClick={() => { if (canGo) go(); }}>
+            {label}
+        </button>
+    );
 
     return (
         <>
@@ -110,7 +126,7 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
                         aria-label="Filter rows"
                     />
                     <span aria-live="polite">
-                        {query.trim() ? `${shown.length} of ${rows.length} rows match` : ''}
+                        {query.trim() ? `${formatNumber(matches)} of ${formatNumber(rows.length)} rows match` : ''}
                     </span>
                 </div>
             )}
@@ -159,6 +175,16 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
                     </tbody>
                 </table>
             </div>
+
+            {matches > PAGE_SIZE && (
+                <div className="table-pages" role="group" aria-label="Table pages">
+                    <span aria-live="polite">
+                        Rows {formatNumber(firstRow)} to {formatNumber(firstRow + shown.length - 1)} of {formatNumber(matches)}
+                    </span>
+                    {pageButton('Previous', table.getCanPreviousPage(), () => table.previousPage())}
+                    {pageButton('Next', table.getCanNextPage(), () => table.nextPage())}
+                </div>
+            )}
         </>
     )
 }

@@ -2,7 +2,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { connection } from 'next/server';
 import { AiEmbedding, Chat, SavedSplExample, type IChat } from '@/database';
-import { canView, type Viewer } from '@/lib/access';
+import type { Viewer } from '@/lib/access';
 import { embed, EMBEDDING_DIMENSIONS, embeddingModelInUse, type EmbedInput } from '@/lib/ai/llm';
 import { exampleText, reportExample, savedExample, topK, type SplExample } from '@/lib/ai/retrieval';
 import { checkSpl, queryFromSteps } from '@/lib/ai/spl';
@@ -43,12 +43,13 @@ async function embedDocuments(inputs: EmbedInput[]): Promise<number[][]> {
     return keys.map((key) => saved.get(key) ?? []);
 }
 
-// Saved searches shared with one of the viewer's groups (admins see them all).
+// Saved searches shared with one of the viewer's groups (admins see them all),
+// the same rule as canView. It's in the query so MAX_SAVED counts what this
+// viewer may see, not everyone's newest searches.
 async function visibleSaved(viewer: Viewer): Promise<SplExample[]> {
-    const docs = await SavedSplExample.find({}).sort({ createdAt: -1 }).limit(MAX_SAVED).lean();
-    return docs
-        .filter(({ allowedGroups }) => canView(viewer, allowedGroups))
-        .map(({ _id, request, summary, query }) => savedExample({ id: _id, request, summary, query }));
+    const shared = viewer.role === 'admin' ? {} : { allowedGroups: { $in: viewer.groups } };
+    const docs = await SavedSplExample.find(shared).sort({ createdAt: -1 }).limit(MAX_SAVED).lean();
+    return docs.map(({ _id, request, summary, query }) => savedExample({ id: _id, request, summary, query }));
 }
 
 // The examples most like the request, closest first. Throws when the AI can't

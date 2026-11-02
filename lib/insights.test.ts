@@ -142,3 +142,10 @@ describe('unusualTrend', () => {
         assert.equal(trend.label, 'Results in the last 5 runs; the newest stands out against the usual 40.');
     });
 });
+
+describe('describeColumn for Splunk times', () => {
+    test('reads them in UTC', () => {
+        const column = { name: '_time', kind: 'time' as const, first: '2026-10-02T05:15:00.000+00:00', last: '2026-10-02T09:00:00.000+00:00', empty: 0 };
+        assert.equal(describeColumn(column, 16), '2026-10-02 05:15:00 UTC to 2026-10-02 09:00:00 UTC.');
+    });
+});

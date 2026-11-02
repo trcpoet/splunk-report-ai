@@ -2,7 +2,7 @@
 
 This runs SplunkEvents against a real Splunk:
 - **Splunk Enterprise's free trial,** in Docker;
-- **dummy logs and six scheduled reports** in it;
+- **dummy logs and seven scheduled reports** in it;
 - **the connector,** which is the sync worker in live mode. It copies each report's runs into MongoDB through Splunk's REST API, with the same calls it makes to a company's Splunk.
 
 Use it to watch the live path work before you can reach your company's Splunk.
@@ -13,7 +13,7 @@ Use it to watch the live path work before you can reach your company's Splunk.
 
 ```
 feeder (dummy logs, every minute) ──► Splunk Enterprise trial (Docker)
-                                         │ six scheduled reports, every 5 minutes
+                                         │ seven scheduled reports, every 5 minutes
                                          ▼
      connector (sync worker, live mode, read-only token from a service account)
                                          │ REST API: saved searches, history, jobs, results
@@ -36,7 +36,7 @@ You need **an Intel/AMD (x86) machine** with Docker and about 6 GB of free memor
 3. **Open http://localhost:3000** and pick a demo account (password `splunk-demo-2026`).
    - Splunk takes 2 or 3 minutes to start. Then the reports run every 5 minutes, and the connector copies their runs every 2 minutes.
    - So the reports appear about 10 minutes after you start, and they then update every 5 minutes.
-4. **Optional: open Splunk Web** on http://localhost:8000, as user `admin` with password `splunk-example-2026`. The same six reports are under **Search & Reporting → Reports**.
+4. **Optional: open Splunk Web** on http://localhost:8000, as user `admin` with password `splunk-example-2026`. The same seven reports are under **Search & Reporting → Reports**.
 
 **To stop:**
 - `docker compose -f docker-compose.splunk.yml down` keeps the data.

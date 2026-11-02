@@ -1,8 +1,8 @@
 import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
-import { formatDuration, formatNumber, parseNumber } from '@/lib/format';
+import { formatCell, formatDuration, formatNumber, parseNumber } from '@/lib/format';
 import type { ReportConfig, ResultSet, StatusRule } from '@/lib/report-config';
-import type { Cell, ChartPanel, ChartScatter, ChartThreshold, ChartType, ReportCategory, ReportChart, ReportHighlight, ReportStatus } from '@/lib/reports';
+import { MAX_CHART_BARS, MAX_CHART_SERIES, type Cell, type ChartPanel, type ChartScatter, type ChartThreshold, type ChartType, type ReportCategory, type ReportChart, type ReportHighlight, type ReportStatus } from '@/lib/reports';
 import type { JobContent, ResultsResponse, SavedSearchContent, SplunkBool, SplunkEntry } from './types';
 
 // Pure functions that turn Splunk REST JSON into SplunkEvents' models. No I/O,
@@ -235,8 +235,10 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
         recipients,
         category: config?.category ?? 'Other',
         tags: config?.tags ?? [],
-        // Reports missing from report-config are admin-only until someone adds them.
-        allowedGroups: config ? (config.groups ?? groupsFromRecipients(recipients)) : [],
+        // Reports missing from report-config are admin-only until someone adds
+        // them. So is a private search with a configured name: its owner decides
+        // what it runs, so it can't take on the report's groups.
+        allowedGroups: config && acl?.sharing !== 'user' ? (config.groups ?? groupsFromRecipients(recipients)) : [],
         chartType: config?.chart === 'none' ? null : (config?.chart?.type ?? chartTypeFromDisplay(content)),
         nextRun: parseSplunkTime(content.next_scheduled_time) ?? nextRunFromCron(cron, timeZone, now),
         disabled: toBool(content.disabled),
@@ -339,34 +341,64 @@ const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text[0].toLower
 
 type ChartOptions = { y?: string; threshold?: ChartThreshold; max?: number; panels?: ChartPanel[]; scatter?: ChartScatter };
 
-// Every row of the column reads as a number, including text such as "$1,234".
+// At least 80% of the column's filled cells read as numbers, including text such
+// as "$1,234". Live results have gaps: a timechart leaves a host's quiet hours empty.
 const isNumericColumn = (table: ResultTable, column: string) => {
     const index = table.columns.indexOf(column);
-    return index >= 0 && table.rows.every((row) => parseNumber(row[index]) !== null);
+    if (index < 0) return false;
+
+    const filled = table.rows.map((row) => row[index]).filter((cell) => cell !== '');
+    return filled.length > 0 && filled.filter((cell) => parseNumber(cell) !== null).length / filled.length >= 0.8;
 };
+
+const columnTotal = (table: ResultTable, column: string) => {
+    const index = table.columns.indexOf(column);
+    return table.rows.reduce((total, row) => total + (parseNumber(row[index]) ?? 0), 0);
+};
+
+// What timechart calls the series past its limit, and events with no value.
+// They aren't hosts, so they join the "Other" line instead of taking a color.
+const SPLUNK_ROLLUPS = new Set(['OTHER', 'NULL']);
+
+// The columns that get a line: all of them, or if there are too many, the
+// largest, leaving room for the "Other" line. They stay in the results' order.
+function chartSeries(table: ResultTable, measures: string[]) {
+    const named = measures.filter((measure) => !SPLUNK_ROLLUPS.has(measure));
+    if (named.length === 0) return measures;
+    if (named.length === measures.length && named.length <= MAX_CHART_SERIES) return named;
+
+    const largest = [...named].sort((a, b) => columnTotal(table, b) - columnTotal(table, a)).slice(0, MAX_CHART_SERIES - 1);
+    return named.filter((measure) => largest.includes(measure));
+}
 
 // x is the first column; y is the configured measure or the first numeric
 // column. A configured threshold and max carry over unchanged. Panels and the
 // scatter are kept only when their measures are numeric columns of this run.
+//
+// Results over time (Splunk's timechart) draw as lines when they have several
+// measures, or more points than bars can show, whatever chart the search saved.
 export function resolveChart(type: ChartType | null, table: ResultTable, { y, threshold, max, panels, scatter }: ChartOptions = {}): ReportChart | null {
     if (!type || table.columns.length < 2 || table.rows.length === 0) return null;
 
-    const measure = y && table.columns.includes(y)
-        ? y
-        : table.columns.find((_, i) => i > 0 && table.rows.every((row) => typeof row[i] === 'number'));
+    const measures = table.columns.slice(1).filter((column) => isNumericColumn(table, column));
+    const measure = y && table.columns.includes(y) ? y : measures[0];
     if (!measure) return null;
 
+    const overTime = table.columns[0] === '_time';
+    const series = overTime && !y && measures.length > 1 ? chartSeries(table, measures) : undefined;
+    const tooManyBars = overTime && (type === 'bar' || type === 'column') && table.rows.length > MAX_CHART_BARS;
     const shownPanels = panels?.filter((panel) => isNumericColumn(table, panel.y)) ?? [];
     const showScatter = scatter && isNumericColumn(table, scatter.x) && isNumericColumn(table, measure);
 
     return {
-        type,
+        type: series || tooManyBars ? 'line' : type,
         x: table.columns[0],
         y: measure,
         ...(threshold ? { threshold } : {}),
         ...(max !== undefined ? { max } : {}),
         ...(shownPanels.length > 0 ? { panels: shownPanels } : {}),
         ...(showScatter ? { scatter } : {}),
+        ...(series ? { series } : {}),
     };
 }
 
@@ -391,12 +423,14 @@ function defaultHighlights({ columns, rows, resultCount, previousResultCount, re
         ...(resultTrend && resultTrend.length > 1 ? { trend: resultTrend } : {}),
     }];
 
-    if (chart) {
+    // The busiest moment of a time series isn't a "top" row worth a tile.
+    if (chart && chart.x !== '_time') {
         const x = columns.indexOf(chart.x);
         const y = columns.indexOf(chart.y);
-        const top = rows.reduce<Cell[] | undefined>((max, row) => (!max || Number(row[y]) > Number(max[y]) ? row : max), undefined);
+        const value = (row: Cell[]) => parseNumber(row[y]) ?? Number.NEGATIVE_INFINITY;
+        const top = rows.reduce<Cell[] | undefined>((max, row) => (!max || value(row) > value(max) ? row : max), undefined);
 
-        if (top) highlights.push({ label: `Top ${lowerFirst(chart.x)}`, value: String(top[x]), note: `${chart.y}: ${formatNumber(Number(top[y]))}` });
+        if (top) highlights.push({ label: `Top ${lowerFirst(chart.x)}`, value: String(top[x]), note: `${chart.y}: ${formatCell(top[y])}` });
     }
 
     highlights.push({ label: 'Search time', value: formatDuration(durationSec) });

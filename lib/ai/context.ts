@@ -19,6 +19,11 @@ export const MAX_ROWS = 20;
 
 const clean = (value: Cell | string) => String(value).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
 
+// SPL keeps its angle brackets (where count>5), but it comes from people, so it
+// mustn't be able to close the tag around it. Escaping, because deleting the
+// tag can join the text on either side into a new one.
+const safeSpl = (spl: string) => spl.replace(/<(?=\/?(report|search))/gi, '&lt;');
+
 const bySlug = (a: { slug: string }, b: { slug: string }) => a.slug.localeCompare(b.slug);
 
 function resultsTable(report: SplunkReport): string[] {
@@ -40,7 +45,7 @@ function describeReport(report: SplunkReport): string {
         `Title: ${clean(report.title)}`,
         `What it checks: ${clean(report.description)}`,
         `Category: ${report.category}`,
-        `Status: ${report.status}${report.statusMessage ? ` (${clean(report.statusMessage)})` : ''}`,
+        `Status: ${report.status === 'none' ? 'no runs stored yet' : report.status}${report.statusMessage ? ` (${clean(report.statusMessage)})` : ''}`,
         `Schedule: ${clean(report.schedule)}, time range ${clean(report.timeRange)}`,
         `Index: ${clean(report.index)}`,
         `Last run: ${formatDateTime(report.lastRun)}${report.resultsRunAt && report.resultsRunAt !== report.lastRun ? `; results are from ${formatDateTime(report.resultsRunAt)}` : ''}`,
@@ -54,7 +59,7 @@ function describeReport(report: SplunkReport): string {
             .map((run) => `${formatDateTime(run.runAt)} ${run.status}, ${run.resultCount} results, ${run.status === 'failed' ? 'skipped' : formatDuration(run.durationSec)}`)
             .join('; ')}`,
         'SPL:',
-        report.spl,
+        safeSpl(report.spl),
         ...resultsTable(report),
         '</report>',
     ];
@@ -63,7 +68,7 @@ function describeReport(report: SplunkReport): string {
 
 // The reports, for the Ask about reports tab.
 export function reportsContext(reports: SplunkReport[], sync: SyncInfo | null): string {
-    const asOf = sync ? `Data as of ${formatDateTime(sync.lastSuccessAt)}${sync.mode === 'fixture' ? ' (demo data)' : ''}.` : 'Data freshness unknown.';
+    const asOf = sync?.lastSuccessAt ? `Data as of ${formatDateTime(sync.lastSuccessAt)}${sync.mode === 'fixture' ? ' (demo data)' : ''}.` : 'Data freshness unknown.';
     const body = reports.length > 0
         ? [...reports].sort(bySlug).map(describeReport).join('\n\n')
         : 'This person cannot see any reports yet.';
@@ -90,7 +95,7 @@ export function splContext(reports: SplunkReport[], examples?: SplExample[]): st
                 `Index: ${clean(report.index)}`,
                 `Columns: ${report.columns.map(clean).join(', ') || 'none stored yet'}`,
                 'SPL:',
-                report.spl,
+                safeSpl(report.spl),
                 '</report>',
             ].join('\n'))
             .join('\n\n');
@@ -107,8 +112,7 @@ export function splContext(reports: SplunkReport[], examples?: SplExample[]): st
             `What it does: ${clean(example.description)}`,
             ...(example.index ? [`Index: ${clean(example.index)}`] : []),
             'SPL:',
-            // Saved searches come from people, so they mustn't be able to close the tag.
-            example.spl.replace(/<\/?search/gi, ''),
+            safeSpl(example.spl),
             '</search>',
         ].join('\n'))
         .join('\n\n');

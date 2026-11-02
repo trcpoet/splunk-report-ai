@@ -44,7 +44,7 @@ describe('demo users', () => {
     test('each demo user sees the reports from the plan', () => {
         assert.equal(visibleTo('admin@example.com').length, fixtures.length);
         assert.deepEqual(visibleTo('soc.analyst@example.com'), ['failed-logins-by-user', 'firewall-denied-top-sources', 'privileged-group-changes']);
-        assert.deepEqual(visibleTo('sre.oncall@example.com'), ['disk-space-over-85', 'forwarder-health-missing-hosts', 'web-5xx-error-rate']);
+        assert.deepEqual(visibleTo('sre.oncall@example.com'), ['disk-space-over-85', 'forwarder-health-missing-hosts', 'web-5xx-error-rate', 'web-requests-by-host']);
         assert.deepEqual(visibleTo('finance.analyst@example.com'), ['license-usage-by-index', 'payments-volume-latency']);
         assert.deepEqual(visibleTo('it.director@example.com'), ['failed-logins-by-user', 'vpn-sessions-by-country']);
     });

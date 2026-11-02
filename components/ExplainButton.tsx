@@ -11,7 +11,7 @@ import Sparkline from "@/components/Sparkline";
 import StatusBadge from "@/components/StatusBadge";
 import { useSummary } from "@/components/useSummary";
 import { track } from "@/lib/analytics";
-import { formatDateTime, formatNumber } from "@/lib/format";
+import { columnLabel, formatDateTime, formatNumber } from "@/lib/format";
 import { describeColumn, findUnusualRun, profileResults, unusualTrend } from "@/lib/insights";
 import type { ModelRun, SplunkReport } from "@/lib/reports";
 
@@ -109,7 +109,7 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
                                 <dl className="explain-profile">
                                     {profile.columns.map((column) => (
                                         <div key={column.name}>
-                                            <dt>{column.name}</dt>
+                                            <dt>{columnLabel(column.name)}</dt>
                                             <dd>{describeColumn(column, profile.rows)}</dd>
                                         </div>
                                     ))}

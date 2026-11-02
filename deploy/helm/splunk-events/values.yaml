@@ -67,6 +67,9 @@ connector:
   caBundle:
     configMap: ""
     key: ca.crt
+  # More settings for the connector, from .env.example, such as SYNC_MAX_ROWS.
+  # Secrets don't go here.
+  env: {}
   resources:
     requests:
       cpu: 100m

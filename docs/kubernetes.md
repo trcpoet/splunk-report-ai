@@ -29,15 +29,18 @@ Build them from the repo and push them to a registry your cluster can pull from.
 REGISTRY=registry.example.com/your-team   # your registry
 TAG=1.0.0
 
-docker build --target app --build-arg DEMO_MODE=false -t $REGISTRY/splunk-events-app:$TAG .
+docker build --target app -t $REGISTRY/splunk-events-app:$TAG .
 docker build --target worker -t $REGISTRY/splunk-events-worker:$TAG .
 docker build -f ml/Dockerfile -t $REGISTRY/splunk-events-ml:$TAG .
 docker push $REGISTRY/splunk-events-app:$TAG    # and the other two
 ```
 
-`DEMO_MODE` is built into the sign-in page:
-- `false` for real data;
-- `true` only for dummy data, together with `demo.enabled`.
+`DEMO_MODE` is built into the sign-in page. It's off unless you pass `--build-arg DEMO_MODE=true` and `--build-arg DEMO_PASSWORD=…`, which is only for dummy data, together with `demo.enabled`.
+
+**On a build network without internet access:**
+- the two base images (`node:24-slim`, `python:3.14-slim`) must come from your registry: change their `FROM` lines, or use its mirror;
+- `npm ci` and `pip install` must reach your package mirrors, set through `.npmrc` and `pip.conf` or build arguments;
+- nothing else is fetched: the typefaces are in the repo, and the Dockerfiles need no extra BuildKit frontend.
 
 ## 2. Create the secrets
 
@@ -87,9 +90,10 @@ The values that matter most:
 | `route.enabled` or `ingress.*` | How people reach it: a Route on OpenShift, an Ingress elsewhere |
 | `connector.splunk.mode` | `live` for your Splunk. `fixture` serves the dummy reports, to try the chart before you have Splunk access. |
 | `connector.splunk.baseUrl`, `timeZone`, `tokenSecret.name` | Your search head's management port (`https://…:8089`), its timezone, and the token's Secret |
-| `connector.schedule` | How often to copy new runs. Keep it shorter than the reports' `dispatch.ttl`, or older runs lose their results first. |
+| `connector.schedule` | How often to copy new runs. Keep it shorter than the reports' `dispatch.ttl`, or older runs lose their results first. If it's slower than every 2 hours, set `SYNC_STALE_HOURS` in `web.env` too, or the home page calls the data stale. |
 | `secrets.existingSecret` | The app's Secret, from step 2 |
 | `web.env` | Other settings from `.env.example`, such as `AI_ALLOW_LIVE_DATA` |
+| `connector.env` | Other settings for the connector, such as `SYNC_MAX_ROWS` |
 | `ml.enabled` | The ML job ([ml.md](ml.md)) |
 
 `values.yaml` lists the rest, with comments. In `fixture` mode, also set `runRetentionDays: 3650`, because the dummy runs have fixed dates.
@@ -106,7 +110,7 @@ The values that matter most:
 ## What to ask your platform team
 
 1. A namespace (an OpenShift project) that allows CronJobs.
-2. A registry to push the three images to, and the pull secret for it, if needed (`imagePullSecrets`).
+2. A registry to push the three images to, and the pull secret for it, if needed (`imagePullSecrets`). If builds have no internet access, the mirrors for base images and for npm and pip packages too.
 3. The app's address and its TLS certificate, for the Route or Ingress.
 4. Where secrets come from: their secret manager, or Secrets you create.
 5. Network access from the namespace:

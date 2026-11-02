@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Briefing from "@/components/Briefing";
 import ExploreBtn from "@/components/ExploreBtn";
 import ReportBrowser from "@/components/ReportBrowser";
@@ -5,6 +6,7 @@ import RunHealthGrid from "@/components/RunHealthGrid";
 import RunOutcomes from "@/components/RunOutcomes";
 import SchedulerLoad from "@/components/SchedulerLoad";
 import { BriefingSkeleton, OverviewSkeleton, ReportsSkeleton } from "@/components/Skeletons";
+import SyncNotice from "@/components/SyncNotice";
 import { PageTransition, Reveal } from "@/components/Transitions";
 import { getRunHealth, getRunOutcomes, getScheduleLoad, getSyncInfo, getVisibleReports } from "@/lib/dal";
 import { getCategories, getReportStats, toSummary } from "@/lib/reports";
@@ -65,12 +67,16 @@ async function Overview() {
                 ))}
             </div>
 
-            {sync && (
+            {sync?.lastSuccessAt && (
                 <p className="data-freshness">
                     Data as of {formatDateTime(sync.lastSuccessAt)}
                     {sync.mode === 'fixture' && ' · demo data'}
                 </p>
             )}
+
+            <Suspense fallback={null}>
+                <SyncNotice />
+            </Suspense>
 
             {/* Headline numbers, then what needs attention, then the runs per day
                 and per report, then when searches run, then the list. */}
