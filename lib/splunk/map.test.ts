@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { MAX_CHART_BARS, type Cell } from '@/lib/reports';
 import { buildHistory, reports as fixtures } from '@/lib/splunk/fixtures/reports';
 import { fixtureTransport } from '@/lib/splunk/fixtures/transport';
 import {
@@ -16,7 +17,8 @@ import {
     runsPerWeek,
     toCell,
 } from '@/lib/splunk/map';
-import { fetchNewRuns, listScheduledReports } from '@/lib/splunk/sync';
+import { errorMessage, fetchNewRuns, listScheduledReports } from '@/lib/splunk/sync';
+import { SplunkHttpError, type SplunkTransport } from '@/lib/splunk/transport';
 
 describe('toCell', () => {
     test('converts numeric strings and leaves everything else alone', () => {
@@ -148,7 +150,7 @@ describe('fixture pipeline', () => {
         const scheduled = await listScheduledReports(transport, 'UTC', now);
 
         return Promise.all(scheduled.map(async (report) => {
-            const runs = await fetchNewRuns(transport, report, new Set());
+            const { runs } = await fetchNewRuns(transport, report, new Set());
             const newestFirst = [...runs].sort((a, b) => b.runAt.getTime() - a.runAt.getTime());
             const resultsRun = newestFirst.find((run) => run.hasResults) ?? null;
             const derived = deriveReportFields({ recent: newestFirst.slice(0, 7), resultsRun, chartType: report.meta.chartType, config: report.config });
@@ -286,7 +288,7 @@ describe('fixture pipeline', () => {
     test('a second pass finds no new runs', async () => {
         for (const { report, runs, transport } of await synced()) {
             const again = await fetchNewRuns(transport, report, new Set(runs.map((run) => run.sid)));
-            assert.equal(again.length, 0, report.meta.slug);
+            assert.equal(again.runs.length, 0, report.meta.slug);
         }
     });
 
@@ -302,12 +304,166 @@ describe('fixture pipeline', () => {
         const runsOf = async (source: typeof fixtures, known: Set<string>) => {
             const transport = fixtureTransport(source);
             const [report] = await listScheduledReports(transport, 'UTC', now);
-            return fetchNewRuns(transport, report, known);
+            return (await fetchNewRuns(transport, report, known)).runs;
         };
 
         const before = await runsOf([web], new Set());
         const added = await runsOf([nextHour], new Set(before.map((run) => run.sid)));
 
         assert.deepEqual(added.map((run) => run.runAt.toISOString()), ['2026-10-02T10:00:00.000Z']);
+    });
+});
+
+describe('charts of live results', () => {
+    const TIME = '2026-10-02T06:00:00.000+00:00';
+    const overTime = (columns: string[], rowCount = 3, value = (column: number) => column + 1) => ({
+        columns: ['_time', ...columns],
+        rows: Array.from({ length: rowCount }, (): Cell[] => [TIME, ...columns.map((_, i) => value(i))]),
+    });
+
+    test('a timechart with several measures draws a line for each, whatever chart was saved', () => {
+        const chart = resolveChart('column', overTime(['web-01', 'web-02', 'web-03']));
+
+        assert.equal(chart?.type, 'line');
+        assert.equal(chart?.x, '_time');
+        assert.deepEqual(chart?.series, ['web-01', 'web-02', 'web-03']);
+    });
+
+    test('too many series keep the largest, in the results order, with room for Other', () => {
+        const hosts = ['a', 'b', 'c', 'd', 'e', 'f'];
+        const sizes = [1, 9, 2, 8, 7, 3];
+        const chart = resolveChart('line', overTime(hosts, 3, (column) => sizes[column]));
+
+        assert.deepEqual(chart?.series, ['b', 'd', 'e', 'f']);
+    });
+
+    test('a measure picked in report-config stays one measure', () => {
+        const chart = resolveChart('column', overTime(['web-01', 'web-02']), { y: 'web-02' });
+
+        assert.equal(chart?.type, 'column');
+        assert.equal(chart?.y, 'web-02');
+        assert.equal(chart?.series, undefined);
+    });
+
+    test('time with more points than bars can show draws as a line', () => {
+        assert.equal(resolveChart('column', overTime(['count'], MAX_CHART_BARS))?.type, 'column');
+        assert.equal(resolveChart('column', overTime(['count'], MAX_CHART_BARS + 1))?.type, 'line');
+    });
+
+    test('more rows than bars can show stay bars when they are not over time', () => {
+        const rows = Array.from({ length: MAX_CHART_BARS + 1 }, (_, i): Cell[] => [`host-${i}`, i]);
+        assert.equal(resolveChart('bar', { columns: ['Host', 'Count'], rows })?.type, 'bar');
+    });
+
+    test('a gap in a measure no longer costs the report its chart', () => {
+        const rows: Cell[][] = [['a', 1], ['b', ''], ['c', 3], ['d', 4], ['e', 5]];
+        assert.equal(resolveChart('bar', { columns: ['Host', 'Count'], rows })?.y, 'Count');
+    });
+
+    test('a column that is mostly text is not a measure', () => {
+        const rows: Cell[][] = [['a', 'up'], ['b', 'down'], ['c', 3], ['d', 'up'], ['e', 'up']];
+        assert.equal(resolveChart('bar', { columns: ['Host', 'State'], rows }), null);
+    });
+
+    const run = { sid: 'one', runAt: new Date('2026-10-02T06:00:00Z'), status: 'success' as const, durationSec: 4, resultCount: 2 };
+
+    test('the top row reads formatted numbers instead of showing NaN', () => {
+        const resultsRun = { ...run, columns: ['Region', 'Volume'], rows: [['east', '$1,500'], ['west', '$22,000']] };
+        const config = { slug: 'volume', category: 'Business' as const, tags: [], chart: { y: 'Volume' } };
+        const { highlights } = deriveReportFields({ recent: [run], resultsRun, chartType: 'bar', config });
+
+        assert.deepEqual(highlights.find(({ label }) => label === 'Top region'), { label: 'Top region', value: 'west', note: 'Volume: $22,000' });
+    });
+
+    test('a time series has no top row', () => {
+        const resultsRun = { ...run, ...overTime(['count']) };
+        const { highlights } = deriveReportFields({ recent: [run], resultsRun, chartType: 'line' });
+
+        assert.deepEqual(highlights.map(({ label }) => label), ['Results', 'Search time']);
+    });
+});
+
+describe('saved searches that share a name', () => {
+    const now = new Date('2026-10-03T00:00:00Z');
+    const search = (app: string, owner: string, sharing: string, query: string) => ({
+        name: 'Disk check',
+        acl: { app, owner, sharing },
+        content: { search: query, cron_schedule: '0 6 * * *', is_scheduled: true, 'action.email': true, 'action.email.to': 'ops@example.com' },
+    });
+    const listing = (entries: ReturnType<typeof search>[]): SplunkTransport => ({
+        get: async <T>(path: string) => ({ entry: path.includes('saved/searches') ? entries : [] }) as T,
+    });
+
+    test('keep the shared one, not a private copy, and say so', async () => {
+        const logged: string[] = [];
+        const entries = [search('search', 'j.smith', 'user', 'index=mine'), search('ops', 'nobody', 'app', 'index=shared')];
+        const reports = await listScheduledReports(listing(entries), 'UTC', now, (message) => logged.push(message));
+
+        assert.deepEqual(reports.map(({ meta }) => meta.spl), ['index=shared']);
+        assert.match(logged[0], /Skipped "Disk check" in search\/j\.smith/);
+    });
+
+    test('with no shared one, keep one and always the same one', async () => {
+        const first = search('alpha', 'nobody', 'app', 'index=alpha');
+        const second = search('beta', 'nobody', 'app', 'index=beta');
+
+        for (const entries of [[first, second], [second, first]]) {
+            const reports = await listScheduledReports(listing(entries), 'UTC', now);
+            assert.deepEqual(reports.map(({ meta }) => meta.spl), ['index=alpha']);
+        }
+    });
+});
+
+describe('fetchNewRuns when a job can\'t be read', () => {
+    const now = new Date('2026-10-03T00:00:00Z');
+    const entry = { name: 'Disk check', content: { search: 'index=os', cron_schedule: '0 6 * * *', is_scheduled: true, 'action.email': true } };
+
+    // A history of these sids, where 'gone' answers 404 and 'broken' answers 500.
+    const transportOf = (sids: string[]): SplunkTransport => ({
+        get: async <T>(path: string) => {
+            if (path.includes('/saved/searches')) {
+                return { entry: path.endsWith('/history') ? sids.map((name) => ({ name, content: {} })) : [entry] } as T;
+            }
+            if (path.endsWith('/results')) return { fields: ['count'], results: [{ count: '1' }] } as T;
+            if (path.endsWith('/apps/local')) return { entry: [] } as T;
+
+            const sid = decodeURIComponent(path.split('/').at(-1)!);
+            if (sid.startsWith('gone')) throw new SplunkHttpError(404, 'Unknown sid');
+            if (sid.startsWith('broken')) throw new SplunkHttpError(500, 'Server error');
+            return { entry: [{ name: sid, content: { sid, dispatchState: 'DONE', isDone: true, resultCount: 1 } }] } as T;
+        },
+    });
+
+    const fetched = async (sids: string[]) => {
+        const transport = transportOf(sids);
+        const [report] = await listScheduledReports(transport, 'UTC', now);
+        return fetchNewRuns(transport, report, new Set());
+    };
+
+    test('counts the jobs Splunk answers 404 for, rather than hiding them', async () => {
+        const { runs, unreadable, failure } = await fetched(['ok_at_1700000000_1', 'gone_at_1700003600_2']);
+
+        assert.deepEqual(runs.map(({ sid }) => sid), ['ok_at_1700000000_1']);
+        assert.equal(unreadable, 1);
+        assert.equal(failure, undefined);
+    });
+
+    test('keeps the runs it already fetched when a later job fails', async () => {
+        const { runs, failure } = await fetched(['ok_at_1700000000_1', 'broken_at_1700003600_2', 'later_at_1700007200_3']);
+
+        assert.deepEqual(runs.map(({ sid }) => sid), ['ok_at_1700000000_1']);
+        assert.ok(failure instanceof SplunkHttpError);
+    });
+});
+
+describe('errorMessage', () => {
+    test('says why fetch failed, such as a certificate it could not verify', () => {
+        const error = new TypeError('fetch failed', { cause: new Error('unable to verify the first certificate') });
+        assert.equal(errorMessage(error), 'fetch failed: unable to verify the first certificate');
+    });
+
+    test('passes other errors through', () => {
+        assert.equal(errorMessage(new Error('GET /x returned 500')), 'GET /x returned 500');
+        assert.equal(errorMessage('plain text'), 'plain text');
     });
 });

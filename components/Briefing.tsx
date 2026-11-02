@@ -54,7 +54,7 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
             <div className="briefing-head">
                 <h2 className="briefing-headline">{headline}</h2>
                 {/* The home page says this above the briefing already. */}
-                {variant === 'side' && sync && <p className="briefing-asof">Data as of {formatDateTime(sync.lastSuccessAt)}</p>}
+                {variant === 'side' && sync?.lastSuccessAt && <p className="briefing-asof">Data as of {formatDateTime(sync.lastSuccessAt)}</p>}
             </div>
 
             {attention.length > 0 && (

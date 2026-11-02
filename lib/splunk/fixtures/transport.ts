@@ -28,7 +28,7 @@ export const TIME_RANGES: Record<string, [earliest: string, latest: string]> = {
 };
 
 // The chart each report's author picked in Splunk. null means a statistics table.
-export const CHARTS: Record<string, 'bar' | 'column' | null> = {
+export const CHARTS: Record<string, 'bar' | 'column' | 'line' | null> = {
     'failed-logins-by-user': 'bar',
     'web-5xx-error-rate': 'column',
     'firewall-denied-top-sources': 'bar',
@@ -38,6 +38,7 @@ export const CHARTS: Record<string, 'bar' | 'column' | null> = {
     'privileged-group-changes': null,
     'vpn-sessions-by-country': 'bar',
     'forwarder-health-missing-hosts': 'bar',
+    'web-requests-by-host': 'line',
 };
 
 const SKIPPED = 'The search was skipped because the search head reached its limit on concurrent scheduled searches.';

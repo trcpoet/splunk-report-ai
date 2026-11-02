@@ -214,4 +214,10 @@ export const reportConfig: Record<string, ReportConfig> = {
             return { status: 'warning', message: `${formatNumber(silent)} forwarders have been silent for more than 60 minutes${detail}.` };
         },
     },
+    // A timechart: the sync draws a line per host (lib/splunk/map.ts, resolveChart).
+    'Web Requests by Host': {
+        slug: 'web-requests-by-host',
+        category: 'Operations',
+        tags: ['web', 'traffic', 'hourly'],
+    },
 };

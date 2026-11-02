@@ -4,7 +4,7 @@ import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { AXIS_TICK, CHART_CLASS, GRID_STROKE, TOOLTIP_CLASS, X_TICK_MARGIN } from "@/lib/chart-theme";
 import { formatCompact, formatNumber, parseNumber } from "@/lib/format";
-import type { Cell, ChartScatter, ReportChart } from "@/lib/reports";
+import { MAX_CHART_POINTS, type Cell, type ChartScatter, type ReportChart } from "@/lib/reports";
 
 type Props = {
     chart: ReportChart & { scatter: ChartScatter };
@@ -61,10 +61,11 @@ const ReportScatter = ({ chart, columns, rows }: Props) => {
     const { scatter } = chart;
     const [labelAt, xAt, yAt] = [chart.x, scatter.x, chart.y].map((name) => columns.indexOf(name));
 
-    const points = rows
+    const plotted = rows
         .map((row) => ({ row, x: parseNumber(row[xAt]) ?? Number.NaN, y: parseNumber(row[yAt]) ?? Number.NaN }))
         // A log axis can't show zero or less.
         .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y) && (!scatter.log || x > 0));
+    const points = plotted.toSorted((a, b) => b.y - a.y).slice(0, MAX_CHART_POINTS);
 
     if (points.length === 0) return null;
 
@@ -123,6 +124,7 @@ const ReportScatter = ({ chart, columns, rows }: Props) => {
     };
 
     return (
+        <>
         <ChartContainer config={config} className={CHART_CLASS} style={{ height: 320 }} aria-label={description}>
             <ScatterChart margin={{ top: 12, right: 12, bottom: 4, left: 4 }}>
                 <CartesianGrid stroke={GRID_STROKE} />
@@ -157,6 +159,10 @@ const ReportScatter = ({ chart, columns, rows }: Props) => {
                 <Scatter data={data} fill="var(--color-value)" shape={dot} />
             </ScatterChart>
         </ChartContainer>
+        {points.length < plotted.length && (
+            <p className="chart-subtitle">Showing the {MAX_CHART_POINTS} rows with the largest {chart.y} of {formatNumber(plotted.length)}.</p>
+        )}
+        </>
     );
 }
 

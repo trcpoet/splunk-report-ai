@@ -74,14 +74,17 @@ describe('example events', () => {
 });
 
 describe('example searches', () => {
-    test('are six dummy reports the sync picks up, with their columns named as report-config expects', () => {
+    test('are seven dummy reports the sync picks up, with their columns named as report-config expects', () => {
         const searches = exampleSearches();
-        assert.equal(searches.length, 6);
+        assert.equal(searches.length, 7);
         for (const search of searches) {
             assert.ok(reportConfig[search.name], `${search.name} is in report-config`);
-            const fixture = fixtures.find(({ title }) => title === search.name)!;
-            for (const column of fixture.columns) assert.ok(search.search.includes(`"${column}"`), `${search.name} names "${column}"`);
             assert.ok(search.recipients.length > 0);
+
+            const fixture = fixtures.find(({ title }) => title === search.name)!;
+            // A timechart names its own columns: _time and the hosts it finds.
+            if (fixture.columns[0] === '_time') continue;
+            for (const column of fixture.columns) assert.ok(search.search.includes(`"${column}"`), `${search.name} names "${column}"`);
         }
     });
 });

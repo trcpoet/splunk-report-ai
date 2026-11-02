@@ -56,7 +56,7 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
-| `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 9 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
+| `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 10 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
 | `SPLUNK_BASE_URL` | none | `worker/sync.ts` | Required for `live`: the management port, usually `https://<host>:8089`. |
 | `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
 | `SPLUNK_TOKEN_FILE` | none | `worker/sync.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
@@ -108,7 +108,7 @@ This file holds what Splunk doesn't know about each report, keyed by the saved s
 | `category` | yes | One of `Security`, `Operations`, `Infrastructure`, `Business`, `Compliance`, `Other`. Drives the filter chips. |
 | `tags` | yes | Free words for search and "similar reports". |
 | `groups` | no | Who may see it. **Without it, the email lists** in `action.email.to` decide (`secops@example.com` → `secops`). Copy them here before turning off a report's email action in Splunk, or the access goes with it. |
-| `chart` | no | `'none'` shows only the table. Otherwise:<br>• `type`: `bar`, `column`, `line` or `area`. Overrides the chart saved in Splunk.<br>• `y`: the measure to plot (default: the first numeric column).<br>• `threshold`: `{ value, label }`, a dashed limit line. Values past it take the warning color.<br>• `max`: turns bars into meters that fill up to it (100 for a percentage).<br>• `panels`: one small chart per measure.<br>• `scatter`: `{ x, log?, caption }`, adds a chart of dots placing `y` against `x`. |
+| `chart` | no | `'none'` shows only the table. Otherwise:<br>• `type`: `bar`, `column`, `line` or `area`. Overrides the chart saved in Splunk.<br>• `y`: the measure to plot (default: the first numeric column). Results over time (first column `_time`) with several measures draw a line for each instead, up to 5, with the smallest folded into "Other"; setting `y` keeps one measure.<br>• `threshold`: `{ value, label }`, a dashed limit line. Values past it take the warning color.<br>• `max`: turns bars into meters that fill up to it (100 for a percentage).<br>• `panels`: one small chart per measure.<br>• `scatter`: `{ x, log?, caption }`, adds a chart of dots placing `y` against `x`. |
 | `index` | no | Overrides the index text parsed from the SPL, for searches like `| rest` or `metadata`. |
 | `statusRule` | no | `(results) => { status: 'warning' \| 'failed', message } \| null`. Turns a run's results into a warning, such as "a host is above 2% errors". `null` means fine. |
 | `highlights` | no | `(results) => ReportHighlight[]`. The headline numbers: `{ label, value, note?, meter?, trend? }`. `meter` is the share of a limit used (0.6 is 60%). Without it, `defaultHighlights` in `lib/splunk/map.ts` shows the results (with the change since the previous run), the chart's top row, and the search time. |
@@ -202,7 +202,10 @@ Uncached reads (chats, votes) must start with `await connection()` inside `<Susp
 | Chart colors | `--chart-1` … `--chart-5` in `app/globals.css` | Validated for the dark surface (contrast, color-blind distance). Re-check if you change them. |
 | Status colors | `--status-success`, `--status-warning`, `--status-failed` | Only for run outcomes, never as series colors. |
 | Chart styling | `lib/chart-theme.ts` | Axes, gridlines, tooltip, bar size, threshold line. |
-| Typefaces | `app/fonts.ts` | Schibsted Grotesk (headings) and Martian Mono (code), through `next/font`. Body text uses the system font. |
+| Chart limits | `lib/reports.ts` | `MAX_CHART_BARS` (25), `MAX_CHART_POINTS` (500), `MAX_CHART_SERIES` (5). Charts say what they leave out, and the results table has every row. |
+| Table page size | `components/ResultsTable.tsx` | `PAGE_SIZE` (50). Filtering and sorting cover every row. |
+| Stale-data warning | `lib/reports.ts` | `STALE_AFTER_MS` (2 hours). Live data only. |
+| Typefaces | `app/fonts.ts` | Schibsted Grotesk (headings) and Martian Mono (code), from `app/font-files/`, so a build needs no access to Google Fonts. Body text uses the system font. |
 | Component styles | `app/globals.css`, grouped by area | Plain CSS with Tailwind 4's `@apply`, in `@layer components`. |
 | shadcn/ui | `components.json` | Used for the chart wrapper in `components/ui/`. `npx shadcn add <item>` adds more. |
 | Background rays | `app/layout.tsx` (`<LightRays>` props) | Color, speed and spread of the WebGL background. |

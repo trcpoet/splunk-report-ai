@@ -93,7 +93,7 @@ Requires Node.js 22.9 or newer (the scripts use `--env-file-if-exists`) and Mong
 
 3. **Configure:** copy `.env.example` to `.env.local` and fill it in. Generate the secrets with `openssl rand -base64 32`. What every setting does: [docs/configuration.md](docs/configuration.md).
 4. **Create the demo users:** `npm run seed`
-5. **Load the reports:** `npm run sync` (9 reports and 63 runs the first time; running it again adds nothing new)
+5. **Load the reports:** `npm run sync` (10 reports and 70 runs the first time; running it again adds nothing new)
 6. **Start the app:** `npm run dev`, then open [http://localhost:3000](http://localhost:3000)
 
 ### Demo logins
@@ -102,9 +102,9 @@ All use the value of `DEMO_PASSWORD` from `.env.local` as their password (see it
 
 | User | Groups | Sees |
 |---|---|---|
-| admin@example.com | admin | all 9 reports |
+| admin@example.com | admin | all 10 reports |
 | soc.analyst@example.com | secops, soc-tier1 | failed logins, firewall denies, privileged group changes |
-| sre.oncall@example.com | sre, web-oncall, infra-oncall | web 5xx, disk space, forwarder health |
+| sre.oncall@example.com | sre, web-oncall, infra-oncall | web 5xx, web requests, disk space, forwarder health |
 | finance.analyst@example.com | finance-ops, it-finance | payments, license usage |
 | it.director@example.com | it-director | failed logins, VPN by country |
 

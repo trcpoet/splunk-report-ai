@@ -65,11 +65,11 @@ cp .env.example .env.local
 
 ```bash
 npm run seed       # creates the demo logins
-npm run sync       # loads the 9 dummy reports
+npm run sync       # loads the 10 dummy reports
 npm run dev        # open http://localhost:3000
 ```
 
-Sign in as `admin@example.com` with your `DEMO_PASSWORD`. If you see 9 reports, the app works, and any later problem is in the Splunk connection, not the app.
+Sign in as `admin@example.com` with your `DEMO_PASSWORD`. If you see 10 reports, the app works, and any later problem is in the Splunk connection, not the app.
 
 ## Step 3: Get access to Splunk
 
@@ -182,7 +182,10 @@ Don't turn off certificate checks (`NODE_TLS_REJECT_UNAUTHORIZED=0`): that would
 |---|---|
 | `SPLUNK_MODE=live needs SPLUNK_BASE_URL and SPLUNK_TOKEN` | One of them is empty in `.env.local`. |
 | The sync finishes but no reports appear | The admin view shows only reports that email their results or are in `report-config.ts`. Add the report's exact name to `report-config.ts`. |
-| A report shows "results expired" | The worker ran after Splunk deleted the results. Run `sync:watch` more often. |
+| A report's results are older than its last run | The worker ran after Splunk deleted the newest results. Run `sync:watch` more often. |
+| A report says "No runs yet" | No run of it is stored. It may simply not have run, or the sync log says why: look for `Splunk answered 404`, which means its jobs expired or the token can't read them. |
+| The home page says the last sync had problems | Sign in as an admin to see the reason. A report that failed shows its own reason on its page. |
+| The sync log says it skipped a report with the same name | Two saved searches share that name, and the app keeps one: a shared search over a private copy. Rename one. |
 | Schedule times are off by some hours | `SPLUNK_TZ` doesn't match the search head's timezone. |
 | A team member can't see a report | Their groups and the report's groups share no name. See [Report settings and access](report-access.md). |
 

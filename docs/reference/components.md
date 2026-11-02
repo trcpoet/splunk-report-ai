@@ -103,7 +103,11 @@ One report as a card: title, status, schedule and run dots.
 
 ### `StatusBadge.tsx` (server)
 
-Success, Warning or Failed, with its dot.
+Healthy, Warning, Failed or No runs yet, with its dot.
+
+### `SyncNotice.tsx` (server)
+
+On the home page, says when the reports may be out of date: the last sync had problems, or live data stopped arriving. Admins also see the reason (`getSyncNotice`).
 
 ### `RunHistory.tsx` (server)
 
@@ -118,6 +122,8 @@ The results table, built on TanStack Table v9.
   - `filterable` adds a filter box;
   - `sortValues` gives a column a separate sort key, such as raw times behind "Oct 2, 09:00 UTC".
 - **Alignment:** numeric columns are right-aligned.
+- **Pages:** 50 rows at a time, with Previous and Next once there are more. Sorting and filtering cover every row.
+- **Splunk times:** `_time` shows as "Time", in UTC, and sorts by the raw value (`formatCell`, `columnLabel`).
 
 ### `ReportActions.tsx` (client)
 
@@ -135,10 +141,12 @@ The results chart: one measure, in one color, as bars, columns, lines or areas.
   - `max`, which turns bars into meters;
   - `panels`, which draws small multiples.
 - **Labels:** only the largest value and the values past the threshold get one.
+- **Over time (`LineSeriesChart`):** results with `_time` first draw as lines with a legend, one per `series` column in `--chart-1` to `--chart-5`, so a series keeps its color from run to run. Other measures add up to a neutral "Other" line. An empty cell is a gap, not a zero. Up to 4 lines get their names at their ends where those fit.
+- **Limits:** at most 25 bars (the first rows) or 500 points (the newest), with a note saying so.
 
 ### `ReportScatter.tsx` (client)
 
-A dot per row: the chart's measure up, the scatter's measure across, with an optional log axis. On phones, only the key dots get a name.
+A dot per row: the chart's measure up, the scatter's measure across, with an optional log axis. On phones, only the key dots get a name. It draws the 500 rows with the largest values, with a note saying so.
 
 ### `RunOutcomes.tsx` (client)
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { formatClock, formatList, parseNumber } from '@/lib/format';
+import { columnLabel, formatCell, formatClock, formatList, parseNumber, timeAxisLabels } from '@/lib/format';
 
 describe('parseNumber', () => {
     test('reads numbers that Splunk sent as formatted text', () => {
@@ -37,5 +37,40 @@ describe('formatList', () => {
         assert.equal(formatList(['Disk']), 'Disk');
         assert.equal(formatList(['Disk', 'Web']), 'Disk and Web');
         assert.equal(formatList(['Disk', 'Web', 'VPN']), 'Disk, Web, and VPN');
+    });
+});
+
+describe('formatCell', () => {
+    test('shows numbers with separators and leaves text alone', () => {
+        assert.equal(formatCell(48210), '48,210');
+        assert.equal(formatCell('web-prod-01'), 'web-prod-01');
+    });
+
+    test('shows Splunk times in UTC, whatever offset they came with', () => {
+        assert.equal(formatCell('2026-10-02T06:00:00.000+00:00'), 'Oct 2, 06:00 UTC');
+        assert.equal(formatCell('2026-10-02T02:00:00.000-04:00'), 'Oct 2, 06:00 UTC');
+        assert.equal(formatCell('2026-10-02T06:00:00Z'), 'Oct 2, 06:00 UTC');
+    });
+
+    test('leaves other dates as written', () => {
+        assert.equal(formatCell('2026-10-02 06:14'), '2026-10-02 06:14');
+    });
+});
+
+describe('columnLabel', () => {
+    test('names _time, and leaves the others alone', () => {
+        assert.equal(columnLabel('_time'), 'Time');
+        assert.equal(columnLabel('Error rate %'), 'Error rate %');
+    });
+});
+
+describe('timeAxisLabels', () => {
+    test('uses the time of day within a day', () => {
+        assert.deepEqual(timeAxisLabels(['2026-10-02T05:15:00.000+00:00', '2026-10-02T09:00:00.000+00:00']), ['05:15', '09:00']);
+    });
+
+    test('adds the date over a few days, and only the date past that', () => {
+        assert.deepEqual(timeAxisLabels(['2026-10-01T06:00:00Z', '2026-10-03T18:00:00Z']), ['Oct 1 06:00', 'Oct 3 18:00']);
+        assert.deepEqual(timeAxisLabels(['2026-10-01T06:00:00Z', '2026-10-20T06:00:00Z']), ['Oct 1', 'Oct 20']);
     });
 });

@@ -7,20 +7,25 @@ import StatusBadge from "@/components/StatusBadge";
 import ResultsTable from "@/components/ResultsTable";
 import ReportActions from "@/components/ReportActions";
 import ReportCard from "@/components/ReportCard";
-import ReportChart from "@/components/ReportChart";
+import ReportChartView from "@/components/ReportChart";
 import ReportScatter from "@/components/ReportScatter";
 import RunTrend from "@/components/RunTrend";
 import Meter from "@/components/Meter";
 import Sparkline from "@/components/Sparkline";
 import { ReportSkeleton } from "@/components/Skeletons";
 import { PAGE_TRANSITION, PageTransition, Reveal } from "@/components/Transitions";
-import { getVisibleReport, getVisibleReports } from "@/lib/dal";
-import { getSimilarReports, toSummary } from "@/lib/reports";
-import { formatDateTime, formatDuration, formatList, formatNumber } from "@/lib/format";
+import { getReportSyncError, getVisibleReport, getVisibleReports } from "@/lib/dal";
+import { getSimilarReports, toSummary, type ReportChart } from "@/lib/reports";
+import { columnLabel, formatDateTime, formatDuration, formatList, formatNumber } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 
 const STATUS_LABELS = { success: 'Success', warning: 'Warning', failed: 'Failed' } as const;
+
+// What a chart over time draws, for its heading. Columns without a line of their
+// own add up to the "Other" line.
+const lineNames = ({ y, series }: ReportChart, columns: string[]) =>
+    series ? [...series, ...(series.length < columns.length - 1 ? ['other'] : [])] : [y];
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
@@ -55,6 +60,7 @@ async function ReportDetails({ params }: Props) {
 
     // Summaries only: the cards are client components, so this is what the browser gets.
     const similarReports = getSimilarReports(report, await getVisibleReports()).map(toSummary);
+    const syncError = await getReportSyncError(slug);
     const details = [
         { label: 'Schedule', value: report.schedule, code: report.cron },
         { label: 'Time range', value: report.timeRange },
@@ -92,6 +98,12 @@ async function ReportDetails({ params }: Props) {
             {report.statusMessage && (
                 <div className={`status-callout status-${report.status}`} role="status">
                     {report.statusMessage}
+                </div>
+            )}
+
+            {syncError && (
+                <div className="status-callout status-warning" role="status">
+                    The last sync couldn&apos;t refresh this report: {syncError}
                 </div>
             )}
 
@@ -134,9 +146,16 @@ async function ReportDetails({ params }: Props) {
                                                 One chart per measure, with the bars in the same order in each. The largest value in each is labeled, and values past a dashed line are highlighted. Every value is in the table below.
                                             </span>
                                         </>
+                                    ) : report.chart.x === '_time' ? (
+                                        <>
+                                            <span className="chart-heading">{formatList(lineNames(report.chart, report.columns))} over time</span>
+                                            <span className="chart-subtitle">
+                                                Times are in UTC. {report.chart.series && 'One line per series. '}A gap means no value for that time. Every value is in the table below.
+                                            </span>
+                                        </>
                                     ) : (
                                         <>
-                                            <span className="chart-heading">{report.chart.y} by {report.chart.x}</span>
+                                            <span className="chart-heading">{report.chart.y} by {columnLabel(report.chart.x)}</span>
                                             <span className="chart-subtitle">
                                                 {report.chart.threshold
                                                     ? `Values past the dashed line (${report.chart.threshold.label}) are highlighted and labeled. Every value is in the table below.`
@@ -146,7 +165,7 @@ async function ReportDetails({ params }: Props) {
                                     )}
                                 </figcaption>
                                 <ChartBoundary>
-                                    <ReportChart chart={report.chart} columns={report.columns} rows={report.rows} />
+                                    <ReportChartView chart={report.chart} columns={report.columns} rows={report.rows} />
                                 </ChartBoundary>
                             </figure>
                         )}
@@ -168,7 +187,7 @@ async function ReportDetails({ params }: Props) {
                         )}
                         {report.resultCount > report.rows.length && (
                             <p className="text-light-200 text-sm">
-                                Showing the top {report.rows.length} of {formatNumber(report.resultCount)} results.
+                                Showing the top {formatNumber(report.rows.length)} of {formatNumber(report.resultCount)} results.
                             </p>
                         )}
                     </section>
@@ -196,7 +215,11 @@ async function ReportDetails({ params }: Props) {
                                 </ChartBoundary>
                             </figure>
                         )}
-                        <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} sortValues={historySortValues} />
+                        {historyRows.length > 0 ? (
+                            <ResultsTable columns={['Run time', 'Status', 'Duration', 'Results']} rows={historyRows} sortValues={historySortValues} />
+                        ) : (
+                            <p className="empty-state">No runs stored yet.</p>
+                        )}
                     </section>
 
                     <div className="flex flex-row flex-wrap gap-1.5">
@@ -224,11 +247,15 @@ async function ReportDetails({ params }: Props) {
 
                     <div className="side-card">
                         <h2>Delivery</h2>
-                        <p>
-                            Until now, this report was emailed to {report.recipients.length} distribution lists,
-                            about {formatNumber(report.runsPerWeek * report.recipients.length)} emails a week.
-                            Now it lives here, where anyone with access can look it up.
-                        </p>
+                        {report.recipients.length > 0 ? (
+                            <p>
+                                Until now, this report was emailed to {report.recipients.length} distribution lists,
+                                about {formatNumber(report.runsPerWeek * report.recipients.length)} emails a week.
+                                Now it lives here, where anyone with access can look it up.
+                            </p>
+                        ) : (
+                            <p>This report isn&apos;t emailed to anyone. It lives here, where anyone with access can look it up.</p>
+                        )}
                         <ul className="recipients">
                             {report.recipients.map((recipient) => (
                                 <li key={recipient}>{recipient}</li>

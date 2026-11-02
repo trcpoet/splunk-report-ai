@@ -45,7 +45,7 @@ async function findTarget(kind: FeedbackKind, targetId: string): Promise<Target 
     if (!report) return null;
 
     if (reason === 'status') {
-        if (report.status === 'success' || report.lastRun !== runAt) return null;
+        if ((report.status !== 'warning' && report.status !== 'failed') || report.lastRun !== runAt) return null;
         return { reportSlug: slug, flag: { reason, status: report.status, runAt } };
     }
     const unusual = findUnusualRun(report.history, report.modelRun);

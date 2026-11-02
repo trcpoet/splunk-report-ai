@@ -2,10 +2,10 @@
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell as BarCell, LabelList, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import type { LabelProps } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { AXIS_TICK, X_TICK_MARGIN, BAND_CURSOR, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, MAX_BAR_SIZE, METER_TRACK_FILL, OVER_THRESHOLD_FILL, THRESHOLD_LINE, TOOLTIP_CLASS } from "@/lib/chart-theme";
-import { formatCompact, formatNumber, parseNumber } from "@/lib/format";
-import type { Cell, ReportChart as ChartSpec } from "@/lib/reports";
+import { columnLabel, formatCell, formatCompact, formatList, formatNumber, parseNumber, timeAxisLabels } from "@/lib/format";
+import { MAX_CHART_BARS, MAX_CHART_POINTS, type Cell, type ReportChart as ChartSpec } from "@/lib/reports";
 
 type Props = {
     chart: ChartSpec;
@@ -14,6 +14,17 @@ type Props = {
 };
 
 type Box = { x?: number | string; y?: number | string; width?: number | string; height?: number | string };
+
+const isTimeAxis = ({ x }: ChartSpec) => x === '_time';
+
+// What each row is called along the x-axis.
+const axisLabels = (chart: ChartSpec, rows: Cell[][], x: number) => {
+    const names = rows.map((row) => String(row[x]));
+    return isTimeAxis(chart) ? timeAxisLabels(names) : names;
+};
+
+// Time labels are short, so the tooltip says the whole time.
+const fullTime = (_: unknown, payload?: readonly { payload?: { when?: string } }[]) => payload?.[0]?.payload?.when;
 
 // One measure from the latest results, in one color. A single series needs no
 // legend: the heading names what is plotted, and the results table below the
@@ -25,10 +36,11 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     const x = columns.indexOf(chart.x);
     const y = columns.indexOf(chart.y);
     // Text such as "$18,402,117" is plotted as its number and labeled as written.
+    const labels = axisLabels(chart, rows, x);
     const data = rows
-        .map((row) => {
+        .map((row, i) => {
             const cell = row[y];
-            return { label: String(row[x]), value: parseNumber(cell) ?? Number.NaN, text: typeof cell === 'number' ? formatNumber(cell) : cell };
+            return { label: labels[i], when: formatCell(row[x]), value: parseNumber(cell) ?? Number.NaN, text: formatCell(cell) };
         })
         .filter((point) => Number.isFinite(point.value));
 
@@ -58,7 +70,7 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     const tooltip = (
         <ChartTooltip
             cursor={isBars ? BAND_CURSOR : LINE_CURSOR}
-            content={<ChartTooltipContent className={TOOLTIP_CLASS} />}
+            content={<ChartTooltipContent className={TOOLTIP_CLASS} {...(isTimeAxis(chart) ? { labelFormatter: fullTime } : {})} />}
         />
     );
 
@@ -165,9 +177,126 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     );
 }
 
+// Names sit at the ends of up to this many lines, and the legend covers the rest.
+const MAX_LABELED_LINES = 4;
+// About how tall the plot is, and how far apart two names need to be to read.
+const PLOT_HEIGHT = 230;
+const MIN_LABEL_GAP = 16;
+
+type LinePoint = { label: string; when: string } & Record<string, string | number | null>;
+
+// The lines whose names fit at their last points, largest first. Two lines
+// that end close together share one spot, so the lower one goes without.
+function labeledLines(data: LinePoint[], keys: string[]) {
+    if (keys.length < 2 || keys.length > MAX_LABELED_LINES) return new Set<string>();
+
+    const lastValue = (key: string) => Number(data.findLast((point) => point[key] !== null)?.[key] ?? 0);
+    const top = Math.max(...data.flatMap((point) => keys.map((key) => Number(point[key] ?? 0))), 1);
+    const labeled = new Set<string>();
+    let lowest = Number.POSITIVE_INFINITY;
+
+    for (const key of keys.toSorted((a, b) => lastValue(b) - lastValue(a))) {
+        const height = (lastValue(key) / top) * PLOT_HEIGHT;
+        if (lowest - height < MIN_LABEL_GAP) continue;
+        labeled.add(key);
+        lowest = height;
+    }
+    return labeled;
+}
+
+// Results over time: one line per series, in the chart colors in the results'
+// order, so a series keeps its color from run to run. Series past the last
+// color add up to one neutral "Other" line. An empty cell is a gap in the line,
+// not a zero. The legend names every line; names at the line ends add to it where they fit.
+const LineSeriesChart = ({ chart, columns, rows }: Props) => {
+    const series = chart.series ?? [chart.y];
+    const x = columns.indexOf(chart.x);
+    const rest = chart.series ? columns.flatMap((name, i) => (i === x || series.includes(name) ? [] : [i])) : [];
+
+    const otherValue = (row: Cell[]) => {
+        const values = rest.flatMap((i) => parseNumber(row[i]) ?? []);
+        return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : null;
+    };
+    const hasOther = rows.some((row) => otherValue(row) !== null);
+
+    const labels = axisLabels(chart, rows, x);
+    const data = rows.map((row, i): LinePoint => ({
+        label: labels[i],
+        when: formatCell(row[x]),
+        ...Object.fromEntries(series.map((name, s) => [`s${s}`, parseNumber(row[columns.indexOf(name)])])),
+        ...(hasOther ? { other: otherValue(row) } : {}),
+    }));
+
+    const config: ChartConfig = Object.fromEntries(series.map((name, s) => [`s${s}`, { label: name, color: `var(--chart-${s + 1})` }]));
+    if (hasOther) config.other = { label: 'Other', color: 'var(--color-light-200)' };
+
+    const keys = Object.keys(config);
+    // Legend and tooltip follow the lines' order instead of sorting by name.
+    const byLine = (item: { dataKey?: unknown }) => keys.indexOf(String(item.dataKey));
+    const labeled = labeledLines(data, keys);
+    const names = keys.map((key) => String(config[key].label));
+    const description = `Line chart of ${formatList(names)} by ${columnLabel(chart.x).toLowerCase()}`;
+    const { threshold, max } = chart;
+
+    // The last point of a line gets a ringed dot and, if it fits, the line's
+    // name. A point between two gaps has no line, so it needs a dot to show at all.
+    const dotFor = (key: string) => {
+        const last = data.findLastIndex((point) => point[key] !== null);
+
+        return function LineDot({ cx, cy, index = 0 }: { cx?: number; cy?: number; index?: number }) {
+            const alone = data[index - 1]?.[key] == null && data[index + 1]?.[key] == null && data[index][key] !== null;
+            if (cx === undefined || cy === undefined || (index !== last && !alone)) return <g key={index} />;
+
+            return (
+                <g key={index}>
+                    <circle cx={cx} cy={cy} r={4} strokeWidth={2} stroke="var(--color-dark-100)" fill={`var(--color-${key})`} />
+                    {index === last && labeled.has(key) && (
+                        <text x={cx - 8} y={cy - 8} textAnchor="end" className="fill-light-100 text-xs" stroke="var(--color-dark-100)" strokeWidth={3} paintOrder="stroke">
+                            {config[key].label}
+                        </text>
+                    )}
+                </g>
+            );
+        };
+    };
+
+    return (
+        <ChartContainer config={config} className={CHART_CLASS} style={{ height: keys.length > 1 ? 310 : 280 }} aria-label={description}>
+            <LineChart data={data} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
+                <CartesianGrid vertical={false} stroke={GRID_STROKE} />
+                <XAxis tickMargin={X_TICK_MARGIN} dataKey="label" tickLine={false} axisLine={false} tick={AXIS_TICK} interval="preserveStartEnd" minTickGap={16} />
+                <YAxis domain={max === undefined ? undefined : [0, max]} tickFormatter={formatCompact} tickLine={false} axisLine={false} tick={AXIS_TICK} width={48} />
+                <ChartTooltip cursor={LINE_CURSOR} itemSorter={byLine} content={<ChartTooltipContent className={TOOLTIP_CLASS} labelFormatter={fullTime} />} />
+                {keys.length > 1 && <ChartLegend itemSorter={byLine} content={<ChartLegendContent className="flex-wrap gap-y-1 [&>div]:whitespace-nowrap" />} />}
+                {keys.map((key) => (
+                    <Line key={key} dataKey={key} type="linear" stroke={`var(--color-${key})`} strokeWidth={LINE_WIDTH} connectNulls={false} dot={dotFor(key)} activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--color-dark-100)' }} />
+                ))}
+                {threshold && (
+                    <ReferenceLine
+                        y={threshold.value}
+                        {...THRESHOLD_LINE}
+                        ifOverflow="extendDomain"
+                        label={{ value: threshold.label, position: 'insideTopRight', fill: 'var(--color-light-200)', fontSize: 12 }}
+                    />
+                )}
+            </LineChart>
+        </ChartContainer>
+    );
+}
+
+// Bars show the first rows, which a report sorts to put what matters on top.
+// Lines run oldest to newest, so they show the newest.
+function shownRows(chart: ChartSpec, rows: Cell[][]) {
+    const isBars = chart.type === 'bar' || chart.type === 'column';
+    const limit = isBars ? MAX_CHART_BARS : MAX_CHART_POINTS;
+
+    return { limit, which: isBars ? 'first' : 'newest', shown: isBars ? rows.slice(0, limit) : rows.slice(-limit) };
+}
+
 // With panels, one small chart per measure (small multiples). Each keeps the
 // rows in the results order, so a category sits in the same place in every chart.
-const ReportChart = ({ chart, columns, rows }: Props) => {
+function ChartBody({ chart, columns, rows }: Props) {
+    if (chart.series || (isTimeAxis(chart) && chart.type === 'line')) return <LineSeriesChart chart={chart} columns={columns} rows={rows} />;
     if (!chart.panels) return <SingleChart chart={chart} columns={columns} rows={rows} />;
 
     return (
@@ -179,6 +308,19 @@ const ReportChart = ({ chart, columns, rows }: Props) => {
                 </div>
             ))}
         </div>
+    );
+}
+
+const ReportChart = ({ chart, columns, rows }: Props) => {
+    const { limit, which, shown } = shownRows(chart, rows);
+
+    return (
+        <>
+            <ChartBody chart={chart} columns={columns} rows={shown} />
+            {shown.length < rows.length && (
+                <p className="chart-subtitle">Showing the {which} {limit} of {formatNumber(rows.length)} rows.</p>
+            )}
+        </>
     );
 }
 

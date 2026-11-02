@@ -41,6 +41,7 @@ What the model is told, in plain English: `REPORTS_PROMPT` (Ask about reports), 
 
 The reports as text for the AI.
 - **`reportsContext(reports, sync)`:** for each report, its status and message, highlights, the last 7 runs, its SPL, and up to `MAX_ROWS` (20) result rows.
+- **SPL** goes in as it is, angle brackets included (`where count>5`), except that it can't close the tag around it (`safeSpl`).
 - **`splContext(reports, examples?)`:** for Write SPL.
   - With examples, the reports become a short catalog of indexes and columns, and only the examples are written out in full, closest first.
   - Without examples, every report's search is written out.

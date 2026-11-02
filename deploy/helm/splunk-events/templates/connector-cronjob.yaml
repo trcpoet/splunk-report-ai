@@ -48,6 +48,10 @@ spec:
                 - name: APP_URL
                   value: {{ include "splunk-events.webUrl" . | quote }}
                 {{- include "splunk-events.retentionEnv" . | nindent 16 }}
+                {{- range $name, $value := .Values.connector.env }}
+                - name: {{ $name }}
+                  value: {{ $value | quote }}
+                {{- end }}
                 {{- include "splunk-events.secretEnv" (dict "root" . "key" "MONGODB_URI") | nindent 16 }}
                 {{- include "splunk-events.secretEnv" (dict "root" . "key" "REVALIDATE_SECRET") | nindent 16 }}
                 {{- if eq $splunk.mode "live" }}

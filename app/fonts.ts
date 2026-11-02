@@ -1,16 +1,22 @@
-import { Schibsted_Grotesk, Martian_Mono } from "next/font/google";
+import localFont from "next/font/local";
 
 // The app's two typefaces, shared by the root layout and the global error
-// screen (which replaces the layout and so needs them on its own <body>).
+// screen (which replaces the layout and so needs them on its own <body>). The
+// files are in the repo, so a build needs no access to Google Fonts. Both are
+// under the SIL Open Font License (app/font-files/).
 
-const schibstedGrotesk = Schibsted_Grotesk({
+const schibstedGrotesk = localFont({
+  src: "./font-files/schibsted-grotesk-latin-wght-normal.woff2",
   variable: "--font-schibsted-grotesk",
-  subsets: ["latin"],
+  weight: "400 900",
+  style: "normal",
 });
 
-const martianMono = Martian_Mono({
+const martianMono = localFont({
+  src: "./font-files/martian-mono-latin-wght-normal.woff2",
   variable: "--font-martian-mono",
-  subsets: ["latin"],
+  weight: "100 800",
+  style: "normal",
 });
 
 export const fontVariables = `${schibstedGrotesk.variable} ${martianMono.variable}`;

@@ -1,4 +1,4 @@
-import { formatDuration, formatNumber, parseNumber } from '@/lib/format';
+import { formatCell, formatDuration, formatNumber, parseNumber } from '@/lib/format';
 import type { Cell, ModelRun, RunRecord } from '@/lib/reports';
 
 // Plain statistics about a report, with no AI and no ML library. Pure, so the
@@ -183,7 +183,7 @@ export function describeColumn(column: ColumnProfile, rows: number): string {
         const highest = column.highest && column.min !== column.max ? ` Highest: ${column.highest}.` : '';
         return `${range}.${highest}${empty}`;
     }
-    if (column.kind === 'time') return `${column.first} to ${column.last}.${empty}`;
+    if (column.kind === 'time') return `${formatCell(column.first)} to ${formatCell(column.last)}.${empty}`;
     if (column.distinct === rows - column.empty) return `A different value in every row.${empty}`;
     if (column.topCount > 1) return `${column.distinct} different values, mostly ${column.top} (${column.topCount} of ${rows}).${empty}`;
     return `${column.distinct} different values.${empty}`;

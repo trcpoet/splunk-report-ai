@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # The SplunkEvents web app, plus a "tools" image for the seed script and the
 # sync worker. docker-compose.yml wires them up with MongoDB; see docs/docker.md.
 # The "worker" image runs the same scripts as a non-root user, for Kubernetes
@@ -16,11 +15,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # The production build. The sign-in page is built ahead of time, so the demo
-# settings it shows are build arguments. The other values are placeholders:
-# nothing connects to the database while building (the same as in CI).
+# settings it shows are build arguments: off unless you ask for them (only for
+# dummy data). The other values are placeholders: nothing connects to the
+# database while building (the same as in CI).
 FROM tools AS build
-ARG DEMO_MODE=true
-ARG DEMO_PASSWORD=splunk-demo-2026
+ARG DEMO_MODE=false
+ARG DEMO_PASSWORD=
 ENV NEXT_OUTPUT=standalone \
     DEMO_MODE=$DEMO_MODE \
     DEMO_PASSWORD=$DEMO_PASSWORD \

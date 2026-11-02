@@ -38,6 +38,18 @@ export const parseNumber = (cell: string | number): number | null => {
     return minus ? -value : value;
 };
 
+// Splunk's _time, such as "2026-10-02T06:00:00.000+00:00".
+const SPLUNK_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+// A results cell as it's shown.
+export const formatCell = (cell: string | number) => {
+    if (typeof cell === 'number') return formatNumber(cell);
+    return SPLUNK_TIME.test(cell) ? formatDateTime(cell) : cell;
+};
+
+// A results column's name as it's shown.
+export const columnLabel = (name: string) => (name === '_time' ? 'Time' : name);
+
 // For axis ticks: 1,284 → 1.3K, 2,500,000 → 2.5M.
 export const formatCompact = (value: number) => {
     const units: [number, string][] = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
@@ -57,6 +69,19 @@ export const formatTime = (iso: string) => {
     const date = new Date(iso);
     return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 };
+
+const DAY_MS = 86_400_000;
+
+// Axis labels for a run of times, as short as their span allows.
+export function timeAxisLabels(times: string[]) {
+    const stamps = times.map((time) => Date.parse(time));
+    const span = Math.max(...stamps) - Math.min(...stamps);
+
+    return times.map((time) => {
+        if (span <= DAY_MS) return formatTime(time);
+        return span <= 4 * DAY_MS ? `${formatDay(time)} ${formatTime(time)}` : formatDay(time);
+    });
+}
 
 // Minutes after midnight as a time of day: 480 → "08:00", 1440 → "24:00".
 export const formatClock = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;

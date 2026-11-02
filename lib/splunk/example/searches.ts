@@ -1,4 +1,4 @@
-// The example Splunk's scheduled reports (docs/splunk-example.md): six of the
+// The example Splunk's scheduled reports (docs/splunk-example.md): seven of the
 // dummy reports, which Splunk really runs against the logs in ./events.ts.
 // Each one is the dummy report's SPL plus a last step that names the columns
 // the way lib/report-config.ts expects, as a real report's search would.
@@ -23,6 +23,8 @@ const LAST_STEPS: Record<string, string> = {
     ].join('\n'),
     'Forwarder Health: Silent Hosts':
         '| rename host AS "Host", last_seen AS "Last seen (UTC)", minutes_silent AS "Minutes silent"',
+    // A timechart names its own columns: _time and the hosts it finds.
+    'Web Requests by Host': '',
 };
 
 type ExampleSearch = {
@@ -33,17 +35,17 @@ type ExampleSearch = {
     latest: string;
     // Who the report goes to. The app's groups come from these.
     recipients: string[];
-    chart: 'bar' | 'column' | null;
+    chart: 'bar' | 'column' | 'line' | null;
 };
 
 export const exampleSearches = (): ExampleSearch[] =>
     reports
-        .filter((report) => LAST_STEPS[report.title])
+        .filter((report) => report.title in LAST_STEPS)
         .map((report) => {
             const [earliest, latest] = TIME_RANGES[report.timeRange] ?? ['-24h', 'now'];
             return {
                 name: report.title,
-                search: `${report.spl}\n${LAST_STEPS[report.title]}`,
+                search: [report.spl, LAST_STEPS[report.title]].filter(Boolean).join('\n'),
                 description: report.description,
                 earliest,
                 latest,
