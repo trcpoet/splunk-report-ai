@@ -5,7 +5,10 @@
     "name": "SplunkEvents",
     "image": "mcr.microsoft.com/devcontainers/javascript-node:4-24-bookworm",
     "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        // An SSH server, so you can run commands in the codespace from your own
+        // terminal: gh codespace ssh -c <name>. This image doesn't include one.
+        "ghcr.io/devcontainers/features/sshd:1": {}
     },
     "hostRequirements": {
         "cpus": 4,
