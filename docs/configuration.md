@@ -57,12 +57,13 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
 | `SYNC_STALE_HOURS` | `2` | `lib/dal.ts` (web app) | With live data, the home page warns when no sync has finished for this long. Keep it above how often you sync. |
-| `SPLUNK_MODE` | `fixture` | `worker/sync.ts` | `fixture` serves the 10 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
-| `SPLUNK_BASE_URL` | none | `worker/sync.ts` | Required for `live`: the management port, usually `https://<host>:8089`. |
-| `SPLUNK_TOKEN` | none | `worker/sync.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
-| `SPLUNK_TOKEN_FILE` | none | `worker/sync.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
-| `SPLUNK_TZ` | `UTC` | `worker/sync.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
-| `SYNC_INTERVAL_MINUTES` | `15` | `worker/sync.ts` | How often `npm run sync:watch` syncs. Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
+| `SPLUNK_MODE` | `fixture` | `lib/splunk/settings.ts` | `fixture` serves the 10 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
+| `SPLUNK_BASE_URL` | none | `lib/splunk/settings.ts` | Required for `live`: the management port, usually `https://<host>:8089`. It must start with `https://` or `http://`; port 8000 (Splunk Web) gets a warning. |
+| `SPLUNK_TOKEN` | none | `lib/splunk/settings.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
+| `SPLUNK_TOKEN_FILE` | none | `lib/splunk/settings.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
+| `SPLUNK_TZ` | `UTC` | `lib/splunk/settings.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. It must be a time zone name the runtime knows, such as `America/New_York`. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
+| `SYNC_INTERVAL_MINUTES` | `15` | `lib/splunk/settings.ts` | How often `npm run sync:watch` syncs: a number of minutes above 0. Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
+| `SYNC_REPORTS` | `emailed` | `lib/splunk/settings.ts` → `lib/splunk/sync.ts` (`isSyncedSearch`) | Which scheduled searches become reports. `emailed`: every one that emails its results, plus the ones in `lib/report-config.ts`. `configured`: only the ones in `lib/report-config.ts`, for a Splunk with more emailed searches than the app should show. |
 | `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
 
@@ -76,7 +77,7 @@ Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` 
 | `SPLUNK_PASSWORD` | `splunk-example-2026` | `docker-compose.splunk.yml` | The test Splunk's admin password. |
 | `SPLUNK_ADMIN_URL` | `http://localhost:8089` | `scripts/splunk-example/admin.ts` | The test Splunk's management port, for the setup and the feeder. |
 | `SPLUNK_ADMIN_USER`, `SPLUNK_ADMIN_PASSWORD` | `admin`, none | `scripts/splunk-example/admin.ts` | The test Splunk's admin. Only the setup and the feeder use it; the connector gets a token instead. |
-| `SPLUNK_EXAMPLE_CRON` | `*/5 * * * *` | `scripts/splunk-example/setup.ts` | When the example's six reports run. CI runs them every minute. |
+| `SPLUNK_EXAMPLE_CRON` | `*/5 * * * *` | `scripts/splunk-example/setup.ts` | When the example's seven reports run. CI runs them every minute. |
 | `SPLUNK_TOKEN_FILE` | `.splunk-example/token` | `scripts/splunk-example/setup.ts` | Where the setup writes the connector's token, which the connector then reads. |
 
 ### ML job
@@ -98,6 +99,9 @@ Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` 
 |---|---|---|
 | `MDB_MCP_CONNECTION_STRING` | `.mcp.json` | The database the read-only MongoDB MCP server looks at (default: local `splunkevents`). |
 | `SPLUNK_MCP_URL`, `SPLUNK_MCP_CLIENT_ID` | `plugins/splunk-events/.mcp.json` | The Splunk Cloud MCP server's endpoint and OAuth client, for Claude Code. Export them in the shell, not `.env.local`. |
+| `E2E_BASE_URL` | `playwright.config.ts` | The running app the browser tests (`npm run e2e`) open. Default `http://localhost:3000`. |
+| `E2E_PASSWORD` | `e2e/auth.setup.ts` | The demo accounts' password for the browser tests. Default: `DEMO_PASSWORD`. |
+| `E2E_SCREENSHOTS` | `e2e/reports.spec.ts` | A folder: the browser tests save a screenshot of each page they check there. CI keeps them from the Splunk example. |
 
 ## Reports: `lib/report-config.ts`
 
@@ -232,7 +236,7 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker and an SSH server inside (`gh codespace ssh`). |
 | `deploy/helm/splunk-events/` | The Helm chart:<br>• the web Deployment, Service, and Route or Ingress;<br>• the connector and ML CronJobs;<br>• the demo-accounts Job, and the Secret.<br>`values.yaml` documents every value ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
-| `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the six reports arrive from Splunk. It runs when `lib/splunk/`, `worker/` or the example change, on Mondays, and by hand. |
+| `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the seven reports arrive from Splunk, that `npm run splunk:check` passes, and runs the browser tests, keeping their screenshots. It runs when `lib/splunk/`, `worker/`, the app or the example change, on Mondays, and by hand. |
 | `.github/workflows/helm.yml` | "Helm" (not required). It lints and renders the chart, then installs it on a throwaway kind cluster and runs the connector and the ML job once. It runs when the chart or the images change. |
 | `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules for `.ts`/`.tsx` (not shadcn's `components/ui/`). Turned off, with the reason next to each: `no-confusing-void-expression` (style) and `require-await` (Next.js needs some functions async). Tests may use `!`. |
 | `tsconfig.json` | `@/*` maps to the repo root. `strict`, plus `noUncheckedIndexedAccess`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noImplicitOverride`, `noUnusedLocals` and `noUnusedParameters`. |

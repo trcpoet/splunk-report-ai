@@ -1,9 +1,11 @@
 import type { RunRecord } from "@/lib/reports";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, plural } from "@/lib/format";
 
-const RunHistory = ({ runs }: { runs: RunRecord[] }) => (
+// A dot per recent run, colored by its outcome. Nothing until the first run:
+// the status badge says "No runs yet".
+const RunHistory = ({ runs }: { runs: RunRecord[] }) => runs.length > 0 && (
     <div className="run-history">
-        <span className="label">Last {runs.length} runs</span>
+        <span className="label">Last {plural(runs.length, 'run', 'runs')}</span>
         {runs.map((run) => (
             <span
                 key={run.runAt}

@@ -1,8 +1,8 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { disconnectDB } from '@/lib/mongodb';
-import { fixtureTransport } from '@/lib/splunk/fixtures/transport';
-import { errorMessage, syncAll } from '@/lib/splunk/sync';
-import { httpTransport, splunkTokenFromEnv, type SplunkTransport } from '@/lib/splunk/transport';
+import { describeError } from '@/lib/splunk/errors';
+import { readSyncSettings, transportFor } from '@/lib/splunk/settings';
+import { syncAll } from '@/lib/splunk/sync';
 
 // Syncs Splunk scheduled reports into MongoDB. Runs as its own process, not
 // inside Next.js, so it runs once per deployment and only it holds the Splunk token.
@@ -12,28 +12,20 @@ import { httpTransport, splunkTokenFromEnv, type SplunkTransport } from '@/lib/s
 //
 // SPLUNK_MODE=fixture (default) serves the dummy reports. SPLUNK_MODE=live calls
 // SPLUNK_BASE_URL (the management port, usually 8089) with SPLUNK_TOKEN, or with
-// the token in the file SPLUNK_TOKEN_FILE names.
-
-function transportFromEnv(): { mode: 'fixture' | 'live'; transport: SplunkTransport } {
-    const mode = process.env.SPLUNK_MODE || 'fixture';
-
-    if (mode === 'fixture') return { mode, transport: fixtureTransport() };
-    if (mode !== 'live') throw new Error(`SPLUNK_MODE must be "fixture" or "live", not "${mode}".`);
-
-    const baseUrl = process.env.SPLUNK_BASE_URL;
-    const token = splunkTokenFromEnv();
-    if (!baseUrl || !token) throw new Error('SPLUNK_MODE=live needs SPLUNK_BASE_URL, and SPLUNK_TOKEN or SPLUNK_TOKEN_FILE.');
-
-    return { mode, transport: httpTransport({ baseUrl, token }) };
-}
+// the token in the file SPLUNK_TOKEN_FILE names. The settings are checked
+// before anything else (lib/splunk/settings.ts), and `npm run splunk:check`
+// tests the connection without syncing.
 
 async function main() {
-    const { mode, transport } = transportFromEnv();
-    const timeZone = process.env.SPLUNK_TZ || 'UTC';
+    const settings = readSyncSettings();
+    for (const warning of settings.warnings) console.warn(`⚠ ${warning}`);
+
+    const { mode, timeZone, syncReports } = settings;
+    const transport = transportFor(settings);
 
     const syncOnce = async () => {
         const started = Date.now();
-        const summary = await syncAll({ transport, mode, timeZone });
+        const summary = await syncAll({ transport, mode, timeZone, syncReports });
         console.log(`Synced ${summary.reports} reports (${mode}): ${summary.newRuns} new runs, ${summary.errors} errors, ${((Date.now() - started) / 1000).toFixed(1)}s.`);
         return summary;
     };
@@ -44,7 +36,7 @@ async function main() {
         return;
     }
 
-    const minutes = Number(process.env.SYNC_INTERVAL_MINUTES) || 15;
+    const minutes = settings.intervalMinutes;
     const stop = new AbortController();
     for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => stop.abort());
 
@@ -53,7 +45,7 @@ async function main() {
         try {
             await syncOnce();
         } catch (error) {
-            console.error(`Sync failed: ${errorMessage(error)}`);
+            console.error(`Sync failed: ${describeError(error)}`);
         }
         await sleep(minutes * 60_000, undefined, { signal: stop.signal }).catch(() => {});
     }
@@ -61,7 +53,7 @@ async function main() {
 
 main()
     .catch((error: unknown) => {
-        console.error(errorMessage(error));
+        console.error(describeError(error));
         process.exitCode = 1;
     })
     .finally(disconnectDB);

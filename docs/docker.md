@@ -75,7 +75,7 @@ It needs the app running, and tells it to show the new scores.
 
 ## With a real Splunk
 
-`docker-compose.splunk.yml` runs the app against Splunk Enterprise's free trial instead of the dummy data: Splunk, dummy logs, six scheduled reports, and the connector copying their runs into MongoDB through Splunk's REST API. It needs an Intel/AMD (x86) machine. See [splunk-example.md](splunk-example.md).
+`docker-compose.splunk.yml` runs the app against Splunk Enterprise's free trial instead of the dummy data: Splunk, dummy logs, seven scheduled reports, and the connector copying their runs into MongoDB through Splunk's REST API. It needs an Intel/AMD (x86) machine. See [splunk-example.md](splunk-example.md).
 
 ## How it's checked
 

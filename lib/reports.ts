@@ -172,14 +172,57 @@ export type SyncInfo = {
     timeZone: string;
 };
 
+// A report card's headline: the report's first highlight from its newest
+// results, such as "Overall error rate 0.93%, Budget: 2%".
+export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'>;
+
 export type ReportSummary = Pick<
     SplunkReport,
     'slug' | 'title' | 'description' | 'category' | 'status' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
->;
+> & {
+    // null until the report has results.
+    headline: ReportHeadline | null;
+};
 
-export const toSummary = ({ slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index }: ReportListItem): ReportSummary => ({
+const headlineOf = (highlights: ReportHighlight[]): ReportHeadline | null => {
+    const [first] = highlights;
+    return first ? { label: first.label, value: first.value, ...(first.note ? { note: first.note } : {}) } : null;
+};
+
+export const toSummary = ({ slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index, highlights }: ReportListItem): ReportSummary => ({
     slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index,
+    headline: headlineOf(highlights),
 });
+
+// The newest last run first, reports with no run yet last, and reports that
+// ran at the same time by title. This is the order of the report list.
+export function sortByLastRun<T extends Pick<ReportListItem, 'lastRun' | 'title'>>(reports: T[]): T[] {
+    const time = ({ lastRun }: T) => {
+        const at = Date.parse(lastRun);
+        return Number.isNaN(at) ? Number.NEGATIVE_INFINITY : at;
+    };
+    return reports.toSorted((a, b) => (time(a) === time(b) ? a.title.localeCompare(b.title) : time(b) - time(a)));
+}
+
+// How many report cards a page of the list shows.
+export const REPORTS_PER_PAGE = 20;
+
+// One page of a list, where page 0 is the first. A page past the end shows the
+// last one, so a filter that shortens the list never leaves an empty page.
+// first and last count from 1, for "Showing 21 to 40 of 312".
+export function paginate<T>(items: T[], page: number, size = REPORTS_PER_PAGE) {
+    const pages = Math.max(1, Math.ceil(items.length / size));
+    const index = Math.min(Math.max(0, Math.floor(page) || 0), pages - 1);
+    const start = index * size;
+    return {
+        items: items.slice(start, start + size),
+        page: index,
+        pages,
+        first: start + 1,
+        last: Math.min(start + size, items.length),
+        total: items.length,
+    };
+}
 
 const CATEGORY_ORDER: ReportCategory[] = ['Security', 'Operations', 'Infrastructure', 'Business', 'Compliance', 'Other'];
 

@@ -25,10 +25,10 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 
 | Export | What it does |
 |---|---|
-| `syncAll({ transport, mode, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
-| `listScheduledReports(transport, timeZone, now, log)` | The scheduled searches that email their results, plus any listed in `report-config`, each mapped to `ReportMeta` with its config. Searches that share a name would share a slug, so one stays (a shared one before a private copy) and the rest are logged. |
+| `syncAll({ transport, mode, syncReports, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
+| `isSyncedSearch(entry, which)` | Whether a saved search becomes a report: it must be scheduled, and listed in `report-config`, or (with `SYNC_REPORTS=emailed`, the default) email its results. |
+| `listScheduledReports(transport, timeZone, now, log, which)` | The saved searches `isSyncedSearch` takes, each mapped to `ReportMeta` with its config. Searches that share a name would share a slug, so one stays (a shared one before a private copy) and the rest are logged. |
 | `fetchNewRuns(transport, report, knownSids)` | The runs in a report's history that aren't stored yet, with their results. Jobs still running are skipped; the next sync picks them up. A job whose results expired in between is stored with `resultsExpired`. Returns `{ runs, unreadable, failure }`: `unreadable` counts the jobs Splunk answered 404 for, and `failure` is what stopped the fetch early, so the runs before it are still saved. |
-| `errorMessage(error)` | An error as text, with the cause `fetch` hides, such as a certificate it couldn't verify or `ECONNREFUSED`. |
 
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
@@ -39,14 +39,32 @@ What `syncAll` does:
 
 **Tests:** `map.test.ts` runs `syncAll` against the fixture transport end to end.
 
+## `settings.ts`
+
+The sync worker's settings: **`readSyncSettings(env)`** reads `SPLUNK_MODE`, `SPLUNK_BASE_URL`, the token, `SPLUNK_TZ`, `SYNC_INTERVAL_MINUTES` and `SYNC_REPORTS`, and checks them all before the worker starts. A `SettingsError` lists every problem at once; port 8000 (Splunk Web) is a warning. **`transportFor(settings)`** is the fixture transport or `httpTransport`. Used by `worker/sync.ts` and `scripts/splunk-check.ts`. Tested in `settings.test.ts`.
+
+## `errors.ts` (pure)
+
+What went wrong talking to Splunk, in words someone can act on.
+- **`errorMessage(error)`** is an error as text, with the cause `fetch` hides, such as a certificate it couldn't verify or `ECONNREFUSED`.
+- **`setupHint(error)`** says what to check for the common setup mistakes: a token Splunk turned down (401) or that can't read something (403), nothing answering, an unknown host, a timeout, a certificate Node doesn't trust (set `NODE_EXTRA_CA_CERTS`), http and https mixed up, and a web page instead of JSON (Splunk Web on port 8000, or a proxy).
+- **`describeError(error)`** is both, the hint on its own line after `→`. The worker's log and `npm run splunk:check` use it.
+
+Tested in `errors.test.ts`.
+
+## `check.ts`
+
+**`checkSplunk(transport, { where, syncReports })`**, behind `npm run splunk:check`: tests the connection one step at a time, only reading. Splunk answers; the token works (`/services/authentication/current-context`: the user and its roles); the scheduled searches it can see and how many the sync takes; the reports in `report-config` that Splunk doesn't have (a warning); and that a run's results can be read. Each result is `pass`, `warn` or `fail`, with a hint for the last two. **`allPassed(results)`** is false when any failed. Tested in `check.test.ts` against the fixture transport.
+
 ## `transport.ts`
 
 How the worker talks to Splunk.
 - **`httpTransport({ baseUrl, token, timeoutMs = 30000, retries = 3 })`** returns a `SplunkTransport`. Its `get(path, params)` calls the REST API with `Authorization: Bearer <token>`.
 - **Retries:** it retries network errors, timeouts and HTTP 429, 500, 502, 503 and 504, with exponential backoff (about 0.5, 1 and 2 s) and a little jitter.
 - **`SplunkHttpError`** carries the HTTP status, and `isNotFound(error)` tests for 404. Expired job results answer 404.
+- **`SplunkNotJsonError`** is a reply that isn't JSON. `html` is true for a web page, whatever its status: the address is Splunk Web (usually port 8000) or a proxy, not the REST API.
 - **Certificates:** for an internal certificate authority, set `NODE_EXTRA_CA_CERTS`. Never turn certificate checks off.
-- **`splunkTokenFromEnv(env)`** returns `SPLUNK_TOKEN`, or else the trimmed contents of the file `SPLUNK_TOKEN_FILE` names (a mounted secret). It says which file it couldn't read. Tested in `transport.test.ts`.
+- **`splunkTokenFromEnv(env)`** returns `SPLUNK_TOKEN`, or else the trimmed contents of the file `SPLUNK_TOKEN_FILE` names (a mounted secret). It says which file it couldn't read. Tested in `transport.test.ts`, with a fake `fetch` for the web page cases.
 
 ## `map.ts` (pure)
 

@@ -17,6 +17,7 @@
 | [ml.md](ml.md) | How unusual runs are found, and how the ML job learns from votes. Its setup is in [ml/README.md](../ml/README.md). |
 | [caching-and-loading.md](caching-and-loading.md) | What's cached where, what each loading and error screen means, and sessions across tabs |
 | [mongodb-and-access.md](mongodb-and-access.md) | MongoDB in plain words, how fresh data reaches the screen, and where users' groups could come from |
+| [report-catalog.md](report-catalog.md) | Every report: the question it answers, its search and columns, its chart, headline numbers and warning rule, and how to add your own. Start here on a new laptop |
 | [report-access.md](report-access.md) | `lib/report-config.ts` in practice: who sees which report, with a worked example |
 | [connecting-live-splunk.md](connecting-live-splunk.md) | Replacing the dummy data with a company's Splunk, step by step |
 | [splunk-example.md](splunk-example.md) | The connector against a real Splunk before you have access: Splunk Enterprise's trial in Docker, with dummy logs and scheduled reports |

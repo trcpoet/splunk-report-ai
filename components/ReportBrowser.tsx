@@ -1,20 +1,28 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Pager from "@/components/Pager";
 import ReportCard from "@/components/ReportCard";
-import type { ReportCategory, ReportStatus, ReportSummary } from "@/lib/reports";
+import { formatNumber } from "@/lib/format";
+import { paginate, sortByLastRun, type ReportCategory, type ReportHealth, type ReportSummary } from "@/lib/reports";
 
-const STATUS_FILTERS: { label: string; value: ReportStatus | 'all' }[] = [
+// The home page's report list: search and filters, newest last run first,
+// REPORTS_PER_PAGE cards a page.
+
+const STATUS_FILTERS: { label: string; value: ReportHealth | 'all' }[] = [
     { label: 'All statuses', value: 'all' },
     { label: 'Healthy', value: 'success' },
     { label: 'Warning', value: 'warning' },
     { label: 'Failed', value: 'failed' },
+    { label: 'No runs yet', value: 'none' },
 ];
 
 const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; categories: ReportCategory[] }) => {
     const [query, setQuery] = useState('');
-    const [status, setStatus] = useState<ReportStatus | 'all'>('all');
+    const [status, setStatus] = useState<ReportHealth | 'all'>('all');
     const [category, setCategory] = useState<ReportCategory | 'all'>('all');
+    const [page, setPage] = useState(0);
+    const summary = useRef<HTMLParagraphElement>(null);
 
     // Links to /#reports ("All Reports", "← All reports") should land on this
     // list. Next scrolls to it once, when the page appears, but the list can
@@ -32,8 +40,22 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
         list.scrollIntoView({ behavior: 'instant' });
     }, []);
 
+    // A new search or filter starts again at the first page.
+    const filterBy = <T,>(set: (value: T) => void) => (value: T) => {
+        set(value);
+        setPage(0);
+    };
+
+    // Another page starts at the top of the list, with the keyboard focus on
+    // "Showing 21 to 40 of 312 reports", so the next Tab reaches its first card.
+    const goTo = (next: number) => {
+        setPage(next);
+        summary.current?.focus({ preventScroll: true });
+        document.getElementById('reports')?.scrollIntoView({ behavior: 'instant' });
+    };
+
     const search = query.trim().toLowerCase();
-    const visible = reports.filter((report) => {
+    const visible = sortByLastRun(reports).filter((report) => {
         if (status !== 'all' && report.status !== status) return false;
         if (category !== 'all' && report.category !== category) return false;
         if (!search) return true;
@@ -41,6 +63,9 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
         return [report.title, report.description, report.owner, report.index, ...report.tags]
             .some((field) => field.toLowerCase().includes(search));
     });
+    const shown = paginate(visible, page);
+    // "No runs yet" only when some report hasn't run.
+    const statuses = STATUS_FILTERS.filter(({ value }) => value !== 'none' || reports.some((report) => report.status === 'none'));
 
     return (
         <div className="flex flex-col gap-6">
@@ -48,19 +73,19 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 <input
                     type="search"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => filterBy(setQuery)(e.target.value)}
                     placeholder="Search by report, owner, index or tag"
                     aria-label="Search reports"
                 />
 
                 <div className="chips" role="group" aria-label="Filter by status">
-                    {STATUS_FILTERS.map(({ label, value }) => (
+                    {statuses.map(({ label, value }) => (
                         <button
                             key={value}
                             type="button"
                             className={status === value ? 'chip chip-active' : 'chip'}
                             aria-pressed={status === value}
-                            onClick={() => setStatus(value)}
+                            onClick={() => filterBy(setStatus)(value)}
                         >
                             {label}
                         </button>
@@ -74,7 +99,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                             type="button"
                             className={category === value ? 'chip chip-active' : 'chip'}
                             aria-pressed={category === value}
-                            onClick={() => setCategory(value)}
+                            onClick={() => filterBy(setCategory)(value)}
                         >
                             {value === 'all' ? 'All categories' : value}
                         </button>
@@ -82,13 +107,15 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 </div>
             </div>
 
-            <p className="text-light-200 text-sm" aria-live="polite">
-                Showing {visible.length} of {reports.length} reports
+            <p ref={summary} tabIndex={-1} className="text-light-200 text-sm focus:outline-none" aria-live="polite">
+                {shown.pages > 1
+                    ? `Showing ${formatNumber(shown.first)} to ${formatNumber(shown.last)} of ${formatNumber(visible.length)} ${visible.length < reports.length ? 'matching ' : ''}reports, newest run first`
+                    : `Showing ${formatNumber(visible.length)} of ${formatNumber(reports.length)} reports`}
             </p>
 
-            {visible.length > 0 ? (
+            {shown.items.length > 0 ? (
                 <ul className="reports">
-                    {visible.map((report) => (
+                    {shown.items.map((report) => (
                         <li key={report.slug} className="list-none">
                             <ReportCard report={report} />
                         </li>
@@ -96,6 +123,18 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 </ul>
             ) : (
                 <p className="empty-state">No reports match these filters.</p>
+            )}
+
+            {shown.pages > 1 && (
+                <Pager
+                    label="Report pages"
+                    status={`Page ${shown.page + 1} of ${shown.pages}`}
+                    announce={false}
+                    canPrevious={shown.page > 0}
+                    canNext={shown.page < shown.pages - 1}
+                    onPrevious={() => goTo(shown.page - 1)}
+                    onNext={() => goTo(shown.page + 1)}
+                />
             )}
         </div>
     )

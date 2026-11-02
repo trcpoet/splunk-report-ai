@@ -9,9 +9,11 @@
     "lint": "eslint --cache",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm test",
+    "e2e": "playwright test",
     "sync": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts",
     "sync:watch": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts --watch",
     "seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo-users.ts",
+    "splunk:check": "node --env-file-if-exists=.env.local --import tsx scripts/splunk-check.ts",
     "splunk:setup": "node --env-file-if-exists=.env.local --import tsx scripts/splunk-example/setup.ts",
     "splunk:feed": "node --env-file-if-exists=.env.local --import tsx scripts/splunk-example/feed.ts",
     "test": "node --env-file-if-exists=.env.local --import tsx --test \"lib/**/*.test.ts\"",
@@ -44,6 +46,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.19.1",
     "@types/react": "^19",

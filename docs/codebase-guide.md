@@ -4,10 +4,11 @@ Where to start as an engineer on SplunkEvents, and what to know before you chang
 
 ## Reading order
 
-1. **[architecture.md](architecture.md):** the programs, where data lives and how it moves, how a page is built, who sees what, Ask AI, the ML job, and where it all runs.
-2. **[configuration.md](configuration.md):** every setting. That's each environment variable (with the file that reads it), `lib/report-config.ts`, access, AI, the sync, statistics, caching, the look, build, deploy and CI.
-3. **[The file reference](reference/README.md):** what each file does, in detail, folder by folder: [app/](reference/app.md), [components/](reference/components.md), [lib/](reference/lib.md), [lib/ai/](reference/lib-ai.md), [lib/splunk/](reference/lib-splunk.md), [database/](reference/database.md), and [the rest](reference/tooling.md).
-4. **This page:** the rules that are easy to break, and the words the code uses.
+1. **[report-catalog.md](report-catalog.md):** what each report shows and where its numbers come from, without any code.
+2. **[architecture.md](architecture.md):** the programs, where data lives and how it moves, how a page is built, who sees what, Ask AI, the ML job, and where it all runs.
+3. **[configuration.md](configuration.md):** every setting. That's each environment variable (with the file that reads it), `lib/report-config.ts`, access, AI, the sync, statistics, caching, the look, build, deploy and CI.
+4. **[The file reference](reference/README.md):** what each file does, in detail, folder by folder: [app/](reference/app.md), [components/](reference/components.md), [lib/](reference/lib.md), [lib/ai/](reference/lib-ai.md), [lib/splunk/](reference/lib-splunk.md), [database/](reference/database.md), and [the rest](reference/tooling.md).
+5. **This page:** the rules that are easy to break, and the words the code uses.
 
 The topic guides go deeper on one area each: [all the docs](README.md).
 

@@ -17,7 +17,7 @@ import {
     runsPerWeek,
     toCell,
 } from '@/lib/splunk/map';
-import { errorMessage, fetchNewRuns, listScheduledReports } from '@/lib/splunk/sync';
+import { fetchNewRuns, isSyncedSearch, listScheduledReports } from '@/lib/splunk/sync';
 import { SplunkHttpError, type SplunkTransport } from '@/lib/splunk/transport';
 
 describe('toCell', () => {
@@ -388,6 +388,29 @@ describe('charts of live results', () => {
     });
 });
 
+describe('which scheduled searches the sync takes (SYNC_REPORTS)', () => {
+    const entry = (name: string, content: Record<string, unknown>) => ({
+        name,
+        content: { search: 'index=main', cron_schedule: '0 6 * * *', is_scheduled: true, ...content },
+    });
+    const emailed = entry('Someone else\'s emailed search', { 'action.email': true });
+    const configured = entry('Failed Login Attempts by User', { 'action.email': false });
+    const neither = entry('A quiet search', { 'action.email': false });
+    const unscheduled = entry('Failed Login Attempts by User', { is_scheduled: false });
+
+    test('emailed, the default: every emailed search, plus the ones in report-config', () => {
+        assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search)), [true, true, false]);
+    });
+
+    test('configured: only the ones in report-config', () => {
+        assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search, 'configured')), [false, true, false]);
+    });
+
+    test('never a search that is not scheduled', () => {
+        assert.equal(isSyncedSearch(unscheduled), false);
+    });
+});
+
 describe('saved searches that share a name', () => {
     const now = new Date('2026-10-03T00:00:00Z');
     const search = (app: string, owner: string, sharing: string, query: string) => ({
@@ -465,22 +488,5 @@ describe('fetchNewRuns when a job can\'t be read', () => {
 
         assert.deepEqual(runs.map(({ sid }) => sid), ['ok_at_1700000000_1']);
         assert.ok(failure instanceof SplunkHttpError);
-    });
-});
-
-describe('errorMessage', () => {
-    test('says why fetch failed, such as a certificate it could not verify', () => {
-        const error = new TypeError('fetch failed', { cause: new Error('unable to verify the first certificate') });
-        assert.equal(errorMessage(error), 'fetch failed: unable to verify the first certificate');
-    });
-
-    test('falls back to the code when the cause has no message, as a refused connection does', () => {
-        const cause = Object.assign(new AggregateError([], ''), { code: 'ECONNREFUSED' });
-        assert.equal(errorMessage(new TypeError('fetch failed', { cause })), 'fetch failed: ECONNREFUSED');
-    });
-
-    test('passes other errors through', () => {
-        assert.equal(errorMessage(new Error('GET /x returned 500')), 'GET /x returned 500');
-        assert.equal(errorMessage('plain text'), 'plain text');
     });
 });

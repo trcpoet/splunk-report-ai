@@ -89,13 +89,14 @@ Email and password sign-in through Better Auth.
 ### `ReportBrowser.tsx` (client)
 
 The report list on the home page.
-- **Controls:** a search box, plus status and category filter chips.
+- **Order and pages:** newest last run first (`sortByLastRun`), `REPORTS_PER_PAGE` (20) cards a page (`paginate`), with a `Pager` below once there are more. "Showing 21 to 40 of 312 reports" says where you are. Another page scrolls to the top of the list and puts the keyboard focus on that line.
+- **Controls:** a search box, plus status and category filter chips. "No runs yet" appears when some report hasn't run. A new search or filter starts again at page 1.
 - **Props:** `reports` (summaries), `categories`.
 - **`/#reports` links** ("All Reports") land on the list even when it streams in late, or comes back from the page cache.
 
 ### `ReportCard.tsx` (client)
 
-One report as a card: title, status, schedule and run dots.
+One report as a card: title, status, its headline number from the newest results (`headline`, such as "Overall error rate 1.21%, Budget: 2%"), schedule and run dots.
 - **Prefetching:** every card prefetches the report page's shell. Pointing at a card (hover, focus, touch) also prefetches its content, so it opens at once.
 - **Explain** sits on top of the card's corner, since a button can't go inside a link.
 - **Loading bar:** a thin bar fades in while the report is still on its way.
@@ -111,7 +112,7 @@ On the home page, says when the reports may be out of date: the last sync had pr
 
 ### `RunHistory.tsx` (server)
 
-The row of colored dots for the last runs on a card.
+The row of colored dots for the last runs on a card ("Last 7 runs"). Nothing until the first run.
 
 ### `ResultsTable.tsx` (client)
 
@@ -122,8 +123,12 @@ The results table, built on TanStack Table v9.
   - `filterable` adds a filter box;
   - `sortValues` gives a column a separate sort key, such as raw times behind "Oct 2, 09:00 UTC".
 - **Alignment:** numeric columns are right-aligned.
-- **Pages:** 50 rows at a time, with Previous and Next once there are more. Sorting and filtering cover every row.
+- **Pages:** 50 rows at a time, with a `Pager` once there are more. Sorting and filtering cover every row.
 - **Splunk times:** `_time` shows as "Time", in UTC with its seconds, and sorts by the raw value (`formatCell`, `columnLabel`).
+
+### `Pager.tsx` (client)
+
+Previous and Next with where you are ("Rows 1 to 50 of 312", "Page 2 of 16"), for the results table and the report list. The buttons use `aria-disabled`, not `disabled`, so the keyboard focus stays on them at either end.
 
 ### `ReportActions.tsx` (client)
 

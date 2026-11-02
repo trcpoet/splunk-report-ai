@@ -82,6 +82,16 @@ jobs:
             -d '{"email":"admin@example.com","password":"splunk-demo-2026"}' \
             http://localhost:3000/api/auth/sign-in/email > /dev/null
           curl -fsS -b cookies.txt http://localhost:3000/api/reports | grep -q '"failed-logins-by-user"'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Browser tests against the demo data (e2e/)
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          E2E_PASSWORD: splunk-demo-2026
+        run: npm run e2e
       - name: Run the ML job
         run: docker compose --profile ml run --rm ml
       - name: Show the logs

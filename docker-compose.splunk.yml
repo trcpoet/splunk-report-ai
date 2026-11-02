@@ -1,5 +1,5 @@
 # SplunkEvents reading a real Splunk: Splunk Enterprise's free trial in Docker,
-# with dummy logs and six scheduled reports, and the connector (the sync worker
+# with dummy logs and seven scheduled reports, and the connector (the sync worker
 # in live mode) copying their runs into MongoDB through Splunk's REST API, just
 # as it would read your company's Splunk. See docs/splunk-example.md.
 #

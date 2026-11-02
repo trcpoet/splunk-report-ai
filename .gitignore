@@ -56,3 +56,9 @@ __pycache__/
 
 # ESLint's cache (npm run lint)
 .eslintcache
+
+# Browser tests (npm run e2e): the saved sign-in, results and screenshots
+/e2e/.auth/
+/e2e/results/
+/e2e/screenshots/
+/playwright-report/
