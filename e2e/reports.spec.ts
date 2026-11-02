@@ -87,7 +87,7 @@ test('a report page shows its chart and its results table', async ({ page }) => 
 test('"Explain report and SPL" sits under Copy SPL query, and opens a panel with the search', async ({ page }) => {
     const errors = watchForErrors(page);
     const { reports } = (await (await page.request.get('/api/reports')).json()) as { reports: ReportSummary[] };
-    const [first] = reports.toSorted(byLastRun);
+    const [first] = sortByLastRun(reports);
     expect(first, 'the admin should see at least one report').toBeDefined();
     if (!first) return;
     const { report } = (await (await page.request.get(`/api/reports/${first.slug}`)).json()) as { report: SplunkReport };
