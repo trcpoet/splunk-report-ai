@@ -229,7 +229,7 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `Dockerfile` | Stages:<br>• `tools`: seed and sync, as root, for docker compose;<br>• `build`;<br>• `worker`: the same scripts as user 1000, for Kubernetes;<br>• `app`: the standalone server as user 1000, its files writable by group 0 for OpenShift, with a health check.<br>A plain `docker build` builds `app`. |
 | `docker-compose.yml` | Services `mongo` (7.0), `setup` (seed and sync once), `app`, and `ml` behind the `ml` profile. `ml` runs as root, so `--plot` can write `ml/out` ([docker.md](docker.md)). |
 | `docker-compose.splunk.yml` | The real-Splunk example: `splunk` (10.0, pinned), `splunk-setup`, `feeder`, `seed`, `app`, `connector` (the worker in live mode) and `mongo` ([splunk-example.md](splunk-example.md)). |
-| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker inside. |
+| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker and an SSH server inside (`gh codespace ssh`). |
 | `deploy/helm/splunk-events/` | The Helm chart:<br>• the web Deployment, Service, and Route or Ingress;<br>• the connector and ML CronJobs;<br>• the demo-accounts Job, and the Secret.<br>`values.yaml` documents every value ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
 | `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the six reports arrive from Splunk. It runs when `lib/splunk/`, `worker/` or the example change, on Mondays, and by hand. |
