@@ -77,6 +77,14 @@ Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts
 - **`custom.ts`:** TypeScript rules a card can name with `custom:`, for what the file can't say. Empty for now.
 - **Tests:** `rules.test.ts` covers every building block. `load.test.ts` checks the real file (a card for every dummy report, limits that agree, the JSON Schema up to date) and the error messages.
 
+### `filters.ts` (pure)
+
+The home page's report filters in the address: `/?q=disk&status=warning&category=infrastructure&page=2`.
+- **`STATUS_FILTERS`:** the status chips in order, each with its word in the address (`healthy`, `warning`, `failed`, `late`, `no-runs`).
+- **`parseFilters(params, categories)`:** the filters an address asks for. An unknown status or category, or a page that isn't a whole number from 1, is ignored rather than showing nothing. Capitals don't matter.
+- **`filtersToSearch(current, filters)`:** the query string for these filters, keeping the address's other parameters. Defaults are left out, so no filters is a plain `/`.
+- **Tests:** `filters.test.ts` (reading, ignoring nonsense, writing, and reading back what it wrote).
+
 ### `icons.ts` (pure)
 
 Which icon each report shows, beside its category on its card and page.
@@ -128,7 +136,8 @@ The runs behind the home page's "Scheduled runs per day" chart and its run healt
 
 The report list on the home page.
 - **Order and pages:** newest last run first (`sortByLastRun`), `REPORTS_PER_PAGE` (20) cards a page (`paginate`), with a `Pager` below once there are more. "Showing 21 to 40 of 312 reports" says where you are. Another page scrolls to the top of the list and puts the keyboard focus on its first card; the "Showing" line is read out by itself (`aria-live`).
-- **Controls:** a search box, plus status and category filter chips. "Late" appears when some report is late, and shows those whatever their status; "No runs yet" appears when some report hasn't run. A new search or filter starts again at page 1.
+- **Controls:** a search box, plus status and category filter chips. "Late" appears when some report is late, and shows those whatever their status; "No runs yet" appears when some report hasn't run (either also shows when the address asks for it, so it can be turned off). A new search or filter starts again at page 1.
+- **In the address:** the search, filters and page are read from the address when the list appears (`useSearchParams`, then `parseFilters`), and written back on every change with `history.replaceState` (`filtersToSearch`), keeping `#reports`. Replaced, not pushed, so typing doesn't fill the history, and Back from a report comes back to the list as it was. After the first read, the list's own state wins, so a slow address update can't undo a keystroke.
 - **Props:** `reports` (summaries), `categories`.
 - **`/#reports` links** ("All Reports") land on the list even when it streams in late, or comes back from the page cache.
 
