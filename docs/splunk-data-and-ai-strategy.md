@@ -52,7 +52,7 @@ Who sees which report stays in the app, in its `user_access` groups ([report-acc
 ### The REST API, not the SDKs
 
 - **The JavaScript SDK isn't needed.** The SDKs are thin wrappers over the REST API. The sync worker already calls the five endpoints it needs (`src/splunk/transport.ts`), with retries, and it's tested against a fake Splunk. The JavaScript SDK (`splunk-sdk` on npm, at 2.0.2) points people to the Python SDK for modular inputs.
-- **Keep the sync in TypeScript.** The status rules and highlights in `src/reports/report-config.ts` are TypeScript that runs during the sync.
+- **Keep the sync in TypeScript.** The cards' rules and headline numbers (`config/report-cards.yaml`) become TypeScript functions that run during the sync (`src/reports/cards/rules.ts`).
 - **Use the Python SDK (`splunklib`) where Python already runs:** the ML job, or an agent's tool that runs a search and streams its results.
 
 ### What to copy

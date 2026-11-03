@@ -26,7 +26,7 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 | Export | What it does |
 |---|---|
 | `syncAll({ transport, mode, syncReports, timeZone, now, refreshApp, log })` | The whole sync, in five steps (below). Returns `{ reports, newRuns, errors }`. |
-| `isSyncedSearch(entry, which)` | Whether a saved search becomes a report: it must be scheduled, and listed in `report-config`, or (with `SYNC_REPORTS=emailed`, the default) email its results. |
+| `isSyncedSearch(entry, which)` | Whether a saved search becomes a report: it must be scheduled, and have a card in `config/report-cards.yaml`, or (with `SYNC_REPORTS=emailed`, the default) email its results. |
 | `listScheduledReports(transport, timeZone, now, log, which)` | The saved searches `isSyncedSearch` takes, each mapped to `ReportMeta` with its config. Searches that share a name would share a slug, so one stays (a shared one before a private copy) and the rest are logged. |
 | `scheduledRunSids(transport, report, count)` | The sids of a report's scheduled runs in Splunk's history, newest first. Runs started by hand don't count. |
 | `fetchRun(transport, report, sid)` | One run's facts and results, or `null` while it's still running. `npm run splunk:check` reads a run with it too. |
@@ -34,7 +34,7 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
-2. It lists the scheduled reports, then fetches each one's new runs into `report_runs`.
+2. It reads the report cards and lists the scheduled reports, then fetches each one's new runs into `report_runs`. A mistake in the cards file stops the sync here, before any report changes, and the problems are saved as its `lastError`.
 3. It recomputes each `reports` document: the latest run, the last `HISTORY_SIZE` (7) runs, highlights and the chart (`map.ts`).
 4. It marks reports that are no longer scheduled as `disabled`. If live Splunk lists no reports at all, it hides nothing and records an error instead: that's more likely a token that lost its access.
 5. It records the finish and the time zone (`SPLUNK_TZ`) in `sync_state`, then calls `POST /api/revalidate` twice, `SECOND_REFRESH_MS` (3 s) apart, when `APP_URL` and `REVALIDATE_SECRET` are set.
@@ -43,7 +43,7 @@ What `syncAll` does:
 
 ## `settings.ts`
 
-The sync worker's settings: **`readSyncSettings(env)`** reads `SPLUNK_MODE`, `SPLUNK_BASE_URL`, the token, `SPLUNK_TZ`, `SYNC_INTERVAL_MINUTES` and `SYNC_REPORTS`, and checks them all before the worker starts. A `SettingsError` lists every problem at once; port 8000 (Splunk Web) is a warning. **`transportFor(settings)`** is the fixture transport or `httpTransport`. Used by `worker/sync.ts` and `scripts/splunk-check.ts`. Tested in `settings.test.ts`.
+The sync worker's settings: **`readSyncSettings(env)`** reads `SPLUNK_MODE`, `SPLUNK_BASE_URL`, the token, `SPLUNK_TZ`, `SYNC_INTERVAL_MINUTES` and `SYNC_REPORTS`, and checks them all before the worker starts. A `SettingsError` lists every problem at once; port 8000 (Splunk Web) is a warning. **`transportFor(settings)`** is the fixture transport or `httpTransport`. Used by `worker/sync.ts` and the scripts (`splunk-check.ts`, `card-preview.ts`, `splunk-tiles.ts`). Tested in `settings.test.ts`.
 
 ## `errors.ts` (pure)
 
@@ -56,7 +56,27 @@ Tested in `errors.test.ts`.
 
 ## `check.ts`
 
-**`checkSplunk(transport, { where, syncReports })`**, behind `npm run splunk:check`: tests the connection one step at a time, only reading. Splunk answers; the token works (`/services/authentication/current-context`: the user and its roles); the scheduled searches it can see and how many the sync takes; the reports in `report-config` that Splunk doesn't have (a warning); and that a run's results can be read: the newest finished run, read with the sync's own `fetchRun`, so a run still going is skipped. Each result is `pass`, `warn` or `fail`, with a hint for the last two. **`allPassed(results)`** is false when any failed. Tested in `check.test.ts` against the fixture transport.
+**`checkSplunk(transport, { where, syncReports })`**, behind `npm run splunk:check`: tests the connection one step at a time, only reading. Splunk answers; the token works (`/services/authentication/current-context`: the user and its roles); the scheduled searches it can see and how many the sync takes; the cards for reports Splunk doesn't have (a warning); that a run's results can be read: the newest finished run, read with the sync's own `fetchRun`, so a run still going is skipped; and, once that passes, that every column a card names is in its report's newest results (up to `CARDS_TO_CHECK`, 50 cards). Each result is `pass`, `warn` or `fail`, with a hint for the last two. **`allPassed(results)`** is false when any failed. Tested in `check.test.ts` against the fixture transport.
+
+## `preview.ts`
+
+What `npm run card:preview` shows, read the way the sync reads it, without writing anything.
+- **`findReport(transport, nameOrSlug, { timeZone, syncReports })`:** the scheduled report the sync would take, by its Splunk name (any capitals) or slug, and the names of all the reports it takes, which the script lists when nothing matches.
+- **`newestFinishedRun(transport, report)`:** the newest of its last 10 scheduled runs that finished and still has its results, read with the sync's `scheduledRunSids` and `fetchRun`. Runs still going, failed runs and runs whose results expired are skipped.
+- **`previewReport(transport, report)`:** that run, the headline numbers, chart and status the sync would work out (`deriveReportFields` in `map.ts`), whether the report has a card, and the columns the card names that the results don't have (`unknownColumns`).
+
+Tested in `preview.test.ts` against the fixture transport.
+
+## `tiles.ts`
+
+Reads a Splunk dashboard's tiles for `npm run splunk:tiles`, from `/servicesNS/-/-/data/ui/views`.
+- **Both kinds of dashboard:** `studioTiles(definition)` reads Dashboard Studio's JSON (its data sources, chained searches and saved-search references, and each single value's color ranges); `simpleXmlTiles(xml)` reads classic Simple XML (`<single>`, `<chart>`, `<table>`, base searches with post-process searches, `rangeValues` and `rangeColors`). `tilesOf(eaiData)` picks the right one.
+- **`joinSearch(parts)`:** a base search and the steps chained onto it, as one search, adding the `|` a post-process step may leave out.
+- **`inputsOf(search)`:** the dashboard inputs a search uses (`$time_tok$`), which a scheduled report can't have.
+- **`findDashboard(transport, nameOrLabel)`:** a dashboard by its name or its title.
+- **`guessColumn(search)` and `draftCard(tile)`:** a draft card in YAML. The column comes from the search's last step (`AS "Free GB"`, or the `stats` function). A single value gets `chart: none` and a `first` headline number; color ranges become a `fail` rule (the worst range) and a `warn` rule (the next one), `above` or `below` from which end is red.
+
+Tested in `tiles.test.ts` with dashboards in both formats.
 
 ## `transport.ts`
 
@@ -114,7 +134,7 @@ The 10 dummy reports the demo runs on.
 ## `example/`: the Splunk example's reports and logs
 
 For the real-Splunk example ([splunk-example.md](../splunk-example.md)). The app never imports it.
-- **`searches.ts`:** `exampleSearches()` gives six of the dummy reports as Splunk saved searches. Each has the fixture SPL plus a last step that names the columns the way `src/reports/report-config.ts` expects, and also the report's time range, recipients and chart. `EXAMPLE_INDEXES` lists the indexes the logs go to.
+- **`searches.ts`:** `exampleSearches()` gives six of the dummy reports as Splunk saved searches. Each has the fixture SPL plus a last step that names the columns the way its card in `config/report-cards.yaml` expects, and also the report's time range, recipients and chart. `EXAMPLE_INDEXES` lists the indexes the logs go to.
 - **`events.ts` (pure):** `eventsForMinute(minute, { live, now })` makes one minute of dummy logs, seeded so a given minute always comes out the same. The logs are Windows and SSH sign-ins, web requests, firewall denies, disk space, and group changes.
   - Planted on purpose: web-03 over the error budget, db-02's `/data` at 96%, and db-03 and app-07 going quiet.
   - Password spraying happens at half past each hour, from the feeder only.

@@ -230,7 +230,7 @@ describe('fixture pipeline', () => {
         }
     });
 
-    test('picks charts from the Splunk display settings and report-config', async () => {
+    test('picks charts from the Splunk display settings and the cards', async () => {
         const charts = Object.fromEntries((await synced()).map(({ fixture, derived }) => [fixture.slug, derived.chart]));
 
         assert.equal(charts['privileged-group-changes'], null);
@@ -342,7 +342,7 @@ describe('charts of live results', () => {
         assert.deepEqual(chart?.series, ['web-01', 'web-02']);
     });
 
-    test('a measure picked in report-config stays one measure', () => {
+    test('a measure picked on a card stays one measure', () => {
         const chart = resolveChart('column', overTime(['web-01', 'web-02']), { y: 'web-02' });
 
         assert.equal(chart?.type, 'column');
@@ -398,11 +398,11 @@ describe('which scheduled searches the sync takes (SYNC_REPORTS)', () => {
     const neither = entry('A quiet search', { 'action.email': false });
     const unscheduled = entry('Failed Login Attempts by User', { is_scheduled: false });
 
-    test('emailed, the default: every emailed search, plus the ones in report-config', () => {
+    test('emailed, the default: every emailed search, plus the ones with a card', () => {
         assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search)), [true, true, false]);
     });
 
-    test('configured: only the ones in report-config', () => {
+    test('configured: only the ones with a card', () => {
         assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search, 'configured')), [false, true, false]);
     });
 

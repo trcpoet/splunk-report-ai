@@ -15,7 +15,8 @@ describe('checkSplunk', () => {
     test('passes every check against the dummy reports', async () => {
         const results = await checkSplunk(fixtureTransport(), options);
 
-        assert.deepEqual(outcomes(results), ['pass', 'pass', 'pass', 'pass', 'pass']);
+        assert.deepEqual(outcomes(results), ['pass', 'pass', 'pass', 'pass', 'pass', 'pass']);
+        assert.match(results[5]!.text, /^The 10 cards checked name only columns their reports' results have/);
         assert.match(results[1]!.text, /signed in as splunk-events-sync, with roles splunk_events_reader/);
         assert.match(results[2]!.text, new RegExp(`can see ${reports.length} scheduled searches\\. The sync takes ${reports.length}`));
         assert.match(results[4]!.text, /Read the newest finished run of "[^"]+": \d+ rows, of \d+ results/);
@@ -47,11 +48,11 @@ describe('checkSplunk', () => {
         assert.match(results.at(-1)!.text, /the sync takes none of them \(SYNC_REPORTS=configured\)/);
     });
 
-    test("warns about reports in report-config that Splunk doesn't have", async () => {
+    test("warns about cards for reports Splunk doesn't have", async () => {
         const results = await checkSplunk(fixtureTransport(reports.slice(0, 3)), options);
         const warning = results.find(({ outcome }) => outcome === 'warn');
 
-        assert.match(warning!.text, new RegExp(`^${reports.length - 3} of the \\d+ reports in src/reports/report-config.ts`));
+        assert.match(warning!.text, new RegExp(`^${reports.length - 3} of the \\d+ cards in config/report-cards.yaml`));
         assert.ok(allPassed(results));
     });
 
@@ -81,6 +82,6 @@ describe('checkSplunk', () => {
         const results = await checkSplunk(running, options);
 
         assert.ok(allPassed(results));
-        assert.match(results.at(-1)!.text, /^Read the newest finished run of/);
+        assert.ok(results.some(({ text }) => text.startsWith('Read the newest finished run of')));
     });
 });

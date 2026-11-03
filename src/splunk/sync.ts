@@ -47,11 +47,12 @@ function oneReportPerSlug(reports: ScheduledReport[], log: Log) {
     return [...kept.values()];
 }
 
-// Whether a saved search becomes a report: it must be scheduled, and listed in
-// report-config, or (with SYNC_REPORTS=emailed, the default) email its results.
+// Whether a saved search becomes a report: it must be scheduled, and have a card
+// in config/report-cards.yaml, or (with SYNC_REPORTS=emailed, the default)
+// email its results.
 export function isSyncedSearch(entry: SplunkEntry<SavedSearchContent>, which: SyncReports = 'emailed') {
     if (!toBool(entry.content.is_scheduled) || !entry.content.cron_schedule) return false;
-    if (reportConfig[entry.name]) return true;
+    if (reportConfig()[entry.name]) return true;
     return which === 'emailed' && toBool(entry.content['action.email']);
 }
 
@@ -63,10 +64,11 @@ export async function listScheduledReports(transport: SplunkTransport, timeZone:
     ]);
     const appLabels = Object.fromEntries(apps.entry.map((app) => [app.name, app.content.label ?? app.name]));
 
+    const configs = reportConfig();
     const reports = searches.entry
         .filter((entry) => isSyncedSearch(entry, which))
         .map((entry) => {
-            const config = reportConfig[entry.name];
+            const config = configs[entry.name];
             return { entry, config, meta: mapSavedSearch(entry, { config, appLabels, timeZone, now }) };
         });
 

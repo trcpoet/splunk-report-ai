@@ -60,7 +60,7 @@ After a sync, when there are new runs: `npm run ml` on the machine that runs the
 
 ## What it can't do yet
 
-- **Choose how to show a report.** Learning which chart suits a report would need many reports, each with a label for which chart worked. 9 reports is far too few. Charts come from the chart saved in Splunk, plus `src/reports/report-config.ts`.
+- **Choose how to show a report.** Learning which chart suits a report would need many reports, each with a label for which chart worked. 9 reports is far too few. Charts come from the chart saved in Splunk, plus each report's card in `config/report-cards.yaml`.
 - **Choose which reports to collect.** The sync copies every scheduled report that emails its results. The scores could later decide which runs to keep longer, but that's a decision for the people who use the reports, not for a model.
 - **Be precise with little history.** With about 7 runs per report the scores are rough. They get better as MongoDB keeps more runs (`RUN_RETENTION_DAYS`).
 - **Learn anything before people vote.** Until there are 20 votes of both kinds, only the Isolation Forest runs.

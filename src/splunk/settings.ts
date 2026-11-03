@@ -7,9 +7,9 @@ import { httpTransport, splunkTokenFromEnv, type SplunkTransport } from './trans
 
 // Which scheduled searches become reports:
 // - 'emailed' (the default): every one that emails its results, plus the ones
-//   in src/reports/report-config.ts;
-// - 'configured': only the ones in src/reports/report-config.ts, for a Splunk with
-//   more emailed searches than the app should show.
+//   with a card in config/report-cards.yaml;
+// - 'configured': only the ones with a card, for a Splunk with more emailed
+//   searches than the app should show.
 export type SyncReports = 'emailed' | 'configured';
 
 export type SyncSettings = {

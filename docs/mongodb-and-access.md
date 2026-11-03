@@ -88,14 +88,14 @@ Splunk ──► sync worker ──► MongoDB ──► app ──► browser
 
 ## Who sees which report
 
-Admins see every report. Anyone else sees a report when at least one of their groups (in `user_access`) is also one of the report's groups (from `src/reports/report-config.ts`, or else its email lists). [Report settings and access](report-access.md) explains the rule, every `report-config.ts` setting, and a worked example of setting up teams.
+Admins see every report. Anyone else sees a report when at least one of their groups (in `user_access`) is also one of the report's groups (from its card in `config/report-cards.yaml`, or else its email lists). [Report settings and access](report-access.md) explains the rule, the card's settings, and a worked example of setting up teams.
 
 ## Ideas for later: where users' groups could come from
 
 Today's rule (user groups ∩ report groups) stays the same in every option below. Only the source of the groups changes.
 
 1. **Edited by hand (today).** Admins update `user_access` in mongosh. Simplest, but doesn't scale and leaves no record of who changed what.
-2. **An admin page in the app.** Edit users' groups and each report's groups in the browser, and log every change in an `access_audit` collection. Report groups set here would override `report-config.ts`, so changing access wouldn't need a deploy.
+2. **An admin page in the app.** Edit users' groups and each report's groups in the browser, and log every change in an `access_audit` collection. Report groups set here would override the cards' `groups`, so changing access wouldn't need a deploy.
 3. **Your company login provider (Okta, Entra, Google Workspace).** At sign-in, copy the user's groups into `user_access` (the model already has `source: 'idp'` for this). HR and IT keep groups up to date, not you. This is the best long-term option and fits the Supabase/AWS move.
 4. **Splunk's own permissions.** The sync already stores each report's Splunk read roles (`splunk.readRoles`). You could also fetch users' Splunk roles, so someone sees exactly what Splunk lets them see. The catch: Splunk roles are usually too broad, often "everyone in the app".
 5. **Expand email lists.** If `secops@` is a real mailing list, look up its members through Google or Microsoft Graph. Then "receives the email" means "can see the report", which matches how people already think about it.

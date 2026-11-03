@@ -112,12 +112,12 @@ sequenceDiagram
     A->>B: only the reports this viewer may see
 ```
 
-- **Which searches are synced.** Scheduled saved searches that email their results, plus any listed in `src/reports/report-config.ts`. A search missing from `report-config` is still synced, but only admins can see it.
+- **Which searches are synced.** Scheduled saved searches that email their results, plus any with a card in `config/report-cards.yaml`. An emailed search without a card is still synced, but only admins can see it.
 - **Only new runs.** The worker skips sids it has already stored, so running it again adds only new runs. One failing report doesn't stop the others.
 - **Splunk forgets, MongoDB remembers.** Splunk deletes a run's results after `dispatch.ttl`, two schedule periods by default. The worker must run more often than that, and MongoDB keeps the history.
 - **Derived fields are worked out once, in the worker.** `src/splunk/map.ts` turns Splunk's JSON into the app's models:
   - the schedule text from the cron line;
-  - the status, from the report's status rule in `report-config`;
+  - the status, from the `warn` and `fail` rules on the report's card;
   - the chart and the headline numbers.
   The web app reads finished documents and computes nothing heavy per request.
 - **Two refreshes.** The second ping, 3 s after the first, catches a page that read the database just before the new data landed.
@@ -170,7 +170,7 @@ Chats, votes and usage are never cached. Their reads start with `await connectio
 flowchart LR
     signin["Sign-in<br/>Better Auth, email + password"] --> session["Session cookie"]
     session --> viewer["getViewer()<br/>role and groups from user_access"]
-    report["Report allowedGroups<br/>(report-config groups,<br/>or its email lists)"] --> canview{"canView()<br/>src/people/access.ts"}
+    report["Report allowedGroups<br/>(its card's groups,<br/>or its email lists)"] --> canview{"canView()<br/>src/people/access.ts"}
     viewer --> canview
     canview -- "admin, or a shared group" --> shown["Shown"]
     canview -- "otherwise" --> missing["404, like a missing report"]
@@ -179,7 +179,7 @@ flowchart LR
 - **Sign-in** is Better Auth with email and password (`src/people/auth.ts`, `src/people/auth-options.ts`). Sign-up is off; accounts come from `npm run seed`. `/api/auth` serves only sign-in, sign-out and session lookups.
 - **Access is kept apart from sign-in.** `user_access` holds each person's role and groups by email. Moving to company SSO changes how that collection is filled, not the access code.
 - **One rule.** `canView()` in `src/people/access.ts`: admins see everything. Anyone else sees a report when one of their groups is in its `allowedGroups`.
-- **`allowedGroups`** come from the report's `groups` in `src/reports/report-config.ts`, or else from its email recipients (`secops@example.com` → `secops`). See [report-access.md](report-access.md).
+- **`allowedGroups`** come from the `groups` on the report's card in `config/report-cards.yaml`, or else from its email recipients (`secops@example.com` → `secops`). See [report-access.md](report-access.md).
 - **Everything per person is scoped to them.** Chats (`src/ai/chats.ts`), votes (`src/ai/feedback.ts`) and saved examples (`src/ai/spl-examples.ts`) are scoped the same way. For anyone else, a chat doesn't exist.
 - **The AI sees only what the viewer sees.** Its prompt is built from `src/reports/dal.ts`'s answer for that viewer.
 

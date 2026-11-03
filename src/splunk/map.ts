@@ -236,9 +236,9 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
         recipients,
         category: config?.category ?? 'Other',
         tags: config?.tags ?? [],
-        // Reports missing from report-config are admin-only until someone adds
-        // them. So is a private search with a configured name: its owner decides
-        // what it runs, so it can't take on the report's groups.
+        // Reports without a card are admin-only until someone gives them one.
+        // So is a private search with a card's name: its owner decides what it
+        // runs, so it can't take on the report's groups.
         allowedGroups: config && acl?.sharing !== 'user' ? (config.groups ?? groupsFromRecipients(recipients)) : [],
         chartType: config?.chart === 'none' ? null : (config?.chart?.type ?? chartTypeFromDisplay(content)),
         nextRun: parseSplunkTime(content.next_scheduled_time) ?? nextRunFromCron(cron, timeZone, now),

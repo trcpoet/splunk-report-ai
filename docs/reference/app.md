@@ -111,7 +111,7 @@ One report.
   8. **Actions and related:** Download CSV and Copy SPL (`ReportActions`), then related reports (`getSimilarReports`, as `ReportCard`s).
 - **Missing or hidden:** `getVisibleReport` returns `null` for both, and the page calls `notFound()`. `generateMetadata` titles them both "Report not found".
 - **Exports:** `generateMetadata`, `ReportPage` (default).
-- **Change it when:** a report needs another section. Most per-report behavior belongs in `src/reports/report-config.ts` instead.
+- **Change it when:** a report needs another section. Most per-report behavior belongs in the report's card in `config/report-cards.yaml` instead.
 
 ### `reports/[slug]/not-found.tsx`
 

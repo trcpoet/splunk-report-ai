@@ -5,7 +5,7 @@ import { describe, test } from 'node:test';
 import { reportConfig } from '@/reports/report-config';
 
 // docs/report-catalog.md explains every report to people who don't read the
-// code. These tests keep it from falling behind src/reports/report-config.ts.
+// code. These tests keep it from falling behind config/report-cards.yaml.
 
 const catalog = readFileSync(join(process.cwd(), 'docs', 'report-catalog.md'), 'utf8');
 
@@ -19,22 +19,22 @@ const sections = (() => {
 })();
 
 describe('docs/report-catalog.md', () => {
-    test('has a section for every report in src/reports/report-config.ts, with its slug', () => {
-        for (const [name, { slug }] of Object.entries(reportConfig)) {
+    test('has a section for every card in config/report-cards.yaml, with its slug', () => {
+        for (const [name, { slug }] of Object.entries(reportConfig())) {
             const section = sections.get(name);
             assert.ok(section, `Add a "### ${name}" section to docs/report-catalog.md.`);
             assert.ok(section.includes(`\`${slug}\``), `The "${name}" section should give its slug, ${slug}.`);
         }
     });
 
-    test('has no section for a report that src/reports/report-config.ts no longer lists', () => {
+    test('has no section for a report without a card', () => {
         for (const name of sections.keys()) {
-            assert.ok(name in reportConfig, `"${name}" is in docs/report-catalog.md but not in src/reports/report-config.ts.`);
+            assert.ok(name in reportConfig(), `"${name}" is in docs/report-catalog.md but has no card in config/report-cards.yaml.`);
         }
     });
 
     test('lists every report in its table at a glance', () => {
-        for (const name of Object.keys(reportConfig)) {
+        for (const name of Object.keys(reportConfig())) {
             assert.ok(catalog.includes(`| [${name}](#`), `Add "${name}" to the table at a glance.`);
         }
     });

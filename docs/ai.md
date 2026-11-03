@@ -220,7 +220,7 @@ The full recommendation is in [splunk-data-and-ai-strategy.md](splunk-data-and-a
 ## Splunk's JavaScript SDK, or Python?
 
 - **The sync uses neither.** `src/splunk/transport.ts` calls Splunk's REST API directly: five read-only endpoints, with retries, tested against fake Splunk responses (`src/splunk/fixtures/transport.ts`). The JavaScript SDK (`splunk-sdk` on npm) wouldn't add anything.
-- **Keep the sync in TypeScript.** The status rules and highlights in `src/reports/report-config.ts` are TypeScript, and the sync runs them, so a Python sync would mean writing them twice.
+- **Keep the sync in TypeScript.** The sync turns each card's rules and headline numbers (`config/report-cards.yaml`) into TypeScript functions (`src/reports/cards/rules.ts`), so a Python sync would mean writing that twice.
 - **Python is the better tool for analysis:** pandas for tables of runs, and scikit-learn for anomaly detection. A Python job can read MongoDB and write its results back, so MongoDB is the hand-off between the two languages. Splunk's Python SDK (`splunklib`) is worth adding only if that analysis needs raw events beyond the scheduled reports.
 
 ## Ideas for later

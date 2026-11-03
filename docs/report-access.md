@@ -1,6 +1,6 @@
 # Report settings and access
 
-How `src/reports/report-config.ts` works, and how to control which team sees which report.
+How a report's card (`config/report-cards.yaml`) decides who sees it, and how to control which team sees which report.
 
 ## The idea in one picture
 
@@ -24,7 +24,7 @@ That's the whole rule. It lives in `src/people/access.ts`, and every page and AP
 | The user and the report share a group name | yes |
 | They share no group name | no. The report looks like it doesn't exist ("Report not found"), so its name doesn't leak. |
 | The report has no groups | admins only |
-| The report isn't in `report-config.ts` | admins only |
+| The report has no card | admins only |
 
 Group names must match **exactly**: `secops` and `SecOps` are different groups. Use lowercase.
 
@@ -32,13 +32,13 @@ Group names must match **exactly**: `secops` and `SecOps` are different groups. 
 
 The sync works out each report's groups and saves them in MongoDB (`reports.allowedGroups`):
 
-1. **The report isn't in `report-config.ts`, or it's someone's private search with a configured name:** no groups, so admins only.
-2. **The report is in `report-config.ts` with `groups`:** exactly those groups.
-3. **The report is in `report-config.ts` without `groups`:** the names of the email lists Splunk sends it to. `secops@acme.com, it-director@acme.com` becomes `secops, it-director`.
+1. **The report has no card, or it's someone's private search with the same name as a card:** no groups, so admins only.
+2. **The report's card has `groups`:** exactly those groups.
+3. **The report's card has no `groups`:** the names of the email lists Splunk sends it to. `secops@acme.com, it-director@acme.com` becomes `secops, it-director`.
 
 Option 3 means "whoever got the email can see the report", which is usually what people expect. Option 2 is safer: it's written down, and it keeps working after you turn off the email.
 
-> **Before you turn off a report's email in Splunk**, write its groups into `report-config.ts`. The email list disappears from Splunk with the email action, and so would the groups in option 3. The report would become admin-only.
+> **Before you turn off a report's email in Splunk**, write its groups into its card. The email list disappears from Splunk with the email action, and so would the groups in option 3. The report would become admin-only.
 
 ## Where a user's groups come from
 
@@ -52,38 +52,35 @@ Each signed-in user has a document in MongoDB's `user_access` collection:
 - Today the only logins are the demo users in `src/people/demo-users.ts`, created by `npm run seed`. Public sign-up is off.
 - Later, company sign-in (SSO) will copy each person's groups from Okta or Entra ID into `user_access` at sign-in. The rule above stays the same.
 
-## What's in `src/reports/report-config.ts`
+## What's in a report's card
 
-Splunk knows a report's search, schedule and email list. It doesn't know which category the app should file it under, which teams may see it, or what counts as a warning. `report-config.ts` holds those extra settings, one entry per report:
+Splunk knows a report's search, schedule and email list. It doesn't know which category the app should file it under, which teams may see it, or what counts as a warning. Each report's **card** in `config/report-cards.yaml` holds those extra settings:
 
-```ts
-export const reportConfig: Record<string, ReportConfig> = {
-    'Failed Login Attempts by User': {        // ← the report's exact name in Splunk
-        slug: 'failed-logins-by-user',         // ← its web address: /reports/failed-logins-by-user
-        category: 'Security',
-        tags: ['security', 'authentication', 'daily'],
-        groups: ['secops', 'it-director'],     // ← who may see it
-    },
-};
+```yaml
+Failed Login Attempts by User:       # ← the report's exact name in Splunk
+  slug: failed-logins-by-user         # ← its web address: /reports/failed-logins-by-user
+  category: Security
+  tags: [security, authentication, daily]
+  groups: [secops, it-director]       # ← who may see it
 ```
 
 | Setting | Required? | What it does |
 |---|---|---|
-| the key (`'Failed Login Attempts by User'`) | yes | The saved search name, **exactly** as in Splunk (same capitals, spaces and punctuation). If it doesn't match, the entry is ignored and the report stays admin-only. |
+| the name (`Failed Login Attempts by User`) | yes | The saved search name, **exactly** as in Splunk (same capitals, spaces and punctuation). If it doesn't match, the card is for nothing and the report stays admin-only. Put a name with `: ` in it in double quotes. |
 | `slug` | yes | The report's web address, `/reports/<slug>`. Lowercase words joined by `-`, unique. Don't change it later, or saved links break. |
 | `category` | yes | One of `Security`, `Operations`, `Infrastructure`, `Business`, `Compliance`, `Other`. Used by the filters on the overview page. |
-| `tags` | yes | Short labels for search, e.g. `['web', 'hourly']`. Can be `[]`. |
+| `tags` | no | Short labels for search, e.g. `[web, hourly]`. |
 | `groups` | no | Who may see it (see above). Without it, the report's email list names. |
-| `chart` | no | `{ y: 'count' }` picks which column to plot. `{ type: 'line' }` overrides the chart saved in Splunk (`bar`, `column`, `line`, `area`). `'none'` shows the table only. |
+| `chart` | no | `{ y: count }` picks which column to plot. `{ type: line }` overrides the chart saved in Splunk (`bar`, `column`, `line`, `area`). `none` shows the table only. |
 | `index` | no | Replaces the "Index" text the app works out from the SPL. |
-| `statusRule` | no | A small function that turns results into a warning, e.g. "warn when any host is above 2% errors". |
-| `highlights` | no | A small function that picks the headline numbers. The default is the result count, the top row and the search time. |
+| `warn`, `fail` | no | When the report shows "Warning" or "Failed", e.g. "warn when any host is above 2% errors", with the message to show. |
+| `highlights` | no | The headline numbers. The default is the result count, the top row and the search time. |
 
-Adding an entry also **brings a report into the app**: a scheduled report that doesn't email anyone is synced only if it's listed here.
+Adding a card also **brings a report into the app**: a scheduled report that doesn't email anyone is synced only if it has a card. Every setting, with examples: [adding-report-cards.md](adding-report-cards.md).
 
 ### Live reports use Splunk's column names
 
-The dummy reports have friendly column names like `Error rate %`. Real reports use whatever fields the SPL returns, such as `host`, `count` or `error_rate`. In `chart.y`, `statusRule` and `highlights`, use the names exactly as they appear in the report's results table in the app. To show nicer names, rename them in the SPL (`| rename error_rate AS "Error rate %"`).
+The dummy reports have friendly column names like `Error rate %`. Real reports use whatever fields the SPL returns, such as `host`, `count` or `error_rate`. In `chart.y`, `warn`, `fail` and `highlights`, use the names exactly as they appear in the report's results table in the app, or in `npm run card:preview`. To show nicer names, rename them in the SPL (`| rename error_rate AS "Error rate %"`).
 
 ## Example: setting up three teams
 
@@ -97,28 +94,27 @@ Say your company has these scheduled reports and teams:
 
 **1. Pick one group name per team.** Use the team's email list name when it has one, so the defaults line up: `security`, `sre`, `finance`, `it-director`.
 
-**2. Give each report its groups** in `src/reports/report-config.ts`:
+**2. Give each report its groups** in its card in `config/report-cards.yaml`:
 
-```ts
-'SOC - Failed Logins': {
-    slug: 'soc-failed-logins',
-    category: 'Security',
-    tags: ['security', 'daily'],
-    groups: ['security'],
-},
-'Prod 5xx Errors': {
-    slug: 'prod-5xx-errors',
-    category: 'Operations',
-    tags: ['web', 'hourly'],
-    groups: ['sre'],
-    chart: { y: 'error_rate' },
-},
-'Payments Daily Summary': {
-    slug: 'payments-daily-summary',
-    category: 'Business',
-    tags: ['payments', 'daily'],
-    groups: ['finance', 'it-director'],
-},
+```yaml
+SOC - Failed Logins:
+  slug: soc-failed-logins
+  category: Security
+  tags: [security, daily]
+  groups: [security]
+
+Prod 5xx Errors:
+  slug: prod-5xx-errors
+  category: Operations
+  tags: [web, hourly]
+  groups: [sre]
+  chart: { y: error_rate }
+
+Payments Daily Summary:
+  slug: payments-daily-summary
+  category: Business
+  tags: [payments, daily]
+  groups: [finance, it-director]
 ```
 
 **3. Run `npm run sync`** so MongoDB picks up the new groups.
@@ -140,11 +136,11 @@ db.user_access.updateOne({ email: 'it.director@example.com' }, { $set: { groups:
 
 | You change | Then | It applies |
 |---|---|---|
-| `groups` (or any setting) in `report-config.ts` | run `npm run sync` | right after the sync |
+| `groups` (or any setting) in a card | run `npm run sync` | right after the sync |
 | a user's groups or role in `user_access` | nothing | on their next page load |
 | the email list in Splunk (for reports without `groups`) | wait for the next sync | right after the sync |
 
-**Don't edit `reports.allowedGroups` in MongoDB by hand.** The next sync overwrites it from `report-config.ts`.
+**Don't edit `reports.allowedGroups` in MongoDB by hand.** The next sync overwrites it from the cards.
 
 ## Checking who sees what
 
@@ -159,4 +155,4 @@ Or ask Claude Code: the read-only `mongodb` MCP server can run the same queries.
 
 ## Working on a work laptop
 
-`report-config.ts` is committed to git, and the public repo (`trcpoet/splunk-report-ai`) is visible to anyone. Real report names, team names and rules are company information, so don't push them there. Keep them on the work laptop, or in a private repo your company approves. See [Connecting live Splunk](connecting-live-splunk.md).
+`config/report-cards.yaml` is committed to git, and the public repo (`trcpoet/splunk-report-ai`) is visible to anyone. Real report names, team names and rules are company information, so don't push them there. Keep them on the work laptop, or in a private repo your company approves. See [Connecting live Splunk](connecting-live-splunk.md).
