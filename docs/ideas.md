@@ -6,7 +6,6 @@ Ideas for making the app more useful, with the smallest version of each that wou
 
 | Idea | What it gives people | The smallest version |
 |---|---|---|
-| **Filters in the address** | A filtered view can be shared or bookmarked ("Security reports with warnings"), and Back works. | The home page's category, status and search go into the URL, as in `?category=Security&status=warning`. |
 | **Jump to a report with ⌘K** | Open any report, or start an Ask AI question, from anywhere without scrolling. | shadcn's `Command` (cmdk) over the report titles and tags the page already has. |
 
 ## Bigger
@@ -41,3 +40,4 @@ Report icons are built (see [The icon](adding-report-cards.md#the-icon)). These 
 - **Report icons:** an icon beside each report's category, picked from its words or set with `icon:` ([The icon](adding-report-cards.md#the-icon)).
 - **Runbook and contact on each card:** `runbook:` and `contact:` in a card. When the report warns or fails, its page says what to do and who to ask, and the briefing links the runbook ([the fields](adding-report-cards.md#the-basics)). A card can't hold a second link (the whole card is one), so the card itself doesn't show them.
 - **A "Late" badge:** when a run that was due hasn't reached the app (more than 15 minutes, or twice the report's usual run time, after it was due), the report shows **Late** beside its status, counts as needing attention, and can be filtered. It's worked out at each sync from the schedule and Splunk's next run (`lateSince` in `src/splunk/map.ts`), so it works on the demo data too, where "Web Requests by Host" is late.
+- **Filters in the address:** the home page's search, status, category and page are in the address (`/?status=warning&category=security`), so a filtered list can be shared or bookmarked, and Back from a report finds it as it was (`src/reports/filters.ts`).

@@ -1,34 +1,54 @@
 'use client';
 
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Pager from "@/reports/components/Pager";
 import ReportCard from "@/reports/components/ReportCard";
+import { filtersToSearch, parseFilters, STATUS_FILTERS, type Filters } from "@/reports/filters";
 import { formatNumber } from "@/shared/format";
-import { paginate, sortByLastRun, type ReportCategory, type ReportHealth, type ReportSummary } from "@/reports/reports";
+import { paginate, sortByLastRun, type ReportCategory, type ReportSummary } from "@/reports/reports";
 
 // The home page's report list: search and filters, newest last run first,
-// REPORTS_PER_PAGE cards a page.
+// REPORTS_PER_PAGE cards a page. The filters live in the address too
+// (src/reports/filters.ts), so a filtered list can be shared, and coming back
+// from a report finds it as it was.
 
-// 'late' isn't a status: a late report keeps its newest run's status too, so
-// it shows under both.
-type StatusFilter = ReportHealth | 'late' | 'all';
+// How long typing pauses before the address catches up. Browsers limit how
+// often a page may change its address (Safari: 100 times in 10 seconds).
+const TYPING_DELAY_MS = 300;
 
-const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
-    { label: 'All statuses', value: 'all' },
-    { label: 'Healthy', value: 'success' },
-    { label: 'Warning', value: 'warning' },
-    { label: 'Failed', value: 'failed' },
-    { label: 'Late', value: 'late' },
-    { label: 'No runs yet', value: 'none' },
-];
+// The filters as their part of the address, to tell whether two agree.
+const keyOf = (filters: Filters) => filtersToSearch('', filters);
 
 const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; categories: ReportCategory[] }) => {
-    const [query, setQuery] = useState('');
-    const [status, setStatus] = useState<StatusFilter>('all');
-    const [category, setCategory] = useState<ReportCategory | 'all'>('all');
-    const [page, setPage] = useState(0);
+    // The list keeps the filters in its own state, so a keystroke shows at
+    // once, and writes them to the address (apply, below).
+    const searchParams = useSearchParams();
+    const [filters, setFilters] = useState(() => parseFilters(searchParams, categories));
+    const { query, status, category, page } = filters;
     const list = useRef<HTMLUListElement>(null);
+    const pendingWrite = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    // When something else changes the address (a link to /#reports, say),
+    // the list follows it. What the list wrote itself (`written`) isn't
+    // followed, so an address update arriving late can't undo a keystroke.
+    // Only on the list's own page: Next keeps this page, hidden, while a
+    // report is open, and its address (with no filters) mustn't clear the
+    // list that Back will show again.
+    const pathname = usePathname();
+    const [ownPath] = useState(pathname);
+    const fromAddress = parseFilters(searchParams, categories);
+    const addressKey = keyOf(fromAddress);
+    const [seen, setSeen] = useState(addressKey);
+    const [written, setWritten] = useState(addressKey);
+    if (pathname === ownPath && addressKey !== seen) {
+        setSeen(addressKey);
+        if (addressKey !== written && addressKey !== keyOf(filters)) setFilters(fromAddress);
+    }
+
+    // No address change after the list is gone: it would land on the next page.
+    useEffect(() => () => clearTimeout(pendingWrite.current), []);
     // Sorted once, not on every keystroke in the search box.
     const sorted = useMemo(() => sortByLastRun(reports), [reports]);
 
@@ -48,17 +68,41 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
         list.scrollIntoView({ behavior: 'instant' });
     }, []);
 
-    // A new search or filter starts again at the first page.
-    const filterBy = <T,>(set: (value: T) => void) => (value: T) => {
-        set(value);
-        setPage(0);
+    // The address, replaced rather than pushed: typing a search shouldn't fill
+    // the history, and Back from a report still comes back to this list as it
+    // was. Next keeps useSearchParams in step. If the browser refuses (too
+    // many changes too fast), the address catches up at the next change.
+    const writeAddress = (next: Filters) => {
+        const { pathname, search, hash } = window.location;
+        // A write that waited for typing to pause, after a report was opened.
+        if (pathname !== ownPath) return;
+        const wanted = filtersToSearch(search, next);
+        if (wanted === search) return;
+        try {
+            window.history.replaceState(null, '', `${pathname}${wanted}${hash}`);
+            setWritten(keyOf(next));
+        } catch {
+            // Keep the list as it is; only the address lags.
+        }
     };
+
+    // The state at once; the address at once too, or after a pause in typing.
+    const apply = (next: Filters, { typing = false } = {}) => {
+        setFilters(next);
+        clearTimeout(pendingWrite.current);
+        if (typing) pendingWrite.current = setTimeout(() => writeAddress(next), TYPING_DELAY_MS);
+        else writeAddress(next);
+    };
+
+    // A new search or filter starts again at the first page.
+    const filterBy = (change: Partial<Omit<Filters, 'page'>>, options?: { typing?: boolean }) =>
+        apply({ ...filters, ...change, page: 0 }, options);
 
     // Another page starts at the top of the list, with the keyboard focus on
     // its first card. "Showing 21 to 40 of 312 reports" is read out by itself
     // (aria-live), so focusing it would read it twice.
     const goTo = (next: number) => {
-        flushSync(() => setPage(next));
+        flushSync(() => apply({ ...filters, page: next }));
         document.getElementById('reports')?.scrollIntoView({ behavior: 'instant' });
         list.current?.querySelector<HTMLElement>('.report-card')?.focus({ preventScroll: true });
     };
@@ -73,10 +117,12 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
             .some((field) => field.toLowerCase().includes(search));
     });
     const shown = paginate(visible, page);
-    // "Late" and "No runs yet" only when some report is.
+    // "Late" and "No runs yet" only when some report is, or when the address
+    // asked for one: its chip shows as chosen, so it can be turned off.
     const statuses = STATUS_FILTERS.filter(({ value }) =>
-        value === 'late' ? reports.some((report) => report.lateSince)
-            : value !== 'none' || reports.some((report) => report.status === 'none'));
+        value === status
+        || (value === 'late' ? reports.some((report) => report.lateSince)
+            : value !== 'none' || reports.some((report) => report.status === 'none')));
 
     return (
         <div className="flex flex-col gap-6">
@@ -84,7 +130,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 <input
                     type="search"
                     value={query}
-                    onChange={(e) => filterBy(setQuery)(e.target.value)}
+                    onChange={(e) => filterBy({ query: e.target.value }, { typing: true })}
                     placeholder="Search by report, owner, index or tag"
                     aria-label="Search reports"
                 />
@@ -96,7 +142,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                             type="button"
                             className={status === value ? 'chip chip-active' : 'chip'}
                             aria-pressed={status === value}
-                            onClick={() => filterBy(setStatus)(value)}
+                            onClick={() => filterBy({ status: value })}
                         >
                             {label}
                         </button>
@@ -110,7 +156,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                             type="button"
                             className={category === value ? 'chip chip-active' : 'chip'}
                             aria-pressed={category === value}
-                            onClick={() => filterBy(setCategory)(value)}
+                            onClick={() => filterBy({ category: value })}
                         >
                             {value === 'all' ? 'All categories' : value}
                         </button>
