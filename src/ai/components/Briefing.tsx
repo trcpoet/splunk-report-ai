@@ -2,7 +2,7 @@ import Link from "next/link";
 import BriefingSummary from "@/ai/components/BriefingSummary";
 import FeedbackButtons from "@/ai/components/FeedbackButtons";
 import Sparkline from "@/shared/components/Sparkline";
-import StatusBadge from "@/reports/components/StatusBadge";
+import StatusBadge, { LateBadge } from "@/reports/components/StatusBadge";
 import { RunbookLink } from "@/reports/components/WhatToDo";
 import { PAGE_TRANSITION } from "@/shared/components/Transitions";
 import { aiStatus } from "@/ai/config";
@@ -11,7 +11,7 @@ import { getSyncInfo, getViewer, getVisibleReports } from "@/reports/dal";
 import { getVotes } from "@/ai/feedback";
 import { formatDateTime, plural } from "@/shared/format";
 import { findUnusualRun, unusualTrend } from "@/reports/insights";
-import { needsAttention, type ReportListItem } from "@/reports/reports";
+import { lateMessage, needsAttention, type ReportListItem } from "@/reports/reports";
 
 // Once the ML job has learned from enough votes which flags are worth
 // attention (docs/ml.md), those come first. Until then, title order.
@@ -66,9 +66,14 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                             <li key={report.slug}>
                                 <div className="briefing-item-head">
                                     <Link href={`/reports/${report.slug}`} transitionTypes={PAGE_TRANSITION}>{report.title}</Link>
-                                    <StatusBadge status={report.status} />
+                                    {/* A late report that was healthy shows only Late: "Healthy" here would contradict the list it's in. */}
+                                    <span className="briefing-badges">
+                                        {report.lateSince && <LateBadge since={report.lateSince} />}
+                                        {(report.status === 'warning' || report.status === 'failed') && <StatusBadge status={report.status} />}
+                                    </span>
                                 </div>
                                 {report.statusMessage && <p>{report.statusMessage}</p>}
+                                {report.lateSince && <p>{lateMessage(report)}</p>}
                                 <div className="briefing-item-actions">
                                     <span className="briefing-links">
                                         <Link href={`/ai/reports?about=${report.slug}`}>Ask about it</Link>

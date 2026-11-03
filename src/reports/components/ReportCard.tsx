@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import ExplainButton from "@/ai/components/ExplainButton";
 import ReportIcon from "@/reports/components/ReportIcon";
-import StatusBadge from "@/reports/components/StatusBadge";
+import StatusBadge, { LateBadge } from "@/reports/components/StatusBadge";
 import RunHistory from "@/reports/components/RunHistory";
 import { PAGE_TRANSITION } from "@/shared/components/Transitions";
 import { formatDateTime } from "@/shared/format";
@@ -46,7 +46,10 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
                     <ReportIcon name={report.icon} />
                     <span className="pill">{report.category}</span>
                 </div>
-                <StatusBadge status={report.status} />
+                <div className="flex flex-row flex-wrap items-center justify-end gap-1.5">
+                    {report.lateSince && <LateBadge since={report.lateSince} />}
+                    <StatusBadge status={report.status} />
+                </div>
             </div>
 
             <div className="flex flex-col gap-1.5">

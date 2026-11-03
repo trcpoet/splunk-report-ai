@@ -49,6 +49,7 @@ function describeReport(report: SplunkReport): string {
         `Schedule: ${clean(report.schedule)}, time range ${clean(report.timeRange)}`,
         `Index: ${clean(report.index)}`,
         `Last run: ${formatDateTime(report.lastRun)}${report.resultsRunAt && report.resultsRunAt !== report.lastRun ? `; results are from ${formatDateTime(report.resultsRunAt)}` : ''}`,
+        ...(report.lateSince ? [`Late: the run due at ${formatDateTime(report.lateSince)} hasn't arrived, as of the last sync`] : []),
         ...(report.highlights.length > 0
             ? [`Highlights: ${report.highlights.map(({ label, value, note }) => `${clean(label)} ${clean(value)}${note ? ` (${clean(note)})` : ''}`).join('; ')}`]
             : []),

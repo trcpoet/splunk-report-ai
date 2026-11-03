@@ -143,6 +143,7 @@ function toListItem(doc: IReport, model: ModelScores): ReportListItem {
         contact: doc.contact || undefined,
         lastRun: iso(doc.latest?.runAt),
         nextRun: iso(doc.nextRun),
+        ...(doc.lateSince ? { lateSince: iso(doc.lateSince) } : {}),
         status: doc.latest?.status ?? 'none',
         statusMessage: doc.latest?.statusMessage || undefined,
         resultCount: doc.results?.resultCount ?? 0,

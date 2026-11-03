@@ -212,6 +212,7 @@ Don't turn off certificate checks (`NODE_TLS_REJECT_UNAUTHORIZED=0`): that would
 | `config/report-cards.yaml needs fixing`, with a list | A mistake in a card: each line says where. [When something is wrong](adding-report-cards.md#when-something-is-wrong) explains each one. |
 | A report's results are older than its last run | The worker ran after Splunk deleted the newest results. Run `sync:watch` more often. |
 | A report says "No runs yet" | No run of it is stored. It may simply not have run, or the sync log says why: look for `Splunk answered 404`, which means its jobs expired or the token can't read them. |
+| A report says "Late" | A run that was due more than 15 minutes ago (or twice its usual run time) hasn't reached the app. In Splunk, check the report's schedule and the scheduler's skipped searches (`index=_internal sourcetype=scheduler status=skipped`). If Splunk did run it, the sync log's `Splunk answered 404` means its results expired before the sync copied them: sync more often. |
 | The home page says the last sync had problems | Sign in as an admin to see the reason. A report that failed shows its own reason on its page. |
 | The sync log says it skipped a report with the same name | Two saved searches share that name, and the app keeps one: a shared search over a private copy. Rename one. |
 | Schedule times are off by some hours | `SPLUNK_TZ` doesn't match the search head's timezone. |

@@ -101,7 +101,7 @@ Sign-in.
 
 One report.
 - **What it shows, in order:**
-  1. **Header:** the report's icon, category and status badge, the status message, then Explain. When the report warns or fails and its card has a `runbook` or `contact`, the message adds "What to do: open the runbook, or ask …" (`WhatToDo`). Admins also see why the last sync couldn't refresh the report (`getReportSyncError`).
+  1. **Header:** the report's icon, category and status badge (and **Late** when a run is late), the status message, then Explain. A late report also says which run is missing (`lateMessage`), in warning colors even when its newest run was healthy. When the report needs attention and its card has a `runbook` or `contact`, the message adds "What to do: open the runbook, or ask …" (`WhatToDo`). Admins also see why the last sync couldn't refresh the report (`getReportSyncError`).
   2. **Highlights:** headline tiles, with `Meter` and `Sparkline` where set.
   3. **Latest results:** the chart (`ReportChart`, small multiples, or `ReportScatter`, inside `ChartBoundary`), then the sortable, filterable results table (`ResultsTable`).
   4. **Search query (SPL):** with **Explain it step by step**, which opens Write SPL.

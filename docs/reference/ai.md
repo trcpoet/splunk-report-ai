@@ -40,7 +40,7 @@ What the model is told, in plain English: `REPORTS_PROMPT` (Ask about reports), 
 ### `context.ts` (pure)
 
 The reports as text for the AI.
-- **`reportsContext(reports, sync)`:** for each report, its status and message, highlights, the last 7 runs, its SPL, and up to `MAX_ROWS` (20) result rows.
+- **`reportsContext(reports, sync)`:** for each report, its status and message, whether a run is late, highlights, the last 7 runs, its SPL, and up to `MAX_ROWS` (20) result rows.
 - **SPL** goes in as it is, angle brackets included (`where count>5`), except that it can't close the tag around it (`safeSpl`).
 - **`splContext(reports, examples?)`:** for Write SPL.
   - With examples, the reports become a short catalog of indexes and columns, and only the examples are written out in full, closest first.
@@ -108,7 +108,7 @@ The window events between parts of the Ask AI page that don't share a parent:
 ### `suggestions.ts` (pure)
 
 Starter questions built from the viewer's own reports, with no AI call:
-- **`reportQuestions`:** "Why is X failing?" for reports needing attention, and a summary request.
+- **`reportQuestions`:** "Why is X failing?" (or warning, or late) for reports needing attention, and a summary request.
 - **`splRequests`:** searches that fit the reports' indexes.
 - **`aboutQuestion`, `explainRequest`:** the questions `?about=` and `?explain=` fill in.
 
@@ -224,7 +224,7 @@ Write SPL's examples, used for retrieval: the viewer's reports' searches, plus s
 
 What needs attention across the viewer's reports.
 - **What it lists:**
-  - reports that warn or fail (`needsAttention`), each with a **Runbook** link when its card has one;
+  - reports that warn, fail or are late (`needsAttention`), each with a **Runbook** link when its card has one. A late report shows **Late** and which run is missing; it shows its status too only when that's Warning or Failed, since "Healthy" would contradict the list;
   - newest runs that stand out (`findUnusualRun`, or the ML job's flag), with a sparkline.
 - **Votes:** each flag has a "Worth flagging?" vote.
 - **AI summary:** when AI is on, it adds `BriefingSummary`.

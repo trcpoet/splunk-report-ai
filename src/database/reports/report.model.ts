@@ -45,6 +45,9 @@ export interface IReport {
     allowedGroups: string[];
     chart: ReportChart | null;
     nextRun: Date | null;
+    // The scheduled time of a run that should have arrived and hasn't, as of
+    // the last sync (src/splunk/map.ts, lateSince). Null when it's on time.
+    lateSince?: Date | null;
     disabled: boolean;
     latest: (IRunSummary & { statusMessage?: string }) | null;
     // The run whose rows the report page shows: the newest run that has results.
@@ -157,6 +160,7 @@ const ReportSchema = new Schema<IReport>(
         allowedGroups: { type: [String], default: [] },
         chart: { type: ChartSchema, default: null },
         nextRun: { type: Date, default: null },
+        lateSince: { type: Date, default: null },
         disabled: { type: Boolean, default: false },
         latest: { type: LatestRunSchema, default: null },
         results: {

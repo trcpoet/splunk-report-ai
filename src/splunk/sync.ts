@@ -1,8 +1,9 @@
 import connectDB from '@/database/mongodb';
 import { Report, ReportRun, SyncState, SYNC_STATE_ID } from '@/database';
+import { median } from '@/reports/insights';
 import { reportConfig, type ReportConfig } from '@/reports/report-config';
 import { describeError, errorMessage } from './errors';
-import { deriveReportFields, isFailed, isFinished, mapResults, mapRun, mapSavedSearch, toBool, type ReportMeta, type ResultTable, type RunFacts } from './map';
+import { deriveReportFields, isFailed, isFinished, lateSince, mapResults, mapRun, mapSavedSearch, toBool, type ReportMeta, type ResultTable, type RunFacts } from './map';
 import type { SyncReports } from './settings';
 import { isNotFound, type SplunkTransport } from './transport';
 import type { AppContent, HistoryContent, JobContent, ResultsResponse, SavedSearchContent, SplunkEntry, SplunkFeed } from './types';
@@ -144,7 +145,9 @@ export async function fetchNewRuns(transport: SplunkTransport, report: Scheduled
     return { runs, unreadable };
 }
 
-async function syncReport(transport: SplunkTransport, report: ScheduledReport, now: Date, log: Log) {
+type SyncClock = { now: Date; timeZone: string; live: boolean };
+
+async function syncReport(transport: SplunkTransport, report: ScheduledReport, { now, timeZone, live }: SyncClock, log: Log) {
     const { meta, config } = report;
     const known = await ReportRun.find({ reportSlug: meta.slug }).distinct('sid');
     const { runs, unreadable, failure } = await fetchNewRuns(transport, report, new Set(known));
@@ -165,6 +168,18 @@ async function syncReport(transport: SplunkTransport, report: ScheduledReport, n
         ReportRun.findOne({ reportSlug: meta.slug, hasResults: true }).sort({ runAt: -1 }).lean(),
     ]);
 
+    // A run that should be here by now and isn't (see lateSince). Worked out
+    // at each sync, so it clears once the run arrives.
+    const late = lateSince({
+        cron: meta.cron,
+        timeZone,
+        lastRun: recent[0]?.runAt ?? null,
+        nextRun: meta.nextRun,
+        typicalSec: median(recent.filter(({ status }) => status !== 'failed').map(({ durationSec }) => durationSec)),
+        now,
+        live,
+    });
+
     const { chartType, ...fields } = meta;
     await Report.updateOne(
         { slug: meta.slug },
@@ -172,6 +187,7 @@ async function syncReport(transport: SplunkTransport, report: ScheduledReport, n
             $set: {
                 ...fields,
                 ...deriveReportFields({ recent, resultsRun, chartType, config }),
+                lateSince: late,
                 syncedAt: now,
                 syncError: null,
             },
@@ -245,7 +261,7 @@ export async function syncAll({ transport, mode, syncReports = 'emailed', timeZo
 
         for (const report of scheduled) {
             try {
-                const newRuns = await syncReport(transport, report, now, log);
+                const newRuns = await syncReport(transport, report, { now, timeZone, live: mode === 'live' }, log);
                 summary.reports++;
                 summary.newRuns += newRuns;
                 log(`✓ ${report.meta.slug}: ${newRuns} new run${newRuns === 1 ? '' : 's'}`);

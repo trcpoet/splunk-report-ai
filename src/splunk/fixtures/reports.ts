@@ -424,7 +424,9 @@ export const reports: FixtureReport[] = [
         timeRange: 'Last 4 hours',
         index: 'web (access_combined)',
         lastRun: '2026-10-02T09:05:00Z',
-        nextRun: '2026-10-02T10:05:00Z',
+        // Splunk's next run is 12:05, but the 10:05 and 11:05 runs never
+        // arrived, so the demo shows a late report (src/splunk/map.ts, lateSince).
+        nextRun: '2026-10-02T12:05:00Z',
         status: 'success',
         resultCount: 16,
         recipients: ['web-oncall@example.com', 'sre@example.com'],

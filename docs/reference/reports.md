@@ -51,7 +51,8 @@ Helpers:
 - **`paginate(items, page, size = REPORTS_PER_PAGE)`:** one page (20 by default) with where it is (`first`, `last`, `total`, `pages`). A page past the end shows the last one.
 - **`getCategories(reports)`:** in a fixed order.
 - **`getSimilarReports(report, reports, limit = 3)`:** same category or shared tags.
-- **`needsAttention(report)`:** warning or failed. One rule for the home page's count, the briefing, the suggestions and the Reports button.
+- **`needsAttention(report)`:** warning, failed, or late (`lateSince`). One rule for the home page's count, the briefing, the suggestions and the Reports button.
+- **`lateMessage(report)`:** what a late report says, on its page and in the briefing: which run is missing, the newest run, and what to check.
 - **`webLink(url)`:** a card's runbook only when it's an http(s) address, so nothing else becomes a link even if it reached the database. `dal.ts` uses it.
 - **`contactEmail(contact)`:** the contact when it's just an email address, for a mail link.
 - **`getReportStats(reports)`:** the headline numbers.
@@ -127,7 +128,7 @@ The runs behind the home page's "Scheduled runs per day" chart and its run healt
 
 The report list on the home page.
 - **Order and pages:** newest last run first (`sortByLastRun`), `REPORTS_PER_PAGE` (20) cards a page (`paginate`), with a `Pager` below once there are more. "Showing 21 to 40 of 312 reports" says where you are. Another page scrolls to the top of the list and puts the keyboard focus on its first card; the "Showing" line is read out by itself (`aria-live`).
-- **Controls:** a search box, plus status and category filter chips. "No runs yet" appears when some report hasn't run. A new search or filter starts again at page 1.
+- **Controls:** a search box, plus status and category filter chips. "Late" appears when some report is late, and shows those whatever their status; "No runs yet" appears when some report hasn't run. A new search or filter starts again at page 1.
 - **Props:** `reports` (summaries), `categories`.
 - **`/#reports` links** ("All Reports") land on the list even when it streams in late, or comes back from the page cache.
 
@@ -149,7 +150,7 @@ A card's `runbook` and `contact`: `RunbookLink` (opens in a new tab, says so to 
 
 ### `StatusBadge.tsx` (server)
 
-Healthy, Warning, Failed or No runs yet, with its dot.
+Healthy, Warning, Failed or No runs yet, with its dot. **`LateBadge`** sits beside it when a run is late: outlined amber with a clock, since it's about time, not about what the results say. Cards put it before the status, so statuses stay lined up at the card's edge.
 
 ### `RunHistory.tsx` (server)
 

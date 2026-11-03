@@ -6,7 +6,6 @@ Ideas for making the app more useful, with the smallest version of each that wou
 
 | Idea | What it gives people | The smallest version |
 |---|---|---|
-| **A "Late" badge** | A report that stopped running doesn't look Healthy forever. Today a dead search or a stalled sync keeps its last good status. | The sync already stores each report's `nextRun`. When it's more than a grace period in the past (say twice the usual run time) with no new run, the card shows *Late*. |
 | **Filters in the address** | A filtered view can be shared or bookmarked ("Security reports with warnings"), and Back works. | The home page's category, status and search go into the URL, as in `?category=Security&status=warning`. |
 | **Jump to a report with ⌘K** | Open any report, or start an Ask AI question, from anywhere without scrolling. | shadcn's `Command` (cmdk) over the report titles and tags the page already has. |
 
@@ -41,3 +40,4 @@ Report icons are built (see [The icon](adding-report-cards.md#the-icon)). These 
 
 - **Report icons:** an icon beside each report's category, picked from its words or set with `icon:` ([The icon](adding-report-cards.md#the-icon)).
 - **Runbook and contact on each card:** `runbook:` and `contact:` in a card. When the report warns or fails, its page says what to do and who to ask, and the briefing links the runbook ([the fields](adding-report-cards.md#the-basics)). A card can't hold a second link (the whole card is one), so the card itself doesn't show them.
+- **A "Late" badge:** when a run that was due hasn't reached the app (more than 15 minutes, or twice the report's usual run time, after it was due), the report shows **Late** beside its status, counts as needing attention, and can be filtered. It's worked out at each sync from the schedule and Splunk's next run (`lateSince` in `src/splunk/map.ts`), so it works on the demo data too, where "Web Requests by Host" is late.

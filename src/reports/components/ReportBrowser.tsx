@@ -10,17 +10,22 @@ import { paginate, sortByLastRun, type ReportCategory, type ReportHealth, type R
 // The home page's report list: search and filters, newest last run first,
 // REPORTS_PER_PAGE cards a page.
 
-const STATUS_FILTERS: { label: string; value: ReportHealth | 'all' }[] = [
+// 'late' isn't a status: a late report keeps its newest run's status too, so
+// it shows under both.
+type StatusFilter = ReportHealth | 'late' | 'all';
+
+const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
     { label: 'All statuses', value: 'all' },
     { label: 'Healthy', value: 'success' },
     { label: 'Warning', value: 'warning' },
     { label: 'Failed', value: 'failed' },
+    { label: 'Late', value: 'late' },
     { label: 'No runs yet', value: 'none' },
 ];
 
 const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; categories: ReportCategory[] }) => {
     const [query, setQuery] = useState('');
-    const [status, setStatus] = useState<ReportHealth | 'all'>('all');
+    const [status, setStatus] = useState<StatusFilter>('all');
     const [category, setCategory] = useState<ReportCategory | 'all'>('all');
     const [page, setPage] = useState(0);
     const list = useRef<HTMLUListElement>(null);
@@ -60,7 +65,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
 
     const search = query.trim().toLowerCase();
     const visible = sorted.filter((report) => {
-        if (status !== 'all' && report.status !== status) return false;
+        if (status === 'late' ? !report.lateSince : status !== 'all' && report.status !== status) return false;
         if (category !== 'all' && report.category !== category) return false;
         if (!search) return true;
 
@@ -68,8 +73,10 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
             .some((field) => field.toLowerCase().includes(search));
     });
     const shown = paginate(visible, page);
-    // "No runs yet" only when some report hasn't run.
-    const statuses = STATUS_FILTERS.filter(({ value }) => value !== 'none' || reports.some((report) => report.status === 'none'));
+    // "Late" and "No runs yet" only when some report is.
+    const statuses = STATUS_FILTERS.filter(({ value }) =>
+        value === 'late' ? reports.some((report) => report.lateSince)
+            : value !== 'none' || reports.some((report) => report.status === 'none'));
 
     return (
         <div className="flex flex-col gap-6">
