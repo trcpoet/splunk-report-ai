@@ -51,8 +51,8 @@ Who sees which report stays in the app, in its `user_access` groups ([report-acc
 
 ### The REST API, not the SDKs
 
-- **The JavaScript SDK isn't needed.** The SDKs are thin wrappers over the REST API. The sync worker already calls the five endpoints it needs (`lib/splunk/transport.ts`), with retries, and it's tested against a fake Splunk. The JavaScript SDK (`splunk-sdk` on npm, at 2.0.2) points people to the Python SDK for modular inputs.
-- **Keep the sync in TypeScript.** The status rules and highlights in `lib/report-config.ts` are TypeScript that runs during the sync.
+- **The JavaScript SDK isn't needed.** The SDKs are thin wrappers over the REST API. The sync worker already calls the five endpoints it needs (`src/splunk/transport.ts`), with retries, and it's tested against a fake Splunk. The JavaScript SDK (`splunk-sdk` on npm, at 2.0.2) points people to the Python SDK for modular inputs.
+- **Keep the sync in TypeScript.** The status rules and highlights in `src/reports/report-config.ts` are TypeScript that runs during the sync.
 - **Use the Python SDK (`splunklib`) where Python already runs:** the ML job, or an agent's tool that runs a search and streams its results.
 
 ### What to copy
@@ -101,7 +101,7 @@ RAG (retrieval-augmented generation) means finding the most relevant examples an
 - **Anomalies on summarized data:** Splunk's own `anomalydetection`, `outlier` and `predict` commands, or the Machine Learning Toolkit (`fit DensityFunction`, for example). Store only the flags in MongoDB.
 - **Log patterns:** `cluster` groups similar events. That helps answer "what kinds of events are in this sourcetype?", and gives RAG more context.
 - **Splunk's docs:** retrieve the pages of the SPL command reference your teams use, the same way as the searches. No training.
-- **In this app already:** median and MAD statistics on each report's runs (`lib/insights.ts`), and an Isolation Forest across all runs ([ml.md](ml.md)).
+- **In this app already:** median and MAD statistics on each report's runs (`src/reports/insights.ts`), and an Isolation Forest across all runs ([ml.md](ml.md)).
 
 ## 5. An agent that searches Splunk
 
@@ -141,7 +141,7 @@ Keep PostHog for how people use the app, such as which reports they open and whe
 - **This repo is public** and holds dummy data only.
 - **At work,** use the work copy of the repo, with:
   - the service-account token;
-  - the company's approved LLM in `lib/ai/llm.ts`;
+  - the company's approved LLM in `src/ai/llm.ts`;
   - approval for copying report results into MongoDB and sending them to an LLM.
 
 ## References

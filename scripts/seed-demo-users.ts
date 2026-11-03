@@ -1,8 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { UserAccess } from '@/database';
-import { authOptions, closeAuthDatabase } from '@/lib/auth-options';
-import { DEMO_USERS } from '@/lib/demo-users';
-import connectDB, { disconnectDB } from '@/lib/mongodb';
+import { authOptions, closeAuthDatabase } from '@/people/auth-options';
+import { DEMO_USERS } from '@/people/demo-users';
+import connectDB, { disconnectDB } from '@/database/mongodb';
 
 // Creates the demo users and their report access (npm run seed). Safe to run
 // again: existing demo users get the current DEMO_PASSWORD and access, so

@@ -1,6 +1,6 @@
 # Report settings and access
 
-How `lib/report-config.ts` works, and how to control which team sees which report.
+How `src/reports/report-config.ts` works, and how to control which team sees which report.
 
 ## The idea in one picture
 
@@ -14,7 +14,7 @@ How `lib/report-config.ts` works, and how to control which team sees which repor
 
 Every user has a list of **groups** (teams). Every report has a list of **groups** too. A user sees a report when the two lists **share at least one name**. Admins see every report.
 
-That's the whole rule. It lives in `lib/access.ts`, and every page and API route goes through it.
+That's the whole rule. It lives in `src/people/access.ts`, and every page and API route goes through it.
 
 ## Rules at a glance
 
@@ -49,10 +49,10 @@ Each signed-in user has a document in MongoDB's `user_access` collection:
 ```
 
 - `role` is `admin` (sees everything) or `viewer` (sees reports that share a group).
-- Today the only logins are the demo users in `lib/demo-users.ts`, created by `npm run seed`. Public sign-up is off.
+- Today the only logins are the demo users in `src/people/demo-users.ts`, created by `npm run seed`. Public sign-up is off.
 - Later, company sign-in (SSO) will copy each person's groups from Okta or Entra ID into `user_access` at sign-in. The rule above stays the same.
 
-## What's in `lib/report-config.ts`
+## What's in `src/reports/report-config.ts`
 
 Splunk knows a report's search, schedule and email list. It doesn't know which category the app should file it under, which teams may see it, or what counts as a warning. `report-config.ts` holds those extra settings, one entry per report:
 
@@ -97,7 +97,7 @@ Say your company has these scheduled reports and teams:
 
 **1. Pick one group name per team.** Use the team's email list name when it has one, so the defaults line up: `security`, `sre`, `finance`, `it-director`.
 
-**2. Give each report its groups** in `lib/report-config.ts`:
+**2. Give each report its groups** in `src/reports/report-config.ts`:
 
 ```ts
 'SOC - Failed Logins': {
@@ -132,7 +132,7 @@ db.user_access.updateOne({ email: 'finance.analyst@example.com' }, { $set: { gro
 db.user_access.updateOne({ email: 'it.director@example.com' }, { $set: { groups: ['it-director'] } })
 ```
 
-(Or edit `lib/demo-users.ts` and run `npm run seed`. Note that `npm run seed` resets every demo user's groups to what that file says.)
+(Or edit `src/people/demo-users.ts` and run `npm run seed`. Note that `npm run seed` resets every demo user's groups to what that file says.)
 
 **5. Check it.** Sign in as each user. The SOC analyst sees only `SOC - Failed Logins`, the IT director sees only `Payments Daily Summary`, and `admin@example.com` sees all three.
 

@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
     files: ["**/*.ts", "**/*.tsx"],
     // shadcn's generated components: the shadcn CLI replaces them when they're
     // regenerated, so they keep the default rules above.
-    ignores: ["components/ui/**"],
+    ignores: ["src/shared/ui/**"],
     extends: [tseslint.configs.strictTypeChecked],
     languageOptions: {
       parserOptions: {

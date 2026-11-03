@@ -1,6 +1,6 @@
 # The worker, scripts, ML job and root files
 
-Everything outside `app/`, `components/`, `lib/` and `database/`. Settings for all of these are in [configuration.md](../configuration.md). Back to the [file reference](README.md).
+Everything outside `src/`. Settings for all of these are in [configuration.md](../configuration.md). Back to the [file reference](README.md).
 
 ## `worker/sync.ts`
 
@@ -8,22 +8,22 @@ The sync worker's entry point, a plain Node process run with `tsx`, not part of 
 - **Runs:**
   - `npm run sync` syncs once and exits, with exit code 1 if any report failed;
   - `npm run sync:watch` syncs every `SYNC_INTERVAL_MINUTES` (default 15) until Ctrl+C or SIGTERM.
-- **Settings first:** `readSyncSettings` (`lib/splunk/settings.ts`) checks them all, and stops with every problem listed.
+- **Settings first:** `readSyncSettings` (`src/splunk/settings.ts`) checks them all, and stops with every problem listed.
 - **Transport:** it picks one from `SPLUNK_MODE`.
   - `fixture`, the default, uses the dummy reports.
   - `live` uses `httpTransport` with `SPLUNK_BASE_URL` and `SPLUNK_TOKEN`, or the token in the file `SPLUNK_TOKEN_FILE` names.
-- **Then** it calls `syncAll` (`lib/splunk/sync.ts`) with `SYNC_REPORTS`, prints a one-line summary, and disconnects. Errors print with a hint for common setup mistakes (`describeError`).
+- **Then** it calls `syncAll` (`src/splunk/sync.ts`) with `SYNC_REPORTS`, prints a one-line summary, and disconnects. Errors print with a hint for common setup mistakes (`describeError`).
 - **Only this process holds `SPLUNK_TOKEN`.** Run it beside the web app, never inside it.
 
 ## `scripts/`
 
 ### `splunk-check.ts`
 
-`npm run splunk:check`: runs `checkSplunk` (`lib/splunk/check.ts`) with the sync worker's own settings and prints ✓, ⚠ or ✗ for each step, with what to fix. It only reads, needs no database, and exits with code 1 when a check fails. In fixture mode it checks the dummy data.
+`npm run splunk:check`: runs `checkSplunk` (`src/splunk/check.ts`) with the sync worker's own settings and prints ✓, ⚠ or ✗ for each step, with what to fix. It only reads, needs no database, and exits with code 1 when a check fails. In fixture mode it checks the dummy data.
 
 ### `seed-demo-users.ts`
 
-`npm run seed`: creates the demo users from `lib/demo-users.ts` and their `user_access` records.
+`npm run seed`: creates the demo users from `src/people/demo-users.ts` and their `user_access` records.
 - **Safe to run again:** existing demo users get the current `DEMO_PASSWORD` and access, so changing the password in `.env.local` and re-running it takes effect.
 - **Sign-up:** the web app turns sign-up off, and Better Auth enforces that inside its sign-up endpoint. So this script uses its own Better Auth instance with sign-up on.
 
@@ -55,7 +55,7 @@ How it works: [docs/ml.md](../ml.md) and [ml/README.md](../../ml/README.md).
 | File | What it does |
 |---|---|
 | `score.py` | The job: `python ml/score.py [--plot]`, or `npm run ml` / `ml:plot`. See below. |
-| `features.py` | What the models look at for each run: how far its result count and search time are from the report's usual (robust z), and whether it failed. It mirrors `lib/insights.ts`: at least 4 earlier successful runs, the 6 most recent of them. |
+| `features.py` | What the models look at for each run: how far its result count and search time are from the report's usual (robust z), and whether it failed. It mirrors `src/reports/insights.ts`: at least 4 earlier successful runs, the 6 most recent of them. |
 | `tests/test_ml.py` | `npm run test:ml` (pytest). It builds runs in memory, so it needs no database. It checks that the statistics match the app's, how failed runs are handled, the reasons in plain words, and both models. |
 | `requirements.txt` | Exact versions: pymongo, pandas, numpy, scikit-learn, matplotlib, python-dotenv, pytest. |
 | `pytest.ini` | Tests live in `tests/`; the `ml/` folder is on the path. |
@@ -75,14 +75,14 @@ What `score.py` does:
 | File | What it does |
 |---|---|
 | `next.config.ts` | Turns on `cacheComponents` and `partialPrefetching`. Sets `output: 'standalone'` when `NEXT_OUTPUT=standalone`, as Docker does. Adds the PostHog `/ingest` rewrites and `skipTrailingSlashRedirect`. |
-| `proxy.ts` | Next 16's name for middleware. It sends visitors without a session cookie to `/login?next=…`. Its `matcher` skips `/login`, API routes, `_next`, the PostHog proxy and static files. It's a quick redirect, not the security check. |
-| `instrumentation-client.ts` | Starts PostHog in the browser when `NEXT_PUBLIC_POSTHOG_KEY` is set, with exception capture and debug logging in development. |
-| `tsconfig.json` | TypeScript settings. `@/*` maps to the repo root, so imports read `@/lib/dal`. On top of `strict`, it treats every `list[i]` and `record[key]` as possibly missing (`noUncheckedIndexedAccess`) and fails on unused code. `npm run typecheck` runs it. |
+| `src/proxy.ts` | Next 16's name for middleware. It sends visitors without a session cookie to `/login?next=…`. Its `matcher` skips `/login`, API routes, `_next`, the PostHog proxy and static files. It's a quick redirect, not the security check. |
+| `src/instrumentation-client.ts` | Starts PostHog in the browser when `NEXT_PUBLIC_POSTHOG_KEY` is set, with exception capture and debug logging in development. |
+| `tsconfig.json` | TypeScript settings. `@/*` maps to `src/`, so imports read `@/reports/dal`. On top of `strict`, it treats every `list[i]` and `record[key]` as possibly missing (`noUncheckedIndexedAccess`) and fails on unused code. `npm run typecheck` runs it. |
 | `react-canary.d.ts` | Pulls in React's canary types, for `<ViewTransition>`. |
 | `next-env.d.ts` | Generated by Next.js, and ignored by git. |
-| `eslint.config.mjs` | `npm run lint`: Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules, which read the types (shadcn's `components/ui/` keeps the default rules). It caches results in `.eslintcache`, and ignores build output and `ml/.venv`. |
+| `eslint.config.mjs` | `npm run lint`: Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules, which read the types (shadcn's `src/shared/ui/` keeps the default rules). It caches results in `.eslintcache`, and ignores build output and `ml/.venv`. |
 | `postcss.config.mjs` | Tailwind CSS 4 through `@tailwindcss/postcss`. |
-| `components.json` | shadcn/ui settings: the style, `app/globals.css`, the aliases, lucide icons, and the React Bits registry. |
+| `components.json` | shadcn/ui settings: the style, `src/app/globals.css`, the aliases, lucide icons, and the React Bits registry. |
 | `package.json`, `package-lock.json` | Dependencies and scripts (`dev`, `build`, `start`, `lint`, `test`, `sync`, `sync:watch`, `seed`, `ml`, `ml:plot`, `test:ml`, `eval:spl`). Install with `npm ci` to get the lockfile's versions. |
 
 ## Docker, Vercel and CI
@@ -127,7 +127,7 @@ What `score.py` does:
 | `.claude/skills/splunk-reports/SKILL.md` | The `splunk-reports` skill: how to add, edit or review reports, write their SPL, and decide who sees them. |
 | `.claude-plugin/marketplace.json` | The local plugin marketplace, `splunk-events-tools`. |
 | `plugins/splunk-events/` | The plugin: `.claude-plugin/plugin.json`, the Splunk Cloud MCP server over OAuth (`.mcp.json`, from `SPLUNK_MCP_URL` and `SPLUNK_MCP_CLIENT_ID`), and the same skill. Installing it: [README](../../README.md#claude-code-tools). |
-| `.21st/design.json`, `.21st/DESIGN.md` | The design context for the `21st` CLI and its skills: tokens read from `app/globals.css`, and constraints, including the Ask AI layout. `21st init --design-context --refresh` regenerates it; `--check` says whether it's current. |
+| `.21st/design.json`, `.21st/DESIGN.md` | The design context for the `21st` CLI and its skills: tokens read from `src/app/globals.css`, and constraints, including the Ask AI layout. `21st init --design-context --refresh` regenerates it; `--check` says whether it's current. |
 
 ## `public/`
 
@@ -136,4 +136,4 @@ Static files served as they are, all under `public/icons/`:
 - `clock.svg`, `calendar.svg` and `audience.svg`, on report cards;
 - `arrow-down.svg`, on the "Explore reports" button.
 
-The browser tab icon is `app/icon.svg`.
+The browser tab icon is `src/app/icon.svg`.
