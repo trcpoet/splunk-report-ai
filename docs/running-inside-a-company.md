@@ -41,7 +41,7 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 - **PostHog** is a usage-tracking service, like Google Analytics. With a key, each person's browser reports what they open and click to PostHog's servers in the US.
 - **The `/ingest` rewrite** in `next.config.ts` is a forwarding rule. When the browser calls `<your site>/ingest/…`, the app's server passes the call on to `us.i.posthog.com`. Sites do this so ad blockers don't stop the tracking.
 - **Without a key nothing is tracked**, because the browser never loads PostHog. But the forwarding rule is still there, so the server would still pass on anything sent to `/ingest`. Deleting the rule means nothing can reach PostHog through the app, even by mistake.
-- **To delete it:** remove the `rewrites()` block and `skipTrailingSlashRedirect: true` from `next.config.ts`. Optionally take `ingest` out of the `matcher` in `proxy.ts`. `track()` in `lib/analytics.ts` already does nothing without PostHog, so no other code changes.
+- **To delete it:** remove the `rewrites()` block and `skipTrailingSlashRedirect: true` from `next.config.ts`. Optionally take `ingest` out of the `matcher` in `src/proxy.ts`. `track()` in `src/shared/analytics.ts` already does nothing without PostHog, so no other code changes.
 
 ## 4. Build
 
@@ -50,7 +50,8 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 - [ ] **Use the company's registry for base images** (`node:24-slim`, and `python:3.14-slim` for the ML job). Change the `FROM` lines or use the registry's mirror ([kubernetes.md](kubernetes.md#1-build-and-push-the-images)).
 - [ ] **Install packages through the company's npm and pip mirrors,** so they're scanned. Set the registry in `.npmrc`; npm then fetches the packages in `package-lock.json` from it.
 - [ ] **Run the company's dependency and container scans** on the images, and keep Next.js at 16.4.2 or newer (a security fix).
-- [ ] **Leave the developer-tool files out of the company copy:** `.mcp.json`, `.claude/`, `.claude-plugin/`, `plugins/`, `.21st/`, `.devcontainer/`, `CLAUDE.md` and `AGENTS.md`. The app doesn't need them to build or run.
+- [ ] **Leave the developer-tool files out of the company copy:** `.mcp.json`, `.claude/`, `.claude-plugin/`, `plugins/`, `.21st/`, `.devcontainer/` and `CLAUDE.md`. The app doesn't need them to build or run.
+  - **Keep `AGENTS.md` and `.github/copilot-instructions.md`.** They tell the company's approved AI coding assistant how to add report cards safely ([adding-report-cards.md](adding-report-cards.md)). They're plain text and send nothing anywhere.
 - [ ] **Set `NEXT_TELEMETRY_DISABLED=1`** on laptops and build machines too, not only in the image.
 
 ## 5. Secrets
@@ -66,7 +67,8 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 - [ ] **Ask for a service account, not your own login.** Give it a read-only role that can see only the scheduled searches the app should show. The example setup's role `splunk_events_reader` shows the idea ([splunk-example.md](splunk-example.md)).
 - [ ] **Give the token only to the connector.** Mount it as a file and use `SPLUNK_TOKEN_FILE`. The chart already keeps it out of the web app's pods, and its CI checks that.
 - [ ] **Use `https://` to the management port (8089).** If the certificate comes from the company's own certificate authority, add that authority with `NODE_EXTRA_CA_CERTS` (`connector.caBundle.configMap` in the chart). **Never turn certificate checks off.**
-- [ ] **Choose which searches become reports.** `SYNC_REPORTS=configured` copies only the ones in `lib/report-config.ts`. The default, `emailed`, copies every scheduled search that emails its results, which can be far more than you meant.
+- [ ] **Choose which searches become reports.** `SYNC_REPORTS=configured` copies only the reports that have a card in `config/report-cards.yaml` ([adding-report-cards.md](adding-report-cards.md)). The default, `emailed`, copies every scheduled search that emails its results, which can be far more than you meant.
+- [ ] **To turn dashboard tiles into cards** with `npm run splunk:tiles`, the service account also needs read access to those dashboards. The command only reads, but its worksheet holds the company's searches, so keep it inside the company.
 - [ ] **Limit how much is copied:** `SYNC_MAX_ROWS` (default 5000 rows per run).
 - [ ] **Check the connection before the first sync:** `npm run splunk:check` ([connecting-live-splunk.md](connecting-live-splunk.md)).
 - [ ] **Agree on token rotation** with the Splunk team: who renews it, and how often.
@@ -84,7 +86,7 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 - [ ] **Don't create the demo accounts.** Don't run `npm run seed`, keep `demo.enabled: false` in the chart, and leave `DEMO_MODE` and `DEMO_PASSWORD` unset.
   - *Why:* the demo password is in this public repo, so anyone who has read it could sign in.
 - [ ] **Plan company single sign-on before real people use it.** Today the only accounts are the demo accounts. The plan is OIDC or SAML against the company's directory ([mongodb-and-access.md](mongodb-and-access.md), [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md)).
-- [ ] **Check who sees which report.** Without `groups` in `lib/report-config.ts`, a report's email lists decide who sees it (`secops@…` → group `secops`). Check that those groups match the people allowed to see the data ([report-access.md](report-access.md)).
+- [ ] **Check who sees which report.** Without `groups` on its card in `config/report-cards.yaml`, a report's email lists decide who sees it (`secops@…` → group `secops`). Check that those groups match the people allowed to see the data ([report-access.md](report-access.md)).
 - [ ] **Keep admins few.** An `admin` sees every report.
 - [ ] **Set `BETTER_AUTH_URL` (`url` in the chart)** to the exact address people open. Sign-in only works from it.
 
@@ -123,7 +125,7 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 |---|---|
 | Your manager | Who approves outside code, and whether this project needs a review |
 | Open-source or legal office | Approval to bring the code in, or confirmation that a fresh build is fine |
-| Splunk team | A read-only service account and token, the searches it may read, the management port's address and certificate authority |
+| Splunk team | A read-only service account and token, the searches it may read (and the dashboards, if you'll turn their tiles into cards), the management port's address and certificate authority |
 | Database team | A MongoDB database and user, its retention and backup rules |
 | Platform team | A namespace, the image registry and package mirrors, the app's address and certificate, secrets, network access and security headers ([kubernetes.md](kubernetes.md#what-to-ask-your-platform-team)) |
 | Identity team | Single sign-on (OIDC or SAML) for the app |
