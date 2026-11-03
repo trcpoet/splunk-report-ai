@@ -44,6 +44,9 @@ export type ReportConfig = {
     chart?: 'none' | { type?: ChartType; y?: string; threshold?: ChartThreshold; max?: number; panels?: ChartPanel[]; scatter?: ChartScatter };
     // Overrides the index text parsed from the SPL.
     index?: string;
+    // What to do when it warns or fails (an http(s) link), and who to ask.
+    runbook?: string;
+    contact?: string;
     statusRule?: StatusRule;
     highlights?: HighlightRule;
 };

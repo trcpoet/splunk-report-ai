@@ -134,6 +134,8 @@ Web Server 5xx Error Rate:       # the report's exact name in Splunk
   tags: [web, availability, hourly]
   groups: [sre, it-director]     # who may see it (optional)
   index: web (access logs)       # the "Index" text on its page (optional)
+  runbook: https://wiki.example.com/runbooks/web-5xx   # what to do when it warns (optional)
+  contact: web-oncall@example.com                      # who to ask (optional)
 ```
 
 | Field | Required | What it does |
@@ -145,6 +147,8 @@ Web Server 5xx Error Rate:       # the report's exact name in Splunk
 | `tags` | no | Words for search and "similar reports", such as `[web, hourly]`. They also help the app pick an icon. |
 | `groups` | no | Who may see it. Without it, the email lists Splunk sends it to (`secops@example.com` is the group `secops`). **Copy them here before turning off a report's email in Splunk**, or it becomes admin-only. See [report-access.md](report-access.md). |
 | `index` | no | Replaces the "Index" text the app works out from the search, for searches like `| rest` or `| metadata`. |
+| `runbook` | no | A link to what to do when the report warns or fails: a runbook or wiki page. It must start with `https://` (or `http://`). When the report warns or fails, its page says "What to do: open the runbook" under the message, and the home page's briefing adds a **Runbook** link. It's also in the page's details. |
+| `contact` | no | Who to ask about the report: a team, an on-call rota or an email address (up to 200 characters). An email address becomes a mail link. It's shown with the runbook. |
 
 ### The icon
 
@@ -286,6 +290,7 @@ The sync stops before changing any report, and admins see the same message on th
 | `It isn't valid YAML: … at line 6, column 17.` | Usually a message that needs double quotes, or a name with `: ` in it. Look at that line. |
 | `"…" already uses the slug "…"` | Two cards share a slug. Each needs its own. |
 | `icon: "…" isn't one of the app's icons.` | Use a name from the list in the message (or [The icon](#the-icon)), or delete the line to let the app choose. |
+| `runbook: Use a web address that starts with https://` | Copy the runbook's whole address from the browser, including `https://`. |
 | `✗ The card names "Error rate%", which the results don't have.` (`card:preview`) | A column name that's spelled differently in the results. Copy it from the `Columns:` line. |
 | `cards in config/report-cards.yaml are for reports this token can't see` (`splunk:check`) | The name doesn't match Splunk's exactly, or the report isn't shared with the service account's role. |
 | `No finished run with results yet` (`card:preview`) | Splunk hasn't run the report since it was scheduled. Wait for its next run. |
@@ -303,10 +308,11 @@ When you're asked to add, change or move report cards:
 3. **Key each card by the report's exact Splunk name**, and give it a new, unique `slug`. Never change an existing slug.
 4. **Keep a chart's `threshold` and its `warn` limit equal** when they watch the same column.
 5. **Leave `icon` out unless the preview's guess is wrong.** Then pick a name from [The icon](#the-icon), never one from elsewhere: only those are drawn.
-6. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
-7. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
-8. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
-9. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
+6. **Add `runbook` and `contact` only from what a person gives you.** Never make up a link, a team or an email address.
+7. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
+8. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
+9. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
+10. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
 
 ## Keep company cards out of the public repo
 

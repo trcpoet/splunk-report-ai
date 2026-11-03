@@ -74,6 +74,8 @@ const Chart = z.object({
     scatter: z.object({ x: Column, log: z.boolean().optional(), caption: z.string().min(1) }).strict().optional().describe('A second chart: a dot per row, the chart\'s column up and `x` across.'),
 }).strict();
 
+const RUNBOOK_ERROR = 'Use a web address that starts with https:// (or http://), such as https://wiki.example.com/runbooks/disk-space.';
+
 export const CATEGORIES = ['Security', 'Operations', 'Infrastructure', 'Business', 'Compliance', 'Other'] as const;
 
 export const ReportCard = z.object({
@@ -85,6 +87,11 @@ export const ReportCard = z.object({
     tags: z.array(z.string()).default([]),
     groups: z.array(z.string()).optional().describe('Who may see it. Default: the email lists it was sent to (secops@example.com is the group secops).'),
     index: z.string().optional().describe('What the report page says it searches, when the search\'s own index=… isn\'t clear.'),
+    // The regex repeats the protocol check so that the JSON Schema, which
+    // editors check as you type, gets it too: it keeps only the pattern.
+    runbook: z.url({ protocol: /^https?$/, error: RUNBOOK_ERROR }).regex(/^https?:\/\//i, RUNBOOK_ERROR)
+        .optional().describe('A link to what to do when the report warns or fails: a runbook or wiki page, starting with https://. The report page and the briefing show it.'),
+    contact: z.string().trim().min(1).max(200).optional().describe('Who to ask about the report: a team, an on-call rota or an email address, such as "sre-oncall@example.com". An email address becomes a link.'),
     chart: z.union([z.literal('none'), Chart]).optional().describe('"none" for a table only.'),
     highlights: z.array(Highlight).min(1).optional().describe('The headline numbers. The first one is on the report\'s card. Default: the result count, the top row and the search time.'),
     warn: Rule.optional().describe('When the report shows "Warning", and what it says.'),

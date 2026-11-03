@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChartBoundary from "@/shared/components/ChartBoundary";
@@ -16,7 +17,8 @@ import Sparkline from "@/shared/components/Sparkline";
 import { ReportSkeleton } from "@/shared/components/Skeletons";
 import { PAGE_TRANSITION, PageTransition, Reveal } from "@/shared/components/Transitions";
 import { getReportSyncError, getVisibleReport, getVisibleReports } from "@/reports/dal";
-import { getSimilarReports, toSummary, type ReportChart } from "@/reports/reports";
+import { Contact, RunbookLink, WhatToDo } from "@/reports/components/WhatToDo";
+import { getSimilarReports, needsAttention, toSummary, type ReportChart } from "@/reports/reports";
 import { columnLabel, formatDateTime, formatDuration, formatList, formatNumber } from "@/shared/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -62,12 +64,14 @@ async function ReportDetails({ params }: Props) {
     // Summaries only: the cards are client components, so this is what the browser gets.
     const similarReports = getSimilarReports(report, await getVisibleReports()).map(toSummary);
     const syncError = await getReportSyncError(slug);
-    const details = [
+    const details: { label: string; value: ReactNode; code?: string }[] = [
         { label: 'Schedule', value: report.schedule, code: report.cron },
         { label: 'Time range', value: report.timeRange },
         { label: 'Index', value: report.index },
         { label: 'Splunk app', value: report.app },
         { label: 'Owner', value: report.owner },
+        ...(report.runbook ? [{ label: 'Runbook', value: <RunbookLink href={report.runbook} /> }] : []),
+        ...(report.contact ? [{ label: 'Contact', value: <Contact contact={report.contact} /> }] : []),
         { label: 'Last run', value: formatDateTime(report.lastRun) },
         { label: 'Next run', value: formatDateTime(report.nextRun) },
     ];
@@ -97,9 +101,11 @@ async function ReportDetails({ params }: Props) {
                 <ExplainButton slug={report.slug} title={report.title} report={report} className="btn-secondary btn-small" />
             </div>
 
-            {report.statusMessage && (
-                <div className={`status-callout status-${report.status}`} role="status">
-                    {report.statusMessage}
+            {/* Only the message is a live region: the links after it aren't news. */}
+            {(report.statusMessage || (needsAttention(report) && (report.runbook || report.contact))) && (
+                <div className={`status-callout status-${report.status}`}>
+                    {report.statusMessage && <p role="status">{report.statusMessage}</p>}
+                    {needsAttention(report) && <WhatToDo runbook={report.runbook} contact={report.contact} />}
                 </div>
             )}
 

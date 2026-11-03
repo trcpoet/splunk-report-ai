@@ -9,7 +9,7 @@ import { canView, type Viewer } from '@/people/access';
 import { auth } from '@/people/auth';
 import connectDB from '@/database/mongodb';
 import { reportIcon } from '@/reports/icons';
-import { syncProblem, type Cell, type ChartThreshold, type ModelRun, type ReportChart, type ReportHighlight, type ReportListItem, type RunHealth, type RunOutcomeDay, type SplunkReport, type SyncInfo } from '@/reports/reports';
+import { syncProblem, webLink, type Cell, type ChartThreshold, type ModelRun, type ReportChart, type ReportHighlight, type ReportListItem, type RunHealth, type RunOutcomeDay, type SplunkReport, type SyncInfo } from '@/reports/reports';
 import { lastDays, runHealthRows, totalsByDay, type RunCount } from '@/reports/run-health';
 import { scheduleLoad, type ScheduleLoad } from '@/reports/schedule-load';
 
@@ -139,6 +139,8 @@ function toListItem(doc: IReport, model: ModelScores): ReportListItem {
         runsPerWeek: doc.runsPerWeek,
         timeRange: doc.timeRange,
         index: doc.index,
+        runbook: webLink(doc.runbook),
+        contact: doc.contact || undefined,
         lastRun: iso(doc.latest?.runAt),
         nextRun: iso(doc.nextRun),
         status: doc.latest?.status ?? 'none',

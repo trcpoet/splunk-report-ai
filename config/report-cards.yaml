@@ -21,6 +21,9 @@ Web Server 5xx Error Rate:
   slug: web-5xx-error-rate
   category: Operations
   tags: [web, availability, hourly]
+  # The demo's runbooks are the "What to do" notes in the report catalog.
+  runbook: https://github.com/trcpoet/splunk-report-ai/blob/main/docs/report-catalog.md#web-server-5xx-error-rate
+  contact: web-oncall@example.com
   # The limit line and the warn rule both use the 2% error budget: keep them equal.
   chart:
     y: Error rate %
@@ -89,6 +92,8 @@ Disk Space Utilization Above 85%:
   slug: disk-space-over-85
   category: Infrastructure
   tags: [infrastructure, capacity, alerting]
+  runbook: https://github.com/trcpoet/splunk-report-ai/blob/main/docs/report-catalog.md#disk-space-utilization-above-85
+  contact: infra-oncall@example.com
   # The limit line and the warn rule both use 95%: keep them equal.
   chart:
     threshold: { value: 95, label: 95% critical }
@@ -115,6 +120,8 @@ VPN Sessions by Country:
   category: Infrastructure
   tags: [infrastructure, forwarders, hourly]
   index: All indexes (metadata)
+  runbook: https://github.com/trcpoet/splunk-report-ai/blob/main/docs/report-catalog.md#forwarder-health-silent-hosts
+  contact: splunk-admins@example.com
   # Any result is a forwarder that went quiet. The message names the one that
   # has been quiet longest.
   warn:

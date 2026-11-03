@@ -3,6 +3,7 @@ import BriefingSummary from "@/ai/components/BriefingSummary";
 import FeedbackButtons from "@/ai/components/FeedbackButtons";
 import Sparkline from "@/shared/components/Sparkline";
 import StatusBadge from "@/reports/components/StatusBadge";
+import { RunbookLink } from "@/reports/components/WhatToDo";
 import { PAGE_TRANSITION } from "@/shared/components/Transitions";
 import { aiStatus } from "@/ai/config";
 import { briefingKey, flagId } from "@/ai/keys";
@@ -69,7 +70,10 @@ const Briefing = async ({ variant }: { variant: 'home' | 'side' }) => {
                                 </div>
                                 {report.statusMessage && <p>{report.statusMessage}</p>}
                                 <div className="briefing-item-actions">
-                                    <Link href={`/ai/reports?about=${report.slug}`}>Ask about it</Link>
+                                    <span className="briefing-links">
+                                        <Link href={`/ai/reports?about=${report.slug}`}>Ask about it</Link>
+                                        {report.runbook && <RunbookLink href={report.runbook}>Runbook</RunbookLink>}
+                                    </span>
                                     <FeedbackButtons
                                         kind="flag"
                                         compact
