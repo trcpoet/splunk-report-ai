@@ -101,9 +101,10 @@ async function ReportDetails({ params }: Props) {
                 <ExplainButton slug={report.slug} title={report.title} report={report} className="btn-secondary btn-small" />
             </div>
 
-            {report.statusMessage && (
-                <div className={`status-callout status-${report.status}`} role="status">
-                    <p>{report.statusMessage}</p>
+            {/* Only the message is a live region: the links after it aren't news. */}
+            {(report.statusMessage || (needsAttention(report) && (report.runbook || report.contact))) && (
+                <div className={`status-callout status-${report.status}`}>
+                    {report.statusMessage && <p role="status">{report.statusMessage}</p>}
                     {needsAttention(report) && <WhatToDo runbook={report.runbook} contact={report.contact} />}
                 </div>
             )}

@@ -308,11 +308,11 @@ When you're asked to add, change or move report cards:
 3. **Key each card by the report's exact Splunk name**, and give it a new, unique `slug`. Never change an existing slug.
 4. **Keep a chart's `threshold` and its `warn` limit equal** when they watch the same column.
 5. **Leave `icon` out unless the preview's guess is wrong.** Then pick a name from [The icon](#the-icon), never one from elsewhere: only those are drawn.
-   **Add `runbook` and `contact` only from what a person gives you.** Never make up a link, a team or an email address.
-6. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
-7. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
-8. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
-9. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
+6. **Add `runbook` and `contact` only from what a person gives you.** Never make up a link, a team or an email address.
+7. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
+8. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
+9. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
+10. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
 
 ## Keep company cards out of the public repo
 

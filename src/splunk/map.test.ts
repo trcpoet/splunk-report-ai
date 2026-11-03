@@ -446,6 +446,16 @@ describe('saved searches that share a name', () => {
         assert.deepEqual(report!.meta.allowedGroups, []);
     });
 
+    test("a private search under a card's name doesn't take on its runbook or contact", async () => {
+        const name = 'Web Server 5xx Error Rate';
+        const [shared] = await listScheduledReports(listing([{ ...search('search', 'nobody', 'app', 'index=web'), name }]), 'UTC', now);
+        const [private_] = await listScheduledReports(listing([{ ...search('search', 'j.smith', 'user', 'index=mine'), name }]), 'UTC', now);
+
+        assert.notEqual(shared!.meta.runbook, '');
+        assert.notEqual(shared!.meta.contact, '');
+        assert.deepEqual([private_!.meta.runbook, private_!.meta.contact], ['', '']);
+    });
+
     test('with no shared one, keep one and always the same one', async () => {
         const first = search('alpha', 'nobody', 'app', 'index=alpha');
         const second = search('beta', 'nobody', 'app', 'index=beta');

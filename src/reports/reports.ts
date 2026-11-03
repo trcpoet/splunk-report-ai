@@ -276,9 +276,10 @@ export function webLink(url: string | undefined): string | undefined {
 }
 
 // A contact that is just an email address, which the page turns into a mail
-// link. Anything else ("SRE on-call, #sre-alerts") is shown as text.
+// link. Anything else ("SRE on-call, #sre-alerts") is shown as text. Plain
+// address characters only, so nothing can add ?subject= or other mail fields.
 export const contactEmail = (contact: string | undefined): string | undefined =>
-    contact && /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(contact) ? contact : undefined;
+    contact && /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(contact) ? contact : undefined;
 
 const HOUR_MS = 3_600_000;
 

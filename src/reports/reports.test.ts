@@ -18,6 +18,9 @@ describe('contactEmail', () => {
         assert.equal(contactEmail('infra-oncall@example.com'), 'infra-oncall@example.com');
         assert.equal(contactEmail('SRE on-call, #sre-alerts'), undefined);
         assert.equal(contactEmail('Ask sre@example.com'), undefined);
+        // Nothing that would add mail fields to the link.
+        assert.equal(contactEmail('ops@example.com?subject=disk.full'), undefined);
+        assert.equal(contactEmail('ops@example.com&body=x.co'), undefined);
         assert.equal(contactEmail(undefined), undefined);
     });
 });

@@ -650,8 +650,13 @@
             }
         }
 
-        .side-card dd a {
-            @apply text-primary hover:underline;
+        .side-card dd {
+            /* A long contact or index name wraps instead of widening the card. */
+            @apply min-w-0 [overflow-wrap:anywhere];
+
+            a {
+                @apply text-primary hover:underline;
+            }
         }
 
         .details {

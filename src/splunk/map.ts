@@ -221,6 +221,9 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
     const cron = content.cron_schedule ?? '';
     const recipients = parseRecipients(content['action.email.to']);
     const app = acl?.app ?? 'search';
+    // A private search with a card's name: its owner decides what it runs, so
+    // it can't take on the report's groups, runbook or contact.
+    const shared = config && acl?.sharing !== 'user' ? config : undefined;
 
     return {
         slug: config?.slug ?? slugify(entry.name),
@@ -244,12 +247,11 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
         category: config?.category ?? 'Other',
         tags: config?.tags ?? [],
         icon: config?.icon ?? '',
-        runbook: config?.runbook ?? '',
-        contact: config?.contact ?? '',
-        // Reports without a card are admin-only until someone gives them one.
-        // So is a private search with a card's name: its owner decides what it
-        // runs, so it can't take on the report's groups.
-        allowedGroups: config && acl?.sharing !== 'user' ? (config.groups ?? groupsFromRecipients(recipients)) : [],
+        runbook: shared?.runbook ?? '',
+        contact: shared?.contact ?? '',
+        // Reports without a card are admin-only until someone gives them one,
+        // and so is a private search with a card's name.
+        allowedGroups: shared ? (shared.groups ?? groupsFromRecipients(recipients)) : [],
         chartType: config?.chart === 'none' ? null : (config?.chart?.type ?? chartTypeFromDisplay(content)),
         nextRun: parseSplunkTime(content.next_scheduled_time) ?? nextRunFromCron(cron, timeZone, now),
         disabled: toBool(content.disabled),

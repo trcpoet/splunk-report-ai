@@ -103,9 +103,9 @@
         "type": "string"
       },
       "runbook": {
-        "description": "A link to what to do when the report warns or fails: a runbook or wiki page. The report page and the briefing show it.",
+        "description": "A link to what to do when the report warns or fails: a runbook or wiki page, starting with https://. The report page and the briefing show it.",
         "type": "string",
-        "format": "uri"
+        "pattern": "^https?:\\/\\/"
       },
       "contact": {
         "description": "Who to ask about the report: a team, an on-call rota or an email address, such as \"sre-oncall@example.com\". An email address becomes a link.",

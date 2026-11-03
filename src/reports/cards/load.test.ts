@@ -89,4 +89,8 @@ describe('parseReportCards', () => {
             assert.match(problems(`${card}  runbook: "${runbook}"\n`), /runbook: Use a web address that starts with https:\/\//, runbook);
         }
     });
+
+    test('a contact needs more than spaces', () => {
+        assert.match(problems(`${card}  contact: "   "\n`), /contact/);
+    });
 });
