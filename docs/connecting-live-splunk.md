@@ -10,7 +10,7 @@ Company Splunk ──► sync worker (npm run sync) ──► MongoDB ──► 
 
 - The **web app never talks to Splunk.** It only reads MongoDB.
 - The **sync worker** is the only part that talks to Splunk. It asks for the scheduled reports and their latest results, and saves them in MongoDB.
-- Today the worker reads **fake Splunk** (the files in `lib/splunk/fixtures/`). Going live means pointing it at **real Splunk**. That's 4 settings in `.env.local`. No app code changes.
+- Today the worker reads **fake Splunk** (the files in `src/splunk/fixtures/`). Going live means pointing it at **real Splunk**. That's 4 settings in `.env.local`. No app code changes.
 - **To watch it work before you have access,** run the example with a test Splunk: [splunk-example.md](splunk-example.md). It's Splunk Enterprise's trial in Docker, with dummy reports, and the same connector.
 
 > **Splunk MCP is a separate thing.** The `splunk` MCP server in the Claude Code plugin lets Claude look inside Splunk while you work. The app doesn't use it, and you don't need it for live data. See "Optional: Splunk MCP for Claude Code" at the end.
@@ -20,7 +20,7 @@ Company Splunk ──► sync worker (npm run sync) ──► MongoDB ──► 
 `trcpoet/splunk-report-ai` is a **public** GitHub repo. Once you connect real Splunk, your copy will hold company details:
 
 - `.env.local`: the Splunk address and token. Git already ignores it, so it's never committed.
-- `lib/report-config.ts`: real report names, team names and rules. **This file is committed.**
+- `src/reports/report-config.ts`: real report names, team names and rules. **This file is committed.**
 - MongoDB: real results. It lives on your laptop, not in git.
 
 So on the work laptop:
@@ -115,7 +115,7 @@ It only reads, and checks one thing at a time:
 1. Splunk answers at that address.
 2. The token works, and whose it is (the user and its roles).
 3. How many scheduled searches the token can see, and how many the sync takes (`SYNC_REPORTS`).
-4. Which reports in `lib/report-config.ts` Splunk doesn't have: a typo, or a report not shared with the token's role.
+4. Which reports in `src/reports/report-config.ts` Splunk doesn't have: a typo, or a report not shared with the token's role.
 5. A run's results can be read.
 
 Each problem comes with what to fix, for example:
@@ -172,9 +172,9 @@ Sign in as `admin@example.com`. Admins see every report, so you should see your 
 Which reports come in, with `SYNC_REPORTS=emailed` (the default):
 
 - every scheduled report that **emails its results**, and
-- every scheduled report **listed in `lib/report-config.ts`**, even if it doesn't email.
+- every scheduled report **listed in `src/reports/report-config.ts`**, even if it doesn't email.
 
-With `SYNC_REPORTS=configured`, only the ones in `lib/report-config.ts` come in. Use it when the token can see hundreds of emailed searches and the app should show a chosen few. The home page lists 20 reports a page, newest run first, either way.
+With `SYNC_REPORTS=configured`, only the ones in `src/reports/report-config.ts` come in. Use it when the token can see hundreds of emailed searches and the app should show a chosen few. The home page lists 20 reports a page, newest run first, either way.
 
 To keep the data fresh, run the worker on a timer next to the app:
 
@@ -186,9 +186,9 @@ Splunk deletes a run's results after a while (`dispatch.ttl`, by default two sch
 
 ## Step 6: Decide who sees which report
 
-Right after going live, **only admins see the real reports**, because none of them are in `lib/report-config.ts` yet. That's on purpose: nothing is shown to a team until you say so.
+Right after going live, **only admins see the real reports**, because none of them are in `src/reports/report-config.ts` yet. That's on purpose: nothing is shown to a team until you say so.
 
-For each report, add an entry to `lib/report-config.ts` and choose its teams. [Report settings and access](report-access.md) explains how, with examples.
+For each report, add an entry to `src/reports/report-config.ts` and choose its teams. [Report settings and access](report-access.md) explains how, with examples.
 
 ## Company certificates
 

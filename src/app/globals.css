@@ -1,0 +1,1759 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+    --color-blue: #94eaff;
+    --color-light-100: #e7f2ff;
+    --color-light-200: #bdbdbd;
+    --color-border-dark: #151024;
+    --color-dark-100: #0d161a;
+    --color-dark-200: #182830;
+    --radius: 0.625rem;
+    /* The navbar's height, border included, for what sticks under it (the Ask
+       AI sidebar and bar). */
+    --header-height: 4.3125rem;
+    --background: #030708;
+    --foreground: #ffffff;
+    --primary: #59deca;
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+    /* Categorical chart colors (series identity), in this order. Validated for
+       the dark chart surface (--color-dark-100) with the dataviz skill's
+       validate_palette.js: adjacent CVD ΔE ≥ 8.4, all ≥ 3:1 contrast. */
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    /* Status colors, the same steps as the status badges and run-history dots.
+       Reserved for run outcomes; never used as series colors. */
+    --status-success: oklch(76.5% 0.177 163.223);
+    --status-warning: oklch(82.8% 0.189 84.429);
+    --status-failed: oklch(70.4% 0.191 22.216);
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-blue: var(--color-blue);
+    --color-light-100: var(--color-light-100);
+    --color-light-200: var(--color-light-200);
+    --color-border-dark: var(--color-border-dark);
+    --color-dark-100: var(--color-dark-100);
+    --color-dark-200: var(--color-dark-200);
+    --font-schibsted-grotesk: var(--font-schibsted-grotesk);
+    --font-martian-mono: var(--font-martian-mono);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-border: var(--border);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-primary: var(--primary);
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+}
+
+@utility flex-center {
+    @apply flex items-center justify-center;
+}
+
+@utility text-gradient {
+    @apply to-blue bg-gradient-to-b from-white via-white bg-clip-text font-semibold text-transparent;
+}
+
+@utility glass {
+    @apply bg-[#12121280]/50 rounded-md bg-clip-padding backdrop-filter backdrop-blur-xl border-b border-border-dark;
+}
+
+@utility card-shadow {
+    box-shadow: 0px 4px 40px 0px #00000066;
+}
+
+@layer base {
+    /* Outlines default to the accent color, so a focus ring never fades in from
+       grey on elements that transition their colors. */
+    * {
+        @apply border-border outline-primary;
+    }
+
+    /* Keyboard focus is always visible. */
+    :focus-visible {
+        @apply outline-2 outline-offset-2;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    main {
+        @apply mx-auto container flex flex-col sm:px-10 px-5 py-10;
+    }
+
+    h1 {
+        @apply text-gradient text-6xl font-semibold max-sm:text-4xl;
+    }
+
+    h3 {
+        @apply font-schibsted-grotesk text-2xl font-bold;
+    }
+
+    ul {
+        @apply list-disc list-inside;
+    }
+}
+
+@layer components {
+    #home {
+        .subheading {
+            @apply text-light-100 text-lg max-sm:text-sm text-center mt-5 max-w-2xl mx-auto;
+        }
+
+        .data-freshness {
+            @apply text-light-200 text-xs text-center mt-4;
+        }
+
+        .sync-notice {
+            @apply mx-auto mt-3 flex w-fit max-w-full flex-col gap-1 rounded-[10px] border px-5 py-3 text-center text-sm;
+
+            .detail {
+                @apply text-xs opacity-80;
+            }
+        }
+    }
+
+    /* Loading placeholders (src/shared/components/Skeletons.tsx). A line is as tall as
+       the text it stands for; a block takes a fixed size. */
+    .skeleton-line {
+        @apply inline-block max-w-full rounded-[4px] bg-dark-200/70 text-transparent select-none animate-pulse motion-reduce:animate-none;
+    }
+
+    .skeleton-block {
+        @apply block rounded-[6px] bg-dark-200/50 animate-pulse motion-reduce:animate-none;
+    }
+
+    /* Holds the user menu's place; the sign-in page has no menu. */
+    .user-menu-placeholder {
+        @apply animate-pulse motion-reduce:animate-none;
+    }
+
+    body:has(#login) :is(.user-menu-placeholder, .user-menu-fallback) {
+        @apply hidden;
+    }
+
+    .chart-card {
+        @apply bg-dark-100 border border-dark-200 card-shadow rounded-[10px] px-5 py-4 flex flex-col gap-3;
+
+        .chart-heading {
+            @apply font-schibsted-grotesk text-base font-semibold;
+        }
+
+        .chart-subtitle {
+            @apply text-light-200 text-xs;
+        }
+
+        details {
+            @apply text-sm text-light-200;
+
+            summary {
+                @apply w-fit cursor-pointer hover:text-light-100;
+            }
+
+            .table-wrap {
+                @apply mt-3;
+            }
+        }
+
+        /* Charts draw once the page's JavaScript has loaded. Until then their
+           space shows as a quiet placeholder rather than an empty gap. */
+        [data-slot="chart"]:not(:has(svg)) {
+            @apply rounded-[6px] bg-dark-200/40 animate-pulse motion-reduce:animate-none;
+        }
+
+        /* A chart that couldn't be drawn (src/shared/components/ChartBoundary.tsx). */
+        .chart-error {
+            @apply rounded-[6px] border border-dashed border-dark-200 px-4 py-10 text-center text-sm text-light-200;
+        }
+    }
+
+    /* The home page's runs-per-day chart and run health grid: side by side on
+       wide screens. min-w-0 lets a chart shrink inside its column. */
+    .overview-charts {
+        @apply mt-10 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0;
+    }
+
+    /* Run health grid (src/reports/overview/RunHealthGrid.tsx): a report per row, a day
+       per column, each day's worst outcome as a small square. */
+    .health-grid {
+        @apply w-full table-fixed border-separate border-spacing-y-1 text-sm;
+
+        col.day {
+            @apply w-7 max-[360px]:w-6;
+        }
+
+        th,
+        td {
+            @apply p-0 font-normal;
+        }
+
+        thead th {
+            @apply pb-1 text-center text-xs leading-tight text-light-200;
+        }
+
+        /* Report titles: one line, cut short, on wide screens; up to two lines
+           on phones, where the column is narrow. 24px tall at least, to tap. */
+        tbody th {
+            @apply pr-3 text-left;
+
+            a {
+                @apply block truncate rounded-[4px] py-0.5 text-light-100 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:break-words max-sm:hyphens-auto max-sm:leading-snug;
+            }
+        }
+
+        td {
+            @apply text-center;
+        }
+    }
+
+    /* A day's mark: a status color with a dark icon, or an empty outline for a
+       day without runs. Text is never colored; the legend and the tooltip name it. */
+    .health-cell {
+        @apply inline-flex size-[22px] items-center justify-center rounded-[5px] border border-transparent align-middle text-background;
+
+        svg {
+            @apply size-3.5 stroke-[3];
+        }
+    }
+
+    .health-success {
+        background: var(--status-success);
+    }
+
+    .health-warning {
+        background: var(--status-warning);
+    }
+
+    .health-failed {
+        background: var(--status-failed);
+    }
+
+    /* At least 3:1 against the card, like the filled marks. */
+    .health-none {
+        @apply border-light-200/50;
+    }
+
+    .health-legend {
+        @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-light-200;
+
+        li {
+            @apply inline-flex items-center gap-1.5;
+        }
+
+        .health-cell {
+            @apply size-3.5 rounded-[3px];
+
+            svg {
+                @apply size-2.5;
+            }
+        }
+    }
+
+    /* Under the "When searches run" chart (src/reports/overview/SchedulerLoad.tsx). */
+    .load-notes {
+        @apply flex flex-col gap-2 text-sm text-light-200;
+
+        /* The bold times lead each line, so no bullets. */
+        ul {
+            @apply flex list-none flex-col gap-1;
+        }
+
+        .when {
+            @apply font-medium text-light-100;
+        }
+
+        .quiet {
+            @apply text-xs;
+        }
+    }
+
+    /* Buttons and button-styled links. */
+    .btn-primary,
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-[6px] px-4 py-2.5 font-semibold cursor-pointer transition-colors enabled:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-wait;
+
+        svg {
+            @apply size-4 shrink-0;
+        }
+    }
+
+    .btn-primary {
+        @apply bg-primary text-black hover:bg-primary/90;
+    }
+
+    .btn-secondary {
+        @apply border border-dark-200 bg-dark-200 text-light-100 hover:border-primary/60;
+    }
+
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 rounded-[6px] border border-red-400/40 bg-red-400/10 px-4 py-2.5 font-semibold text-red-300 cursor-pointer transition-colors hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-small {
+        @apply shrink-0 whitespace-nowrap px-3 py-1.5 text-sm;
+    }
+
+    /* A quiet button under an answer, such as Copy. */
+    .btn-ghost {
+        @apply inline-flex w-fit items-center gap-1.5 rounded-[6px] px-2 py-1 text-xs text-light-200 cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100;
+
+        svg {
+            @apply size-3.5;
+        }
+    }
+
+    .icon-button {
+        @apply inline-flex size-9 items-center justify-center rounded-[6px] text-light-200 cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100;
+
+        svg {
+            @apply size-4;
+        }
+    }
+
+    .spinner {
+        @apply size-4 shrink-0 animate-spin;
+    }
+
+    /* Error and not-found screens. */
+    .status-page {
+        @apply flex flex-col items-center gap-5 py-16 text-center;
+
+        p {
+            @apply max-w-lg text-light-100 max-sm:text-sm;
+        }
+
+        .actions {
+            @apply mt-2 flex flex-row flex-wrap justify-center gap-3;
+        }
+
+        .error-id {
+            @apply text-xs text-light-200;
+
+            code {
+                @apply font-martian-mono;
+            }
+        }
+    }
+
+    .skip-link {
+        @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[6px] focus:bg-primary focus:px-4 focus:py-2 focus:font-semibold focus:text-black;
+    }
+
+    #explore-btn {
+        @apply border-dark-200 bg-dark-100 flex-center gap-2 w-fit cursor-pointer rounded-full border px-8 py-3.5 max-sm:w-full text-center;
+    }
+
+    header {
+        /* One height at every width, so what sticks under it can line up (--header-height). */
+        @apply glass sticky top-0 z-50 h-(--header-height);
+        /* Stays put while the page under it crossfades (see the end of this file). */
+        view-transition-name: site-header;
+
+        nav {
+            @apply flex h-full flex-row items-center justify-between mx-auto container sm:px-10 px-5;
+        }
+
+        .logo {
+            @apply flex flex-row items-center gap-2;
+
+            p {
+                @apply text-xl font-bold italic max-sm:hidden;
+            }
+        }
+
+        ul {
+            @apply flex flex-row items-center gap-6 max-sm:gap-4 list-none;
+
+            /* The padding makes them easier to tap without moving anything. */
+            a {
+                @apply whitespace-nowrap py-1.5 transition-colors hover:text-primary;
+            }
+
+            a[aria-current="page"] {
+                @apply text-primary;
+            }
+
+            /* On phones the logo already goes home. */
+            a.nav-overview {
+                @apply max-sm:hidden;
+            }
+
+            a.nav-ai {
+                @apply inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-primary hover:border-primary max-sm:px-2.5;
+
+                svg {
+                    @apply size-4 shrink-0;
+                }
+            }
+
+            a.nav-ai[aria-current="page"] {
+                @apply border-primary bg-primary/10;
+            }
+        }
+    }
+
+    .stats,
+    .highlights {
+        @apply grid gap-4;
+    }
+
+    .stats {
+        @apply grid-cols-2 md:grid-cols-4 mt-14;
+    }
+
+    .highlights {
+        @apply grid-cols-1 sm:grid-cols-3;
+    }
+
+    .stat-tile {
+        @apply bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] px-5 py-4 flex flex-col gap-1;
+
+        .label {
+            @apply text-light-200 text-xs uppercase tracking-wider;
+        }
+
+        .value {
+            @apply text-3xl font-semibold max-sm:text-2xl;
+        }
+
+        .note {
+            @apply text-light-200 text-xs;
+        }
+
+        .value-row {
+            @apply flex flex-row items-center justify-between gap-3;
+        }
+
+        /* How much of a limit is used (src/shared/components/Meter.tsx). */
+        .meter {
+            @apply my-1 h-1.5 w-full overflow-hidden rounded-full bg-dark-200;
+
+            .fill {
+                @apply h-full rounded-full bg-chart-1;
+            }
+
+            .fill.over {
+                @apply bg-[var(--status-warning)];
+            }
+        }
+
+        .sparkline {
+            @apply shrink-0;
+        }
+    }
+
+    .filters {
+        @apply flex flex-col gap-3;
+
+        input {
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-5 py-2.5 w-full md:max-w-md placeholder:text-light-200/70 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+        }
+    }
+
+    .chips {
+        @apply flex flex-row flex-wrap gap-2;
+    }
+
+    .chip {
+        @apply rounded-full border border-dark-200 bg-dark-100 px-4 py-1.5 text-sm text-light-200 cursor-pointer transition-colors hover:text-light-100;
+    }
+
+    .chip-active {
+        @apply border-primary text-primary hover:text-primary;
+    }
+
+    .empty-state {
+        @apply text-light-200 border border-dashed border-dark-200 rounded-[10px] px-5 py-10 text-center;
+    }
+
+    .reports {
+        @apply grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6;
+    }
+
+    .report-card {
+        @apply relative overflow-hidden bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] p-5 flex flex-col gap-4 h-full transition-colors hover:border-primary/60;
+
+        /* Along the top edge while the report it opens is still loading
+           (src/reports/components/ReportCard.tsx). It waits 150 ms, so cards that open at
+           once never flash it. */
+        .pending-bar {
+            @apply pointer-events-none absolute inset-x-0 top-0 h-0.5 opacity-0;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent) no-repeat;
+            background-size: 50% 100%;
+        }
+
+        .pending-bar.is-pending {
+            @apply opacity-100;
+            transition: opacity 150ms 150ms;
+            animation: pending-slide 1.2s ease-in-out infinite;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: none;
+                background-size: 100% 100%;
+            }
+        }
+
+        .title {
+            @apply text-lg font-semibold leading-snug line-clamp-2;
+        }
+
+        .description {
+            @apply text-light-200 text-sm line-clamp-2;
+        }
+
+        .meta {
+            @apply flex flex-col gap-2 text-light-200 text-sm;
+
+            div {
+                @apply flex flex-row items-center gap-2;
+            }
+        }
+    }
+
+    .pill {
+        @apply bg-dark-200 text-light-100 text-xs rounded-[6px] px-3 py-1;
+    }
+
+    .status-badge {
+        @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium;
+
+        .dot {
+            @apply size-1.5 rounded-full bg-current;
+        }
+    }
+
+    .status-success {
+        @apply border-emerald-400/30 bg-emerald-400/10 text-emerald-300;
+    }
+
+    .status-warning {
+        @apply border-amber-400/30 bg-amber-400/10 text-amber-300;
+    }
+
+    .status-failed {
+        @apply border-red-400/30 bg-red-400/10 text-red-300;
+    }
+
+    /* A report with no run stored yet. Neutral: nothing is wrong that we know of. */
+    .status-none {
+        @apply border-light-200/30 bg-light-200/10 text-light-200;
+    }
+
+    /* A report card's headline number from its newest results
+       (src/reports/reports.ts, toSummary): the one bold thing on the card. */
+    .card-headline {
+        @apply flex flex-row flex-wrap items-baseline gap-x-2 gap-y-0.5;
+
+        .label {
+            @apply w-full text-light-200 text-xs;
+        }
+
+        .value {
+            @apply text-2xl font-semibold leading-tight tabular-nums break-words;
+        }
+
+        .note {
+            @apply text-light-200 text-xs;
+        }
+
+        /* The newest run had no results, so the number is an older run's. */
+        .from {
+            @apply w-full text-amber-300 text-xs;
+        }
+    }
+
+    .run-history {
+        @apply flex flex-row items-center gap-1 mt-auto;
+
+        .label {
+            @apply text-light-200 text-xs mr-1;
+        }
+
+        .run {
+            @apply size-3 rounded-[3px];
+        }
+
+        .run-success {
+            @apply bg-emerald-400/80;
+        }
+
+        .run-warning {
+            @apply bg-amber-400/80;
+        }
+
+        .run-failed {
+            @apply bg-red-400/80;
+        }
+    }
+
+    #report {
+        @apply flex flex-col gap-8;
+
+        .back-link {
+            @apply text-light-200 text-sm w-fit hover:text-primary;
+        }
+
+        .header {
+            @apply flex w-2/3 flex-col items-start gap-4 max-lg:w-full;
+        }
+
+        .status-callout {
+            @apply rounded-[10px] border px-5 py-4 text-sm;
+        }
+
+        .details {
+            @apply flex w-full flex-col lg:flex-row gap-12 items-start mt-4;
+
+            .content {
+                @apply flex flex-[2] flex-col gap-10 min-w-0 max-lg:w-full;
+            }
+
+            /* Pinned beside the results on wide screens. When it's taller than
+               the window, it scrolls by itself, so nothing at its bottom (the
+               report's buttons) ends up out of reach. The padding keeps the
+               cards' shadows and focus rings from being cut off. */
+            .sidebar {
+                @apply flex flex-1 flex-col gap-6 w-full lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:-m-2 lg:p-2;
+            }
+        }
+
+        .side-card {
+            @apply bg-dark-100 border border-dark-200 card-shadow flex w-full flex-col gap-5 rounded-[10px] border px-5 py-6;
+
+            /* Direct children only: the Explain panel opens from inside this
+               card, and shouldn't take its styles. */
+            & > p {
+                @apply text-sm;
+            }
+
+            & > dl {
+                @apply flex flex-col gap-3 text-sm;
+
+                div {
+                    @apply flex flex-row justify-between gap-4 border-b border-dark-200 pb-3 last:border-none last:pb-0;
+                }
+
+                dt {
+                    @apply text-light-200 shrink-0;
+                }
+
+                dd {
+                    @apply text-right flex flex-col items-end gap-1;
+
+                    code {
+                        @apply font-martian-mono text-xs text-blue;
+                    }
+                }
+            }
+
+            .recipients {
+                @apply list-none flex flex-col gap-1.5 font-martian-mono text-xs text-light-100;
+            }
+        }
+
+        h2 {
+            @apply font-schibsted-grotesk text-2xl font-bold;
+        }
+
+        .header p {
+            @apply text-light-100 text-lg max-sm:text-sm;
+        }
+
+        .flex-col-gap-3 {
+            @apply flex flex-col gap-3;
+        }
+    }
+
+    .table-filter {
+        @apply flex flex-row flex-wrap items-center gap-3;
+
+        input {
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-4 py-2 text-sm w-full sm:max-w-xs placeholder:text-light-200/70 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+        }
+
+        span {
+            @apply text-light-200 text-sm;
+        }
+    }
+
+    .table-wrap {
+        @apply overflow-x-auto rounded-[10px] border border-dark-200;
+    }
+
+    /* Previous / Next with where you are (src/reports/components/Pager.tsx): under the
+       results table and under the report list. */
+    .pager {
+        @apply flex flex-row flex-wrap items-center justify-end gap-2 text-sm text-light-200;
+
+        span {
+            @apply mr-auto;
+        }
+
+        button {
+            @apply max-sm:min-h-11;
+        }
+
+        button[aria-disabled="true"] {
+            @apply cursor-not-allowed opacity-60 hover:border-dark-200;
+        }
+    }
+
+    .results-table {
+        @apply w-full text-sm text-left border-collapse;
+
+        th {
+            @apply bg-dark-200 text-light-200 font-medium px-4 py-3 whitespace-nowrap;
+        }
+
+        /* Sort buttons. On right-aligned number columns the arrow goes first,
+           so the label lines up with the numbers. */
+        th button {
+            @apply inline-flex items-center gap-1.5 cursor-pointer hover:text-light-100;
+        }
+
+        th.numeric button {
+            @apply flex-row-reverse;
+        }
+
+        th[aria-sort] button {
+            @apply text-light-100;
+        }
+
+        .sort-icon {
+            @apply size-3.5 shrink-0 opacity-50;
+        }
+
+        th[aria-sort] .sort-icon {
+            @apply opacity-100;
+        }
+
+        td.no-match {
+            @apply py-8 text-center text-light-200 whitespace-normal;
+        }
+
+        td {
+            @apply px-4 py-3 border-t border-dark-200 text-light-100 whitespace-nowrap;
+        }
+
+        .numeric {
+            @apply text-right;
+        }
+
+        td.numeric {
+            @apply font-martian-mono text-xs;
+        }
+
+        tbody tr {
+            @apply hover:bg-dark-100;
+        }
+    }
+
+    .spl {
+        @apply font-martian-mono text-xs leading-relaxed bg-dark-100 border border-dark-200 rounded-[10px] p-4 overflow-x-auto whitespace-pre text-blue;
+    }
+
+    .report-actions {
+        @apply flex flex-col gap-3;
+
+        /* Direct children only: not the buttons inside the Explain panel. */
+        & > button {
+            @apply w-full;
+        }
+
+        .action-error {
+            @apply text-sm text-amber-300;
+        }
+    }
+
+    /* Ask AI (app/ai), laid out like ChatGPT: the chat sidebar, the bar with
+       the mode switch, the chat, Write SPL's pipeline and the chats page.
+       The page fills the window under the navbar: it cancels main's padding,
+       and the sidebar and the bar stick under the navbar (--header-height)
+       while the window scrolls. */
+    #ai {
+        @apply -my-10 grid lg:grid-cols-[16rem_minmax(0,1fr)];
+    }
+
+    .ai-sidebar {
+        @apply sticky top-(--header-height) flex h-[calc(100dvh-var(--header-height))] flex-col gap-5 self-start overflow-y-auto border-r border-dark-200 py-4 pr-3 max-lg:hidden;
+    }
+
+    .sidebar-links {
+        @apply flex flex-col gap-0.5;
+    }
+
+    .sidebar-link {
+        @apply flex flex-row items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-sm text-light-100 transition-colors hover:bg-dark-100;
+
+        svg {
+            @apply size-4 shrink-0 text-light-200;
+        }
+    }
+
+    .sidebar-link[aria-current="page"] {
+        @apply bg-dark-200;
+    }
+
+    .sidebar-empty {
+        @apply px-2.5 text-sm text-light-200;
+    }
+
+    .sidebar-group {
+        @apply flex flex-col gap-1;
+
+        h2 {
+            @apply px-2.5 text-xs font-medium text-light-200;
+        }
+
+        ul {
+            @apply flex list-none flex-col gap-0.5;
+        }
+    }
+
+    .ai-main {
+        @apply flex min-h-[calc(100dvh-var(--header-height))] min-w-0 flex-col lg:pl-8;
+    }
+
+    /* The bar above the chat: the mode switch, and the button for its panel. */
+    .ai-topbar {
+        @apply sticky top-(--header-height) z-10 flex flex-row items-center gap-2 bg-background/80 py-3 backdrop-blur;
+    }
+
+    .ai-topbar-end {
+        @apply ml-auto flex flex-row items-center gap-2;
+    }
+
+    .mode-switch {
+        @apply inline-flex flex-row items-center gap-1 rounded-full border border-dark-200 bg-dark-100 p-1;
+
+        a {
+            @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-light-200 transition-colors hover:text-light-100;
+
+            /* On phones the short labels fit only without their icons. */
+            svg {
+                @apply size-4 shrink-0 max-sm:hidden;
+            }
+        }
+
+        a[aria-current="page"] {
+            @apply bg-dark-200 text-light-100;
+        }
+    }
+
+    .topbar-button {
+        @apply inline-flex items-center gap-2 rounded-full border border-dark-200 bg-dark-100 px-3 py-1.5 text-sm text-light-100 cursor-pointer transition-colors hover:border-primary/60 max-sm:px-2.5;
+
+        svg {
+            @apply size-4 shrink-0;
+        }
+    }
+
+    /* How many reports need attention, on the Reports button. */
+    .topbar-badge {
+        @apply inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400/15 px-1.5 text-xs font-semibold text-amber-300;
+    }
+
+    /* Inside the bar's panels (src/ai/components/AiPanels.tsx): the briefing, then
+       the reports or searches to pick from. */
+    .ai-panel {
+        @apply flex flex-col gap-6;
+
+        .ai-panel-list {
+            @apply border-t border-dark-200 pt-5;
+        }
+    }
+
+    .ai-panel-list {
+        @apply flex flex-col gap-2;
+
+        h3 {
+            @apply font-sans text-sm font-normal text-light-200;
+        }
+
+        > p {
+            @apply text-sm text-light-200;
+        }
+
+        ul {
+            @apply -mx-2 flex list-none flex-col;
+        }
+
+        a {
+            @apply flex flex-row items-start gap-2.5 rounded-[6px] px-2 py-2 text-sm text-light-100 transition-colors hover:bg-dark-200;
+        }
+
+        .dot {
+            @apply mt-1.5 shrink-0;
+        }
+
+        .side-note {
+            @apply line-clamp-1 text-xs text-light-200;
+        }
+
+        code.side-note {
+            @apply font-martian-mono text-blue;
+        }
+    }
+
+    /* Report status as a small dot: in answers, the side panel and the history. */
+    .dot {
+        @apply inline-block size-2 rounded-full;
+    }
+
+    .dot-success {
+        background: var(--status-success);
+    }
+
+    .dot-warning {
+        background: var(--status-warning);
+    }
+
+    .dot-failed {
+        background: var(--status-failed);
+    }
+
+    .dot-none {
+        background: var(--color-light-200);
+    }
+
+    /* The conversation, in a column down the middle. */
+    .chat {
+        @apply mx-auto flex w-full max-w-[44rem] flex-1 flex-col gap-8 pt-2;
+
+        .chat-log {
+            @apply flex flex-1 flex-col gap-8;
+        }
+    }
+
+    /* A new chat: its question and the box to type in, in the middle of the window. */
+    .chat.is-empty {
+        @apply justify-center gap-6 pb-[12vh];
+
+        .chat-log {
+            @apply hidden;
+        }
+
+        .composer {
+            @apply static bg-transparent pb-0 backdrop-blur-none;
+        }
+    }
+
+    .chat-greeting {
+        @apply flex flex-col items-center gap-2 text-center;
+
+        p {
+            @apply max-w-xl text-light-200 max-sm:text-sm;
+        }
+    }
+
+    .chat-greeting-title {
+        @apply font-schibsted-grotesk text-3xl font-semibold text-balance text-light-100 max-sm:text-2xl;
+    }
+
+    /* Your question: a rounded bubble on the right. */
+    .msg-user {
+        @apply max-w-[80%] self-end whitespace-pre-wrap break-words rounded-[20px] bg-dark-200 px-4 py-2.5 text-light-100;
+    }
+
+    /* The answer: plain text across the column, with its buttons under it. */
+    .msg-answer {
+        @apply flex flex-col gap-3;
+
+        .answer-text {
+            @apply max-w-none text-base leading-7;
+        }
+    }
+
+    /* While an answer is on its way, a light passes over these words. Without
+       motion, they just sit there. */
+    .thinking {
+        @apply w-fit bg-clip-text text-sm text-transparent;
+        background-image: linear-gradient(90deg, var(--color-light-200) 30%, var(--color-light-100) 50%, var(--color-light-200) 70%);
+        background-size: 300% 100%;
+        animation: shimmer 2s linear infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            @apply text-light-200;
+            animation: none;
+            background-image: none;
+        }
+    }
+
+    .answer-text {
+        @apply flex max-w-[68ch] flex-col gap-3 text-[15px] leading-relaxed text-light-100;
+
+        ul,
+        ol {
+            @apply flex list-outside flex-col gap-1 pl-5;
+        }
+
+        ul {
+            @apply list-disc;
+        }
+
+        ol {
+            @apply list-decimal;
+        }
+
+        strong {
+            @apply font-semibold text-white;
+        }
+
+        code {
+            @apply font-martian-mono text-xs text-blue;
+        }
+
+        pre {
+            @apply overflow-x-auto rounded-[10px] border border-dark-200 bg-dark-100 p-4;
+        }
+
+        .table-wrap {
+            @apply my-1;
+        }
+    }
+
+    .report-chip {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-2.5 py-0.5 align-baseline text-sm text-light-100 transition-colors hover:border-primary/60 hover:text-primary;
+
+        .dot {
+            @apply size-1.5;
+        }
+    }
+
+    .answer-note {
+        @apply text-sm text-light-200;
+    }
+
+    .answer-note.failed {
+        @apply text-amber-300;
+    }
+
+    /* The box to type in: a pill that stays at the bottom of the window. */
+    .composer {
+        @apply sticky bottom-0 flex flex-col gap-2 bg-background/90 pb-3 pt-2 backdrop-blur;
+
+        form {
+            @apply flex flex-row items-end gap-2 rounded-[28px] border border-dark-200 bg-dark-100 py-2 pl-5 pr-2 card-shadow transition-colors focus-within:border-primary;
+        }
+
+        textarea {
+            @apply max-h-52 min-h-10 flex-1 resize-none bg-transparent py-2 text-light-100 placeholder:text-light-200/70 focus-visible:outline-none;
+            field-sizing: content;
+        }
+
+        /* Send: a round button with an arrow. Grey until there's something to send. */
+        .composer-button {
+            @apply inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-black cursor-pointer transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-dark-200 disabled:text-light-200;
+
+            svg {
+                @apply size-5;
+            }
+        }
+
+        /* Stop: a light circle with a square in it, while an answer comes in. */
+        .composer-button.stop {
+            @apply bg-light-100 text-black hover:bg-light-100/90;
+
+            svg {
+                @apply size-3.5 fill-current;
+            }
+        }
+
+        .composer-notes {
+            @apply text-center;
+        }
+
+        /* The suggestions under a new chat's box. */
+        .suggestions {
+            @apply justify-center;
+        }
+    }
+
+    .composer-notes {
+        @apply text-xs text-light-200;
+    }
+
+    /* Back to the newest message, after scrolling up: just above the box to type in. */
+    .jump-down {
+        @apply absolute -top-12 left-1/2 inline-flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-dark-200 bg-dark-100 text-light-100 cursor-pointer card-shadow transition-colors hover:bg-dark-200;
+
+        svg {
+            @apply size-4;
+        }
+    }
+
+    .ai-notice {
+        @apply rounded-[10px] border border-dashed border-dark-200 px-5 py-4 text-sm text-light-100;
+    }
+
+    /* Write SPL: the search as a pipeline, one numbered step per pipe command. */
+    .spl-card {
+        @apply flex flex-col gap-4;
+
+        .spl-summary {
+            @apply text-base leading-7 text-light-100;
+        }
+
+        /* A code block like ChatGPT's: what it is and Copy, above the code. */
+        .code-block {
+            @apply overflow-hidden rounded-[12px] border border-dark-200 bg-dark-100;
+
+            .spl {
+                @apply rounded-none border-0 bg-transparent;
+            }
+        }
+
+        .code-block-head {
+            @apply flex flex-row items-center justify-between gap-3 border-b border-dark-200 bg-dark-200/40 py-1 pl-4 pr-1.5 text-xs text-light-200;
+        }
+
+        .spl-safety {
+            @apply inline-flex w-fit items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-2.5 py-0.5 text-xs font-medium text-light-100;
+
+            svg {
+                @apply size-3.5 shrink-0;
+            }
+        }
+
+        .spl-check {
+            @apply text-xs text-light-200;
+        }
+
+        .spl-safety.risky {
+            @apply border-amber-400/30 bg-amber-400/10 text-amber-300;
+        }
+
+        .spl-warnings {
+            @apply flex list-inside list-disc flex-col gap-1 text-sm text-amber-300;
+        }
+
+        .spl-query {
+            code {
+                @apply flex flex-col;
+            }
+
+            .line {
+                @apply -mx-4 px-4 transition-colors;
+            }
+
+            .line.is-active {
+                @apply bg-primary/15 text-white;
+            }
+        }
+
+        .spl-actions {
+            @apply flex flex-row flex-wrap gap-2;
+
+            > * {
+                @apply px-3 py-1.5 text-sm;
+            }
+        }
+
+        .spl-facts {
+            @apply flex flex-col gap-3 text-sm;
+
+            dt {
+                @apply mb-1 text-xs text-light-200;
+            }
+
+            dd code {
+                @apply rounded-[4px] bg-dark-200 px-1.5 py-0.5 font-martian-mono text-xs text-blue;
+            }
+
+            ul {
+                @apply list-inside list-disc text-light-100;
+            }
+        }
+    }
+
+    .spl-steps {
+        @apply flex list-none flex-col;
+
+        li {
+            @apply relative grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-1 pb-5 last:pb-0;
+        }
+
+        /* The rule joining one step to the next. */
+        li::before {
+            @apply absolute bottom-0 left-[calc(1rem-1px)] top-8 w-0.5 bg-dark-200 content-[''];
+        }
+
+        li:last-child::before {
+            @apply hidden;
+        }
+
+        .step-number {
+            @apply row-span-2 flex size-8 items-center justify-center rounded-full border border-light-200/50 bg-dark-100 font-martian-mono text-xs text-light-100 cursor-pointer transition-colors hover:border-primary/60 aria-pressed:border-primary aria-pressed:text-primary;
+        }
+
+        code {
+            @apply self-center break-all font-martian-mono text-xs text-blue;
+        }
+
+        p {
+            @apply text-sm text-light-200;
+        }
+    }
+
+    /* A search that just arrived shows its steps one after another, once. */
+    .spl-steps.reveal li {
+        animation: step-in 240ms ease-out both;
+        animation-delay: calc(var(--i, 0) * 60ms);
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    /* The chats page (Search chats in the sidebar). */
+    .chats-page {
+        @apply mx-auto flex w-full max-w-[44rem] flex-col gap-6 pb-10 pt-2;
+
+        > h2 {
+            @apply font-schibsted-grotesk text-2xl font-semibold;
+        }
+    }
+
+    .history {
+        @apply flex flex-col gap-6;
+    }
+
+    .history-group {
+        @apply flex flex-col gap-2;
+
+        h3 {
+            @apply font-sans text-sm font-normal text-light-200;
+        }
+
+        ul {
+            @apply flex list-none flex-col divide-y divide-dark-200 rounded-[10px] border border-dark-200 bg-dark-100/80;
+        }
+    }
+
+    .history-row {
+        @apply flex flex-row flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3;
+
+        .history-icon {
+            @apply size-4 shrink-0 text-light-200;
+        }
+
+        .history-link {
+            @apply flex min-w-0 flex-1 flex-col gap-0.5;
+        }
+
+        .history-link:hover .history-title {
+            @apply text-primary;
+        }
+
+        .history-title {
+            @apply truncate font-medium text-light-100 transition-colors;
+        }
+
+        .history-preview {
+            @apply truncate text-sm text-light-200;
+        }
+
+        .history-meta {
+            @apply flex flex-row flex-wrap gap-3 text-xs text-light-200;
+        }
+
+        .history-actions {
+            @apply flex flex-row flex-wrap items-center gap-2;
+        }
+
+        .history-rename {
+            @apply flex min-w-0 flex-1 flex-row flex-wrap items-center gap-2;
+
+            input {
+                @apply min-w-0 flex-1 rounded-[6px] border border-light-200/50 bg-dark-100 px-3 py-1.5 text-sm text-light-100 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+            }
+        }
+
+        .history-error {
+            @apply w-full text-sm text-amber-300;
+        }
+    }
+
+    /* A chat in the sidebar: just its title, and the open chat marked. Its
+       color (--row) is also the color of the buttons over the title's end. */
+    .history-row.compact {
+        --row: transparent;
+        @apply relative gap-x-2 rounded-[8px] px-2.5 py-1.5 transition-colors;
+        background-color: var(--row);
+
+        &:hover,
+        &:focus-within {
+            --row: var(--color-dark-100);
+        }
+
+        .history-icon {
+            @apply size-3.5;
+        }
+
+        .history-title {
+            @apply text-sm font-normal;
+        }
+
+        .history-link:hover .history-title {
+            @apply text-light-100;
+        }
+
+        /* The whole row opens the chat, not just its title. */
+        .history-link::after {
+            @apply absolute inset-0 rounded-[8px] content-[''];
+        }
+
+        .history-actions {
+            @apply relative z-[1] gap-0;
+        }
+
+        .history-actions .icon-button {
+            @apply size-7;
+
+            svg {
+                @apply size-3.5;
+            }
+        }
+    }
+
+    .history-row.compact.is-current {
+        --row: var(--color-dark-200);
+    }
+
+    /* On screens that can point, Rename and Delete cover the end of the title,
+       which fades out under them, and show on hover or focus, and on the open chat. */
+    @media (hover: hover) {
+        .history-row.compact .history-actions:not(.history-confirm) {
+            @apply absolute right-1 top-1/2 -translate-y-1/2 rounded-[6px];
+            background-color: var(--row);
+            box-shadow: -1rem 0 0.75rem -0.25rem var(--row);
+        }
+
+        .history-row.compact:not(.is-current, :hover, :focus-within) .history-actions:not(.history-confirm) {
+            @apply opacity-0;
+        }
+    }
+
+    /* Explain (src/ai/components/ExplainButton.tsx): on a report card it sits on top
+       of the card's bottom-right corner, since a button can't go inside the link. */
+    .report-card-wrap {
+        @apply relative h-full;
+    }
+
+    .explain-trigger {
+        @apply absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-dark-200 bg-dark-100 px-3 py-1.5 text-xs text-light-100 cursor-pointer transition-colors hover:border-primary/60 hover:text-primary;
+
+        svg {
+            @apply size-3.5;
+        }
+    }
+
+    /* A side panel on wide screens, a bottom sheet on phones. */
+    .explain-panel {
+        @apply fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-dvh w-full max-w-lg overflow-y-auto border-0 border-l border-dark-200 bg-dark-100 p-0 text-light-100 card-shadow max-sm:inset-x-0 max-sm:top-auto max-sm:h-auto max-sm:max-h-[85dvh] max-sm:max-w-none max-sm:rounded-t-[16px] max-sm:border-l-0 max-sm:border-t;
+
+        &::backdrop {
+            background: color-mix(in srgb, var(--background) 75%, transparent);
+        }
+
+        &[open] {
+            animation: panel-in 200ms ease-out;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: none;
+            }
+        }
+    }
+
+    /* The page behind an open panel stays put. */
+    html:has(.explain-panel[open]) {
+        @apply overflow-hidden;
+    }
+
+    .explain-content {
+        @apply flex flex-col gap-6 px-6 py-6 max-sm:px-5;
+    }
+
+    .explain-head {
+        @apply flex flex-row items-start justify-between gap-4;
+
+        h2 {
+            @apply font-schibsted-grotesk text-2xl font-bold;
+        }
+    }
+
+    .explain-section {
+        @apply flex flex-col gap-3;
+
+        h3 {
+            @apply font-schibsted-grotesk text-base font-semibold;
+        }
+
+        .status-callout {
+            @apply rounded-[10px] border px-4 py-3 text-sm;
+        }
+    }
+
+    .explain-unusual {
+        @apply flex flex-row items-center gap-3 rounded-[10px] border border-dark-200 bg-dark-200/40 px-4 py-3 text-sm;
+
+        .sparkline {
+            @apply shrink-0;
+        }
+    }
+
+    .explain-profile {
+        @apply flex flex-col gap-2 text-sm;
+
+        div {
+            @apply flex flex-col gap-0.5 border-b border-dark-200 pb-2 last:border-none last:pb-0;
+        }
+
+        dt {
+            @apply font-medium text-light-100;
+        }
+
+        dd {
+            @apply text-light-200;
+        }
+    }
+
+    /* The briefing (src/ai/components/Briefing.tsx): on the home page a card, on Ask
+       about reports the top of the side panel. */
+    .briefing {
+        @apply flex flex-col gap-5;
+
+        .briefing-head {
+            @apply flex flex-col gap-1;
+        }
+
+        .briefing-headline {
+            @apply font-schibsted-grotesk text-xl font-semibold;
+        }
+
+        .briefing-asof {
+            @apply text-xs text-light-200;
+        }
+
+        .briefing-group {
+            @apply flex flex-col gap-2;
+
+            h3 {
+                @apply text-sm text-light-200;
+            }
+
+            ul {
+                @apply flex list-none flex-col gap-3;
+            }
+
+            li {
+                @apply flex flex-col gap-1.5;
+            }
+
+            p {
+                @apply text-sm text-light-100;
+            }
+
+            .briefing-model {
+                @apply text-xs text-light-200;
+            }
+        }
+
+        .briefing-item-head {
+            @apply flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1;
+
+            a {
+                @apply font-medium text-light-100 transition-colors hover:text-primary;
+            }
+        }
+
+        .briefing-item-actions {
+            @apply flex flex-row flex-wrap items-center justify-between gap-3;
+
+            > a {
+                @apply text-sm text-primary hover:underline;
+            }
+        }
+
+        .briefing-calm {
+            @apply text-sm text-light-200;
+        }
+
+        .briefing-summary {
+            @apply flex flex-col gap-2 border-t border-dark-200 pt-4;
+
+            h3 {
+                @apply text-sm text-light-200;
+            }
+        }
+    }
+
+    .briefing-home {
+        @apply rounded-[10px] border border-dark-200 bg-dark-100/80 px-6 py-5 card-shadow;
+
+        .briefing-group ul {
+            @apply grid gap-4 md:grid-cols-2;
+        }
+    }
+
+    .briefing-side {
+        @apply gap-4;
+
+        .briefing-headline {
+            @apply text-lg;
+        }
+    }
+
+    /* 👍 / 👎 (src/ai/components/FeedbackButtons.tsx). */
+    .feedback {
+        @apply inline-flex items-center gap-1 text-xs text-light-200;
+
+        > span:first-child {
+            @apply mr-1;
+        }
+
+        button {
+            @apply inline-flex size-7 items-center justify-center rounded-[6px] cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100 aria-pressed:bg-primary/15 aria-pressed:text-primary;
+
+            svg {
+                @apply size-3.5;
+            }
+        }
+
+        .feedback-error {
+            @apply ml-1 text-amber-300;
+        }
+    }
+
+    /* Copy and 👍 / 👎 under an answer, as icons with tooltips. */
+    .answer-actions {
+        @apply -ml-2 flex flex-row flex-wrap items-center gap-0.5 transition-opacity;
+
+        .feedback button {
+            @apply size-8 rounded-[8px];
+
+            svg {
+                @apply size-4;
+            }
+        }
+    }
+
+    .action-button {
+        @apply inline-flex size-8 items-center justify-center rounded-[8px] text-light-200 cursor-pointer transition-colors hover:bg-dark-200 hover:text-light-100;
+
+        svg {
+            @apply size-4;
+        }
+    }
+
+    /* On screens that can point, older answers show their buttons on hover or
+       focus, and always while a vote there says it wasn't saved. */
+    @media (hover: hover) {
+        .msg-answer:not(.is-newest, :hover, :focus-within) .answer-actions:not(:has(.feedback-error)) {
+            @apply opacity-0;
+        }
+    }
+
+    /* A tooltip from data-tip, on hover and on keyboard focus. The button's own
+       name (aria-label) says the same to screen readers. */
+    [data-tip] {
+        @apply relative;
+    }
+
+    [data-tip]:is(:hover, :focus-visible)::after {
+        @apply pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-[6px] bg-dark-200 px-2 py-1 text-xs font-normal text-light-100 card-shadow;
+        content: attr(data-tip);
+    }
+
+    /* Near the right edge, the tooltip ends at its element instead of
+       centering on it, so it stays on screen. */
+    [data-tip].tip-end:is(:hover, :focus-visible)::after {
+        @apply left-auto right-0 translate-x-0;
+    }
+
+    /* A tap would leave it showing. */
+    @media (hover: none) {
+        [data-tip]:not(:focus-visible)::after {
+            @apply hidden;
+        }
+    }
+
+    #login {
+        @apply flex flex-col items-center gap-8 pt-10;
+
+        .header {
+            @apply flex flex-col items-center gap-3 text-center;
+
+            p {
+                @apply text-light-100 max-sm:text-sm;
+            }
+        }
+    }
+
+    .login-card {
+        @apply bg-dark-100/80 border border-dark-200 card-shadow rounded-[10px] p-6 flex flex-col gap-4 w-full max-w-md min-h-48;
+
+        label {
+            @apply flex flex-col gap-1.5 text-sm text-light-200;
+        }
+
+        input {
+            @apply bg-dark-100 border border-light-200/50 rounded-[6px] px-4 py-2.5 text-light-100 focus:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+        }
+
+        .btn-primary {
+            @apply w-full;
+        }
+
+        .form-error {
+            @apply text-sm text-red-300;
+        }
+
+        .demo-accounts {
+            @apply flex flex-col gap-2 border-t border-dark-200 pt-4 text-xs text-light-200;
+
+            ul {
+                @apply list-none flex flex-col gap-1.5;
+            }
+
+            li {
+                @apply flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5;
+            }
+
+            button {
+                @apply font-martian-mono text-light-100 cursor-pointer hover:text-primary disabled:cursor-not-allowed disabled:opacity-60;
+            }
+
+            .signing-in {
+                @apply inline-flex items-center gap-1.5 text-primary;
+            }
+
+            code {
+                @apply font-martian-mono text-blue;
+            }
+        }
+    }
+
+    .user-menu {
+        @apply flex flex-row items-center gap-3;
+
+        .who {
+            @apply flex flex-col items-end leading-tight max-md:hidden;
+        }
+
+        .name {
+            @apply text-sm text-light-100;
+        }
+
+        .groups {
+            @apply text-xs text-light-200 max-w-56 truncate;
+        }
+
+        .sign-out {
+            @apply inline-flex items-center gap-1.5 rounded-[6px] border border-dark-200 bg-dark-200 px-3 py-1.5 text-sm text-light-100 cursor-pointer transition-colors hover:border-primary/60 disabled:opacity-60 aria-busy:cursor-wait;
+        }
+    }
+}
+
+@keyframes panel-in {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+}
+
+@keyframes step-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+@keyframes shimmer {
+    from {
+        background-position: 100% 0;
+    }
+
+    to {
+        background-position: 0 0;
+    }
+}
+
+@keyframes pending-slide {
+    from {
+        background-position: -100% 0;
+    }
+
+    to {
+        background-position: 200% 0;
+    }
+}
+
+/* View transitions (src/shared/components/Transitions.tsx): short opacity fades, no
+   movement. Only the page content and loading placeholders fade; the header
+   and the rest of the window swap at once, so the header never flickers. */
+::view-transition {
+    /* Clicks during a fade reach the page instead of being lost. */
+    pointer-events: none;
+}
+
+::view-transition-old(root),
+::view-transition-old(site-header) {
+    display: none;
+}
+
+::view-transition-new(root),
+::view-transition-new(site-header),
+::view-transition-group(site-header) {
+    animation: none;
+}
+
+::view-transition-group(site-header) {
+    z-index: 100;
+}
+
+::view-transition-old(.page-out),
+::view-transition-old(.skeleton-out) {
+    animation: 120ms ease-out both view-fade-out;
+}
+
+::view-transition-new(.page-in),
+::view-transition-new(.content-in) {
+    animation: 180ms ease-in 60ms both view-fade-in;
+}
+
+@keyframes view-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes view-fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+    }
+}

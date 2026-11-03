@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # The build loads lib/auth-options.ts, which needs these to be set, but
+      # The build loads src/people/auth-options.ts, which needs these to be set, but
       # nothing connects to the database while building. Placeholders are
       # enough, so no real secrets live in GitHub.
       MONGODB_URI: mongodb://127.0.0.1:27017/splunkevents-ci

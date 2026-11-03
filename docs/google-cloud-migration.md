@@ -93,18 +93,18 @@ The worker's rule today: **the source system runs the reports, and the worker on
 ## What changes in the app
 
 **Unchanged:**
-- `lib/dal.ts` and the access rules;
+- `src/reports/dal.ts` and the access rules;
 - MongoDB and its collections;
 - the charts, tables, briefing and Explain;
-- the statistics (`lib/insights.ts`) and the ML job;
+- the statistics (`src/reports/insights.ts`) and the ML job;
 - Ask about reports, which already works from stored results whatever their source.
 
-**Small changes in the pages.** The report page heads its query "Search query (SPL)", and offers to explain it in Write SPL. For a Google report, both should say SQL and use Write SQL. The AI's report context labels the query `SPL:` too (`lib/ai/context.ts`).
+**Small changes in the pages.** The report page heads its query "Search query (SPL)", and offers to explain it in Write SPL. For a Google report, both should say SQL and use Write SQL. The AI's report context labels the query `SPL:` too (`src/ai/context.ts`).
 
 **New, in the sync worker:**
-- **A source seam.** A `ReportSource` interface with two jobs: list the reports, and fetch a report's new runs with their results. Today's Splunk code (`lib/splunk/`) sits behind it, and a Google source beside it. `worker/sync.ts` runs both.
-- **Each source looks after only its own reports.** Today, `syncAll` in `lib/splunk/sync.ts` marks every report that isn't scheduled in Splunk as disabled, which takes it out of the app. With two sources, that step must skip the other source's reports, or each sync would hide them.
-- **Per-report settings in `lib/report-config.ts`:**
+- **A source seam.** A `ReportSource` interface with two jobs: list the reports, and fetch a report's new runs with their results. Today's Splunk code (`src/splunk/`) sits behind it, and a Google source beside it. `worker/sync.ts` runs both.
+- **Each source looks after only its own reports.** Today, `syncAll` in `src/splunk/sync.ts` marks every report that isn't scheduled in Splunk as disabled, which takes it out of the app. With two sources, that step must skip the other source's reports, or each sync would hide them.
+- **Per-report settings in `src/reports/report-config.ts`:**
   - each entry gets a `source` (`splunk` or `google`);
   - the scheduled query's name maps to the **same slug** as the Splunk search it replaces;
   - a map from SQL column names to the names the rules and charts use;
@@ -122,11 +122,11 @@ The worker's rule today: **the source system runs the reports, and the worker on
   - the BigQuery dry run as its check;
   - its examples taken from the scheduled queries;
   - the same rule that it never runs anything.
-- **Vertex AI for company data.** On Google Cloud, company data would more likely go to Gemini through Vertex AI, in the company's own project. `lib/ai/llm.ts` already uses Google's SDK, which reaches Vertex AI when its client is created differently ([ai.md](ai.md#using-another-ai)).
+- **Vertex AI for company data.** On Google Cloud, company data would more likely go to Gemini through Vertex AI, in the company's own project. `src/ai/llm.ts` already uses Google's SDK, which reaches Vertex AI when its client is created differently ([ai.md](ai.md#using-another-ai)).
 
 **Optional, later:** hosting on Cloud Run (the Docker image already builds the app's standalone server), and MongoDB on Google Cloud.
 - **MongoDB Atlas on Google Cloud** changes nothing in the code.
-- **Firestore with MongoDB compatibility** is generally available and lists Mongoose. It doesn't support every MongoDB feature, so try the app on it first: its TTL indexes (`database/`), and the `$group` aggregation in `lib/dal.ts`.
+- **Firestore with MongoDB compatibility** is generally available and lists Mongoose. It doesn't support every MongoDB feature, so try the app on it first: its TTL indexes (`database/`), and the `$group` aggregation in `src/reports/dal.ts`.
 
 ## Translating SPL to SQL
 
@@ -219,10 +219,10 @@ With that map, the report's status rule ("a host above the 2% error budget"), it
 
 These cost little now and save work at the move:
 
-1. **Give every report explicit `groups`** in `lib/report-config.ts`. Today, a report without them falls back to its email lists, and scheduled queries have none ([report-access.md](report-access.md)).
+1. **Give every report explicit `groups`** in `src/reports/report-config.ts`. Today, a report without them falls back to its email lists, and scheduled queries have none ([report-access.md](report-access.md)).
 2. **Key status rules, highlights and charts on output column names,** as they are today, and keep each report's column contract written down.
 3. **Set the chart type in `report-config`** rather than relying on the chart saved in Splunk, which a scheduled query doesn't have.
-4. **Keep Splunk-specific code in `lib/splunk/`** and the worker. The pages should never need to know where a report came from.
+4. **Keep Splunk-specific code in `src/splunk/`** and the worker. The pages should never need to know where a report came from.
 5. **Raise `RUN_RETENTION_DAYS`** well before the move, to more than a year. Then each report's trend runs straight through the switch, and outlives Splunk's 90 days of old logs. MongoDB already has the TTL index with the old value, so changing the variable isn't enough. Change the index too, for example to 400 days:
    ```js
    db.runCommand({ collMod: 'report_runs', index: { keyPattern: { runAt: 1 }, expireAfterSeconds: 400 * 86400 } })

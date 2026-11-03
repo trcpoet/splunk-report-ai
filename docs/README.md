@@ -7,7 +7,7 @@
 | [codebase-guide.md](codebase-guide.md) | Start here: the reading order, the rules that are easy to break, and the glossary |
 | [architecture.md](architecture.md) | See how it's put together. It covers the programs and the data model, how report data moves, and how a page is built. It also covers access, Ask AI, the ML job, deployment and security, with diagrams. |
 | [configuration.md](configuration.md) | Change a setting: each environment variable and the file that reads it, report rules, access, AI, the sync, statistics, caching, the look, build, deploy and CI |
-| [reference/](reference/README.md) | Look up what a file does, folder by folder: [app/](reference/app.md), [components/](reference/components.md), [lib/](reference/lib.md), [lib/ai/](reference/lib-ai.md), [lib/splunk/](reference/lib-splunk.md), [database/](reference/database.md), [the rest](reference/tooling.md) |
+| [reference/](reference/README.md) | Look up what a file does, folder by folder: [src/app/](reference/app.md), [src/reports/](reference/reports.md), [src/ai/](reference/ai.md), [src/splunk/](reference/splunk.md), [src/people/](reference/people.md), [src/shared/](reference/shared.md), [src/database/](reference/database.md), [the rest](reference/tooling.md) |
 
 ## By topic
 
@@ -18,7 +18,7 @@
 | [caching-and-loading.md](caching-and-loading.md) | What's cached where, what each loading and error screen means, and sessions across tabs |
 | [mongodb-and-access.md](mongodb-and-access.md) | MongoDB in plain words, how fresh data reaches the screen, and where users' groups could come from |
 | [report-catalog.md](report-catalog.md) | Every report: the question it answers, its search and columns, its chart, headline numbers and warning rule, and how to add your own. Start here on a new laptop |
-| [report-access.md](report-access.md) | `lib/report-config.ts` in practice: who sees which report, with a worked example |
+| [report-access.md](report-access.md) | `src/reports/report-config.ts` in practice: who sees which report, with a worked example |
 | [connecting-live-splunk.md](connecting-live-splunk.md) | Replacing the dummy data with a company's Splunk, step by step |
 | [splunk-example.md](splunk-example.md) | The connector against a real Splunk before you have access: Splunk Enterprise's trial in Docker, with dummy logs and scheduled reports |
 | [splunk-data-and-ai-strategy.md](splunk-data-and-ai-strategy.md) | The longer-term plan: AD sign-in, what to copy, RAG, learning from feedback, an agent with guardrails |

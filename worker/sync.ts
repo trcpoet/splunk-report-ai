@@ -1,8 +1,8 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { disconnectDB } from '@/lib/mongodb';
-import { describeError } from '@/lib/splunk/errors';
-import { readSyncSettings, transportFor } from '@/lib/splunk/settings';
-import { syncAll } from '@/lib/splunk/sync';
+import { disconnectDB } from '@/database/mongodb';
+import { describeError } from '@/splunk/errors';
+import { readSyncSettings, transportFor } from '@/splunk/settings';
+import { syncAll } from '@/splunk/sync';
 
 // Syncs Splunk scheduled reports into MongoDB. Runs as its own process, not
 // inside Next.js, so it runs once per deployment and only it holds the Splunk token.
@@ -13,7 +13,7 @@ import { syncAll } from '@/lib/splunk/sync';
 // SPLUNK_MODE=fixture (default) serves the dummy reports. SPLUNK_MODE=live calls
 // SPLUNK_BASE_URL (the management port, usually 8089) with SPLUNK_TOKEN, or with
 // the token in the file SPLUNK_TOKEN_FILE names. The settings are checked
-// before anything else (lib/splunk/settings.ts), and `npm run splunk:check`
+// before anything else (src/splunk/settings.ts), and `npm run splunk:check`
 // tests the connection without syncing.
 
 async function main() {

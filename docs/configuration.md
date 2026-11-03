@@ -28,43 +28,43 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
-| `MONGODB_URI` | none (required) | `lib/mongodb.ts`, `lib/auth-options.ts`, `ml/score.py` | The database, including its name, e.g. `mongodb://127.0.0.1:27017/splunkevents`. The web app gives up after 5 s if it doesn't answer; the worker waits the driver's 30 s. |
-| `RUN_RETENTION_DAYS` | `90` | `database/report-run.model.ts` | Days before MongoDB deletes a run (a TTL index on `runAt`). **Set it before the first sync**: the index is created once. The dummy runs have fixed dates, so demos use `3650`. |
-| `REVALIDATE_SECRET` | none | `app/api/revalidate/route.ts`, `lib/splunk/sync.ts`, `ml/score.py` | The shared secret for `POST /api/revalidate`, which the worker and the ML job call after writing. Without it, new data shows after at most a minute instead of at once. |
-| `APP_URL` | none | `lib/splunk/sync.ts`, `ml/score.py` | Where the worker and the ML job find the web app, for that refresh. |
+| `MONGODB_URI` | none (required) | `src/database/mongodb.ts`, `src/people/auth-options.ts`, `ml/score.py` | The database, including its name, e.g. `mongodb://127.0.0.1:27017/splunkevents`. The web app gives up after 5 s if it doesn't answer; the worker waits the driver's 30 s. |
+| `RUN_RETENTION_DAYS` | `90` | `src/database/reports/report-run.model.ts` | Days before MongoDB deletes a run (a TTL index on `runAt`). **Set it before the first sync**: the index is created once. The dummy runs have fixed dates, so demos use `3650`. |
+| `REVALIDATE_SECRET` | none | `src/app/api/revalidate/route.ts`, `src/splunk/sync.ts`, `ml/score.py` | The shared secret for `POST /api/revalidate`, which the worker and the ML job call after writing. Without it, new data shows after at most a minute instead of at once. |
+| `APP_URL` | none | `src/splunk/sync.ts`, `ml/score.py` | Where the worker and the ML job find the web app, for that refresh. |
 
 ### Web app
 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
-| `BETTER_AUTH_SECRET` | none (required) | `lib/auth-options.ts` | Signs session cookies. Changing it signs everyone out. |
-| `BETTER_AUTH_URL` | none (required) | `lib/auth-options.ts` | The site's own address. Sign-in only works from it, so set it to the URL people use (on Vercel, the production domain, not a per-deployment URL). |
-| `DEMO_PASSWORD` | none | `app/login/page.tsx` (build time), `scripts/seed-demo-users.ts` | The demo accounts' shared password (8+ characters). Run `npm run seed` after changing it. |
-| `DEMO_MODE` | off | `app/login/page.tsx` (build time), `lib/chats.ts`, `lib/ai/config.ts`, `components/AiChat.tsx`, `app/ai/history/page.tsx` | `true` lists the demo accounts with one-click sign-in **and shows the password**, deletes chats after 24 h, and adds the "demo accounts are shared" notes. **Dummy data only.** |
-| `NEXT_PUBLIC_POSTHOG_KEY` | none | `instrumentation-client.ts` | Turns on PostHog (US cloud) through the `/ingest` proxy in `next.config.ts`. Without it, PostHog never loads and `track()` (`lib/analytics.ts`) does nothing. |
-| `GEMINI_API_KEY` | none | `lib/ai/llm.ts`, `scripts/eval-spl.ts` | Turns on AI answers. Free-tier keys are for dummy data only ([ai.md](ai.md#privacy-and-safety)). |
-| `AI_MODEL` | `gemini-3.8-flash` | `lib/ai/config.ts` | The answering model. `gemini-3.1-flash-lite` is cheaper. |
-| `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | `lib/ai/config.ts` | The model that turns searches into vectors for Write SPL's examples. Changing it re-embeds the examples (the cache key includes the model). |
-| `AI_PROVIDER` | `gemini` | `lib/ai/config.ts`, `lib/ai/llm.ts`, `scripts/eval-spl.ts` | `fake` gives canned answers with no key and no cost, for working on the pages and for tests. |
-| `AI_ENABLED` | on | `lib/ai/config.ts` | `false` turns AI answers off, even with a key. |
-| `AI_DAILY_LIMIT` | `50` | `lib/ai/config.ts` → `lib/ai/usage.ts` | AI requests per account per UTC day. |
-| `AI_SITE_DAILY_LIMIT` | `1000` | `lib/ai/config.ts` → `lib/ai/usage.ts` | AI requests per UTC day for everyone together, including briefings. |
-| `AI_ALLOW_LIVE_DATA` | off | `lib/ai/config.ts` | With `SPLUNK_MODE=live` data in the database, AI stays off until this is `true`. Set it only once sending report data to the provider is approved. |
-| `SPLUNK_WEB_URL` | none | `lib/ai/config.ts` → `lib/ai/spl.ts` | Splunk Web's address (e.g. `https://splunk.example.com/en-US`), for **Open in Splunk** under Write SPL answers. |
+| `BETTER_AUTH_SECRET` | none (required) | `src/people/auth-options.ts` | Signs session cookies. Changing it signs everyone out. |
+| `BETTER_AUTH_URL` | none (required) | `src/people/auth-options.ts` | The site's own address. Sign-in only works from it, so set it to the URL people use (on Vercel, the production domain, not a per-deployment URL). |
+| `DEMO_PASSWORD` | none | `src/app/login/page.tsx` (build time), `scripts/seed-demo-users.ts` | The demo accounts' shared password (8+ characters). Run `npm run seed` after changing it. |
+| `DEMO_MODE` | off | `src/app/login/page.tsx` (build time), `src/ai/chats.ts`, `src/ai/config.ts`, `src/ai/components/AiChat.tsx`, `src/app/ai/history/page.tsx` | `true` lists the demo accounts with one-click sign-in **and shows the password**, deletes chats after 24 h, and adds the "demo accounts are shared" notes. **Dummy data only.** |
+| `NEXT_PUBLIC_POSTHOG_KEY` | none | `src/instrumentation-client.ts` | Turns on PostHog (US cloud) through the `/ingest` proxy in `next.config.ts`. Without it, PostHog never loads and `track()` (`src/shared/analytics.ts`) does nothing. |
+| `GEMINI_API_KEY` | none | `src/ai/llm.ts`, `scripts/eval-spl.ts` | Turns on AI answers. Free-tier keys are for dummy data only ([ai.md](ai.md#privacy-and-safety)). |
+| `AI_MODEL` | `gemini-3.8-flash` | `src/ai/config.ts` | The answering model. `gemini-3.1-flash-lite` is cheaper. |
+| `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | `src/ai/config.ts` | The model that turns searches into vectors for Write SPL's examples. Changing it re-embeds the examples (the cache key includes the model). |
+| `AI_PROVIDER` | `gemini` | `src/ai/config.ts`, `src/ai/llm.ts`, `scripts/eval-spl.ts` | `fake` gives canned answers with no key and no cost, for working on the pages and for tests. |
+| `AI_ENABLED` | on | `src/ai/config.ts` | `false` turns AI answers off, even with a key. |
+| `AI_DAILY_LIMIT` | `50` | `src/ai/config.ts` → `src/ai/usage.ts` | AI requests per account per UTC day. |
+| `AI_SITE_DAILY_LIMIT` | `1000` | `src/ai/config.ts` → `src/ai/usage.ts` | AI requests per UTC day for everyone together, including briefings. |
+| `AI_ALLOW_LIVE_DATA` | off | `src/ai/config.ts` | With `SPLUNK_MODE=live` data in the database, AI stays off until this is `true`. Set it only once sending report data to the provider is approved. |
+| `SPLUNK_WEB_URL` | none | `src/ai/config.ts` → `src/ai/spl.ts` | Splunk Web's address (e.g. `https://splunk.example.com/en-US`), for **Open in Splunk** under Write SPL answers. |
 
 ### Sync worker
 
 | Variable | Default | Read by | What it does |
 |---|---|---|---|
-| `SYNC_STALE_HOURS` | `2` | `lib/dal.ts` (web app) | With live data, the home page warns when no sync has finished for this long. Keep it above how often you sync. |
-| `SPLUNK_MODE` | `fixture` | `lib/splunk/settings.ts` | `fixture` serves the 10 dummy reports from `lib/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
-| `SPLUNK_BASE_URL` | none | `lib/splunk/settings.ts` | Required for `live`: the management port, usually `https://<host>:8089`. It must start with `https://` or `http://`; port 8000 (Splunk Web) gets a warning. |
-| `SPLUNK_TOKEN` | none | `lib/splunk/settings.ts` → `lib/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
-| `SPLUNK_TOKEN_FILE` | none | `lib/splunk/settings.ts` → `lib/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
-| `SPLUNK_TZ` | `UTC` | `lib/splunk/settings.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. It must be a time zone name the runtime knows, such as `America/New_York`. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
-| `SYNC_INTERVAL_MINUTES` | `15` | `lib/splunk/settings.ts` | How often `npm run sync:watch` syncs: a number of minutes above 0 and at most 1440 (a day; longer overflows Node's timers). Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
-| `SYNC_REPORTS` | `emailed` | `lib/splunk/settings.ts` → `lib/splunk/sync.ts` (`isSyncedSearch`) | Which scheduled searches become reports. `emailed`: every one that emails its results, plus the ones in `lib/report-config.ts`. `configured`: only the ones in `lib/report-config.ts`, for a Splunk with more emailed searches than the app should show. |
-| `SYNC_MAX_ROWS` | `5000` | `lib/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. |
+| `SYNC_STALE_HOURS` | `2` | `src/reports/dal.ts` (web app) | With live data, the home page warns when no sync has finished for this long. Keep it above how often you sync. |
+| `SPLUNK_MODE` | `fixture` | `src/splunk/settings.ts` | `fixture` serves the 10 dummy reports from `src/splunk/fixtures/`. `live` calls Splunk's REST API. The mode is saved in `sync_state`, which is how the web app knows the data is live. |
+| `SPLUNK_BASE_URL` | none | `src/splunk/settings.ts` | Required for `live`: the management port, usually `https://<host>:8089`. It must start with `https://` or `http://`; port 8000 (Splunk Web) gets a warning. |
+| `SPLUNK_TOKEN` | none | `src/splunk/settings.ts` → `src/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
+| `SPLUNK_TOKEN_FILE` | none | `src/splunk/settings.ts` → `src/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
+| `SPLUNK_TZ` | `UTC` | `src/splunk/settings.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. It must be a time zone name the runtime knows, such as `America/New_York`. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
+| `SYNC_INTERVAL_MINUTES` | `15` | `src/splunk/settings.ts` | How often `npm run sync:watch` syncs: a number of minutes above 0 and at most 1440 (a day; longer overflows Node's timers). Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
+| `SYNC_REPORTS` | `emailed` | `src/splunk/settings.ts` → `src/splunk/sync.ts` (`isSyncedSearch`) | Which scheduled searches become reports. `emailed`: every one that emails its results, plus the ones in `src/reports/report-config.ts`. `configured`: only the ones in `src/reports/report-config.ts`, for a Splunk with more emailed searches than the app should show. |
+| `SYNC_MAX_ROWS` | `5000` | `src/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
 
 ### The Splunk example
@@ -91,7 +91,7 @@ Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` 
 | `NEXT_OUTPUT` | unset | `next.config.ts` | `standalone` builds Next's minimal server, as the `Dockerfile` does. Vercel builds without it. |
 | `PORT` | `3000` | `docker compose` (host port), Next's server | The port the app listens on, or is published on. |
 | `DEMO_MODE`, `DEMO_PASSWORD` | `true`, `splunk-demo-2026` in Docker | `Dockerfile` build arguments | Baked into the sign-in page when the image is built. |
-| `NODE_ENV`, `NEXT_RUNTIME` | set by Next.js | `app/login/page.tsx`, `lib/mongodb.ts`, `lib/auth-options.ts`, `instrumentation-client.ts` | Not set by hand. In development, the sign-in page lists the demo accounts. Inside Next.js, database connections give up after 5 s. |
+| `NODE_ENV`, `NEXT_RUNTIME` | set by Next.js | `src/app/login/page.tsx`, `src/database/mongodb.ts`, `src/people/auth-options.ts`, `src/instrumentation-client.ts` | Not set by hand. In development, the sign-in page lists the demo accounts. Inside Next.js, database connections give up after 5 s. |
 
 ### Developer tools
 
@@ -103,7 +103,7 @@ Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` 
 | `E2E_PASSWORD` | `e2e/auth.setup.ts` | The demo accounts' password for the browser tests. Default: `DEMO_PASSWORD`. |
 | `E2E_SCREENSHOTS` | `e2e/reports.spec.ts` | A folder: the browser tests save a screenshot of each page they check there. CI keeps them from the Splunk example. |
 
-## Reports: `lib/report-config.ts`
+## Reports: `src/reports/report-config.ts`
 
 This file holds what Splunk doesn't know about each report, keyed by the saved search's exact name. The sync worker applies it, and the web app reads the results. It must not import `server-only` or `next/*`, because plain Node loads it too.
 
@@ -116,14 +116,14 @@ This file holds what Splunk doesn't know about each report, keyed by the saved s
 | `chart` | no | `'none'` shows only the table. Otherwise:<br>• `type`: `bar`, `column`, `line` or `area`. Overrides the chart saved in Splunk.<br>• `y`: the measure to plot (default: the first numeric column). Results over time (first column `_time`) with several measures draw a line for each instead, up to 5, with the smallest folded into "Other"; setting `y` keeps one measure.<br>• `threshold`: `{ value, label }`, a dashed limit line. Values past it take the warning color.<br>• `max`: turns bars into meters that fill up to it (100 for a percentage).<br>• `panels`: one small chart per measure.<br>• `scatter`: `{ x, log?, caption }`, adds a chart of dots placing `y` against `x`. |
 | `index` | no | Overrides the index text parsed from the SPL, for searches like `| rest` or `metadata`. |
 | `statusRule` | no | `(results) => { status: 'warning' \| 'failed', message } \| null`. Turns a run's results into a warning, such as "a host is above 2% errors". `null` means fine. |
-| `highlights` | no | `(results) => ReportHighlight[]`. The headline numbers: `{ label, value, note?, meter?, trend? }`. `meter` is the share of a limit used (0.6 is 60%). Without it, `defaultHighlights` in `lib/splunk/map.ts` shows the results (with the change since the previous run), the chart's top row, and the search time. |
+| `highlights` | no | `(results) => ReportHighlight[]`. The headline numbers: `{ label, value, note?, meter?, trend? }`. `meter` is the share of a limit used (0.6 is 60%). Without it, `defaultHighlights` in `src/splunk/map.ts` shows the results (with the change since the previous run), the chart's top row, and the search time. |
 
 **Adding a report:**
 1. Add an entry under the saved search's exact name. Copy an existing one: `'Web Server 5xx Error Rate'` has a status rule, highlights and a threshold chart.
 2. Keep limits in named constants at the top (`ERROR_BUDGET_PCT`), so the rule and the chart use the same number.
-3. Use `formatNumber` from `lib/format.ts` in messages, so numbers read the same everywhere.
-4. In fixture mode, add the dummy report to `lib/splunk/fixtures/reports.ts` as well. Use `example.com` addresses and documentation IP ranges only.
-5. Run `npm test`. `lib/splunk/map.test.ts` runs the whole pipeline over the fixtures.
+3. Use `formatNumber` from `src/shared/format.ts` in messages, so numbers read the same everywhere.
+4. In fixture mode, add the dummy report to `src/splunk/fixtures/reports.ts` as well. Use `example.com` addresses and documentation IP ranges only.
+5. Run `npm test`. `src/splunk/map.test.ts` runs the whole pipeline over the fixtures.
 6. Run `npm run sync`. Status, highlights and charts are worked out by the sync, so a change shows only after one. For the hosted demo, also sync Atlas after the deploy.
 
 Worked examples, and how access works in practice: [report-access.md](report-access.md).
@@ -132,15 +132,15 @@ Worked examples, and how access works in practice: [report-access.md](report-acc
 
 | What | Where | How to change it |
 |---|---|---|
-| Demo accounts | `lib/demo-users.ts` | Edit the list (email, name, `admin` or `viewer`, groups), then run `npm run seed`. Existing users get the current password and access. |
+| Demo accounts | `src/people/demo-users.ts` | Edit the list (email, name, `admin` or `viewer`, groups), then run `npm run seed`. Existing users get the current password and access. |
 | Anyone's groups and role | `user_access` collection (one document per email) | Set them in MongoDB, or have sign-in write them (the SSO plan in [mongodb-and-access.md](mongodb-and-access.md)). Takes effect within 5 minutes (the viewer cache). |
-| The access rule | `lib/access.ts` (`canView`) | One function, tested in `lib/access.test.ts`. Admins see everything; others need a shared group. |
-| Which auth endpoints are served | `app/api/auth/[...all]/route.ts` | Only sign-in, sign-out and session lookups. Add paths here when a feature needs them, such as SSO's `/sign-in/social` and `/callback/<provider>`. |
-| Where to go after sign-in | `lib/next-path.ts` | Only paths on this site. |
+| The access rule | `src/people/access.ts` (`canView`) | One function, tested in `src/people/access.test.ts`. Admins see everything; others need a shared group. |
+| Which auth endpoints are served | `src/app/api/auth/[...all]/route.ts` | Only sign-in, sign-out and session lookups. Add paths here when a feature needs them, such as SSO's `/sign-in/social` and `/callback/<provider>`. |
+| Where to go after sign-in | `src/people/next-path.ts` | Only paths on this site. |
 
 ## The sync
 
-Settings in `lib/splunk/sync.ts`:
+Settings in `src/splunk/sync.ts`:
 
 | Constant | Value | What it does |
 |---|---|---|
@@ -149,7 +149,7 @@ Settings in `lib/splunk/sync.ts`:
 | `MAX_ROWS` | `SYNC_MAX_ROWS` or 5000 | Result rows stored per run. |
 | `SECOND_REFRESH_MS` | 3000 | The gap between the two cache refreshes after a sync. |
 
-Splunk REST calls retry on 429 and 5xx, with backoff of about 0.5, 1 and 2 s (`lib/splunk/transport.ts`). To connect real Splunk, follow [connecting-live-splunk.md](connecting-live-splunk.md).
+Splunk REST calls retry on 429 and 5xx, with backoff of about 0.5, 1 and 2 s (`src/splunk/transport.ts`). To connect real Splunk, follow [connecting-live-splunk.md](connecting-live-splunk.md).
 
 ## Ask AI
 
@@ -157,18 +157,18 @@ Besides the environment variables above, these live in code:
 
 | Setting | Where | Value | What it does |
 |---|---|---|---|
-| Prompts | `lib/ai/prompts.ts` | `REPORTS_PROMPT`, `SPL_PROMPT`, `REPORT_SUMMARY_PROMPT`, `BRIEFING_PROMPT` | What the AI is told, in plain English. **Bump `PROMPT_VERSION`** after changing the summary or briefing prompts, so saved summaries are rewritten. |
-| Rows per report | `lib/ai/context.ts` | `MAX_ROWS = 20` | Result rows of each report the AI sees. More rows cost more tokens. |
-| Answer cap | `lib/ai/llm.ts` | `MAX_OUTPUT_TOKENS = 8192` | Caps each answer, thinking included, and with it what one question can cost. |
+| Prompts | `src/ai/prompts.ts` | `REPORTS_PROMPT`, `SPL_PROMPT`, `REPORT_SUMMARY_PROMPT`, `BRIEFING_PROMPT` | What the AI is told, in plain English. **Bump `PROMPT_VERSION`** after changing the summary or briefing prompts, so saved summaries are rewritten. |
+| Rows per report | `src/ai/context.ts` | `MAX_ROWS = 20` | Result rows of each report the AI sees. More rows cost more tokens. |
+| Answer cap | `src/ai/llm.ts` | `MAX_OUTPUT_TOKENS = 8192` | Caps each answer, thinking included, and with it what one question can cost. |
 | Thinking | the AI routes | `low` (chat, summaries), `medium` (Write SPL) | More is slower and costs more. |
-| Embedding size | `lib/ai/llm.ts` | `EMBEDDING_DIMENSIONS = 768` | The vector size. Part of each vector's cache key. |
-| Examples per request | `lib/spl-examples.ts` | `SIMILAR_EXAMPLES = 5`, `MAX_SAVED = 500` | How many example searches go into a Write SPL prompt, and how many saved ones are considered. |
-| Messages per chat | `database/chat.model.ts` | `MAX_CHAT_MESSAGES = 100` | 50 questions and answers; then start a new chat. |
-| Demo chat lifetime | `lib/chats.ts` | `DEMO_CHAT_HOURS = 24` | With `DEMO_MODE`, chats expire after this. |
-| Question length | `components/ChatView.tsx` | `MAX_QUESTION = 2000` | Characters per question. |
-| Route time limit | `app/api/ai/*/route.ts` | `maxDuration = 60` | Seconds a serverless function may run on Vercel. |
+| Embedding size | `src/ai/llm.ts` | `EMBEDDING_DIMENSIONS = 768` | The vector size. Part of each vector's cache key. |
+| Examples per request | `src/ai/spl-examples.ts` | `SIMILAR_EXAMPLES = 5`, `MAX_SAVED = 500` | How many example searches go into a Write SPL prompt, and how many saved ones are considered. |
+| Messages per chat | `src/database/ai/chat.model.ts` | `MAX_CHAT_MESSAGES = 100` | 50 questions and answers; then start a new chat. |
+| Demo chat lifetime | `src/ai/chats.ts` | `DEMO_CHAT_HOURS = 24` | With `DEMO_MODE`, chats expire after this. |
+| Question length | `src/ai/components/ChatView.tsx` | `MAX_QUESTION = 2000` | Characters per question. |
+| Route time limit | `src/app/api/ai/*/route.ts` | `maxDuration = 60` | Seconds a serverless function may run on Vercel. |
 
-**Using another AI.** Rewrite `lib/ai/llm.ts` and keep the inputs and outputs of `streamText`, `generateJson` and `embed`. Steps for Vertex AI or a company's own LLM are in [ai.md](ai.md#using-another-ai).
+**Using another AI.** Rewrite `src/ai/llm.ts` and keep the inputs and outputs of `streamText`, `generateJson` and `embed`. Steps for Vertex AI or a company's own LLM are in [ai.md](ai.md#using-another-ai).
 
 **Measuring a change.** `npm run eval:spl` runs Write SPL over `scripts/spl-eval-set.json` with a real key. Run it before and after changing a prompt, the examples or the model.
 
@@ -176,15 +176,15 @@ Besides the environment variables above, these live in code:
 
 | Setting | Where | Value | What it does |
 |---|---|---|---|
-| Earlier runs needed | `lib/insights.ts` | `MIN_BASELINE = 4` | A run is compared only with at least this many earlier successful runs. |
-| Unusual threshold | `lib/insights.ts` | `UNUSUAL_SCORE = 3.5` | How many robust spreads (MAD) from the median count as unusual. |
+| Earlier runs needed | `src/reports/insights.ts` | `MIN_BASELINE = 4` | A run is compared only with at least this many earlier successful runs. |
+| Unusual threshold | `src/reports/insights.ts` | `UNUSUAL_SCORE = 3.5` | How many robust spreads (MAD) from the median count as unusual. |
 | The same rules in Python | `ml/features.py` | must match | `test_robust_z_matches_the_app` checks they agree. Change both together. |
 | Share of runs the forest flags | `ml/score.py` | `CONTAMINATION = 0.05` | About 3 of the demo's 64 runs. |
 | Votes before learning | `ml/score.py` | `MIN_VOTES = 20` | The flag model waits for this many votes, with at least one 👍 and one 👎. |
-| Days on the home page | `lib/dal.ts` | `getRunOutcomes(days = 7)`, `getRunHealth(days = 7)` | The days in "Scheduled runs per day" and the run health grid. Change both together, so they match. |
-| Reports in the grid before "Show more" | `components/RunHealthGrid.tsx` | `VISIBLE_ROWS = 10` | The rest sit behind a "Show N more reports" toggle. |
-| Scheduler chart slots | `lib/schedule-load.ts` | `slotMinutes = 5` | The chart's step width. Each slot shows the most searches at once on its busiest day of the reference month. |
-| Names and times listed | `components/SchedulerLoad.tsx` | `MAX_NAMES = 5`, `MAX_TIMES = 8` | Past these, the busiest-times lines and the tooltip end with "and N more". |
+| Days on the home page | `src/reports/dal.ts` | `getRunOutcomes(days = 7)`, `getRunHealth(days = 7)` | The days in "Scheduled runs per day" and the run health grid. Change both together, so they match. |
+| Reports in the grid before "Show more" | `src/reports/overview/RunHealthGrid.tsx` | `VISIBLE_ROWS = 10` | The rest sit behind a "Show N more reports" toggle. |
+| Scheduler chart slots | `src/reports/schedule-load.ts` | `slotMinutes = 5` | The chart's step width. Each slot shows the most searches at once on its busiest day of the reference month. |
+| Names and times listed | `src/reports/overview/SchedulerLoad.tsx` | `MAX_NAMES = 5`, `MAX_TIMES = 8` | Past these, the busiest-times lines and the tooltip end with "and N more". |
 
 Run the job with `npm run ml` (or `ml:plot` for a chart) after a sync. Its Python setup: [ml/README.md](../ml/README.md).
 
@@ -192,10 +192,10 @@ Run the job with `npm run ml` (or `ml:plot` for a chart) after a sync. Its Pytho
 
 | Setting | Where | Value | What it does |
 |---|---|---|---|
-| Report cache | `lib/dal.ts` | `cacheLife('minutes')`, tag `reports` | Up to a minute on the server, cleared at once by `/api/revalidate`. |
-| Viewer cache | `lib/dal.ts` | `'use cache: private'` + `cacheLife('minutes')` | 5 minutes in the person's browser. |
-| Auto refresh | `components/AutoRefresh.tsx` | `EVERY_MS = 60_000` | Open pages re-render once a minute, except Ask AI and the sign-in page. |
-| Database timeout (web app) | `lib/mongodb.ts`, `lib/auth-options.ts` | 5 s | Pages show "Couldn't load this page" instead of hanging. |
+| Report cache | `src/reports/dal.ts` | `cacheLife('minutes')`, tag `reports` | Up to a minute on the server, cleared at once by `/api/revalidate`. |
+| Viewer cache | `src/reports/dal.ts` | `'use cache: private'` + `cacheLife('minutes')` | 5 minutes in the person's browser. |
+| Auto refresh | `src/shared/components/AutoRefresh.tsx` | `EVERY_MS = 60_000` | Open pages re-render once a minute, except Ask AI and the sign-in page. |
+| Database timeout (web app) | `src/database/mongodb.ts`, `src/people/auth-options.ts` | 5 s | Pages show "Couldn't load this page" instead of hanging. |
 
 Uncached reads (chats, votes) must start with `await connection()` inside `<Suspense>`. Why, and what each loading or error screen means: [caching-and-loading.md](caching-and-loading.md).
 
@@ -203,21 +203,21 @@ Uncached reads (chats, votes) must start with `await connection()` inside `<Susp
 
 | What | Where | Notes |
 |---|---|---|
-| Colors, radius, the navbar's height | `:root` in `app/globals.css` | `--background`, `--primary`, `--color-dark-100` and `--color-dark-200` (surfaces), `--color-light-100` and `--color-light-200` (text), `--header-height` (what sticks under the navbar). |
-| Chart colors | `--chart-1` … `--chart-5` in `app/globals.css` | Validated for the dark surface (contrast, color-blind distance). Re-check if you change them. |
+| Colors, radius, the navbar's height | `:root` in `src/app/globals.css` | `--background`, `--primary`, `--color-dark-100` and `--color-dark-200` (surfaces), `--color-light-100` and `--color-light-200` (text), `--header-height` (what sticks under the navbar). |
+| Chart colors | `--chart-1` … `--chart-5` in `src/app/globals.css` | Validated for the dark surface (contrast, color-blind distance). Re-check if you change them. |
 | Status colors | `--status-success`, `--status-warning`, `--status-failed` | Only for run outcomes, never as series colors. |
-| Chart styling | `lib/chart-theme.ts` | Axes, gridlines, tooltip, bar size, threshold line. |
-| Chart limits | `lib/reports.ts` | `MAX_CHART_BARS` (25), `MAX_CHART_POINTS` (500), `MAX_CHART_SERIES` (5). Charts say what they leave out, and the results table has every row. |
-| Table page size | `components/ResultsTable.tsx` | `PAGE_SIZE` (50). Filtering and sorting cover every row. |
-| Stale-data warning | `lib/reports.ts` | 2 hours by default (`SYNC_STALE_HOURS`). Live data only. |
-| Typefaces | `app/fonts.ts` | Schibsted Grotesk (headings) and Martian Mono (code), from `app/font-files/`, so a build needs no access to Google Fonts. Body text uses the system font. |
-| Component styles | `app/globals.css`, grouped by area | Plain CSS with Tailwind 4's `@apply`, in `@layer components`. |
-| shadcn/ui | `components.json` | Used for the chart wrapper in `components/ui/`. `npx shadcn add <item>` adds more. |
-| Background rays | `app/layout.tsx` (`<LightRays>` props) | Color, speed and spread of the WebGL background. |
+| Chart styling | `src/shared/chart-theme.ts` | Axes, gridlines, tooltip, bar size, threshold line. |
+| Chart limits | `src/reports/reports.ts` | `MAX_CHART_BARS` (25), `MAX_CHART_POINTS` (500), `MAX_CHART_SERIES` (5). Charts say what they leave out, and the results table has every row. |
+| Table page size | `src/reports/components/ResultsTable.tsx` | `PAGE_SIZE` (50). Filtering and sorting cover every row. |
+| Stale-data warning | `src/reports/reports.ts` | 2 hours by default (`SYNC_STALE_HOURS`). Live data only. |
+| Typefaces | `src/app/fonts.ts` | Schibsted Grotesk (headings) and Martian Mono (code), from `src/app/font-files/`, so a build needs no access to Google Fonts. Body text uses the system font. |
+| Component styles | `src/app/globals.css`, grouped by area | Plain CSS with Tailwind 4's `@apply`, in `@layer components`. |
+| shadcn/ui | `components.json` | Used for the chart wrapper in `src/shared/ui/`. `npx shadcn add <item>` adds more. |
+| Background rays | `src/app/layout.tsx` (`<LightRays>` props) | Color, speed and spread of the WebGL background. |
 | The 21st design context | `.21st/design.json`, `.21st/DESIGN.md` | The tokens and design constraints the `21st` CLI and its skills read. |
 
 After changing tokens or components:
-- `21st init --design-context --refresh` regenerates `.21st/` from `app/globals.css`, keeping the constraints;
+- `21st init --design-context --refresh` regenerates `.21st/` from `src/app/globals.css`, keeping the constraints;
 - `21st review app components` checks the UI against them;
 - `21st init --design-context --check` says whether it's still current.
 
@@ -228,7 +228,7 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | File | What to change there |
 |---|---|
 | `next.config.ts` | `cacheComponents` and `partialPrefetching` (on); `output: 'standalone'` when `NEXT_OUTPUT=standalone`; the PostHog `/ingest` rewrites. |
-| `proxy.ts` | Which paths need a session cookie (`matcher`). API routes answer 401 themselves, so they're left out. |
+| `src/proxy.ts` | Which paths need a session cookie (`matcher`). API routes answer 401 themselves, so they're left out. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. Don't gate deploys on `VERCEL_ENV`: it's empty in the ignore step. |
 | `Dockerfile` | Stages:<br>• `tools`: seed and sync, as root, for docker compose;<br>• `build`;<br>• `worker`: the same scripts as user 1000, for Kubernetes;<br>• `app`: the standalone server as user 1000, its files writable by group 0 for OpenShift, with a health check.<br>A plain `docker build` builds `app`. |
 | `docker-compose.yml` | Services `mongo` (7.0), `setup` (seed and sync once), `app`, and `ml` behind the `ml` profile. `ml` runs as root, so `--plot` can write `ml/out` ([docker.md](docker.md)). |
@@ -236,9 +236,9 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) for the Splunk example, with Docker and an SSH server inside (`gh codespace ssh`). |
 | `deploy/helm/splunk-events/` | The Helm chart:<br>• the web Deployment, Service, and Route or Ingress;<br>• the connector and ML CronJobs;<br>• the demo-accounts Job, and the Secret.<br>`values.yaml` documents every value ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
-| `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the seven reports arrive from Splunk, that `npm run splunk:check` passes, and runs the browser tests, keeping their screenshots. It runs when `lib/splunk/`, `worker/`, the app or the example change, on Mondays, and by hand. |
+| `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the seven reports arrive from Splunk, that `npm run splunk:check` passes, and runs the browser tests, keeping their screenshots. It runs when `src/splunk/`, `worker/`, the app or the example change, on Mondays, and by hand. |
 | `.github/workflows/helm.yml` | "Helm" (not required). It lints and renders the chart, then installs it on a throwaway kind cluster and runs the connector and the ML job once. It runs when the chart or the images change. |
-| `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules for `.ts`/`.tsx` (not shadcn's `components/ui/`). Turned off, with the reason next to each: `no-confusing-void-expression` (style) and `require-await` (Next.js needs some functions async). Tests may use `!`. |
+| `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules for `.ts`/`.tsx` (not shadcn's `src/shared/ui/`). Turned off, with the reason next to each: `no-confusing-void-expression` (style) and `require-await` (Next.js needs some functions async). Tests may use `!`. |
 | `tsconfig.json` | `@/*` maps to the repo root. `strict`, plus `noUncheckedIndexedAccess`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noImplicitOverride`, `noUnusedLocals` and `noUnusedParameters`. |
 | `package.json` | The scripts. Tests are `lib/**/*.test.ts`, run with `node --test` through `tsx`. |
 

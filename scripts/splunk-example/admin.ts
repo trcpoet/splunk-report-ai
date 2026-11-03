@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { EventBatch } from '@/lib/splunk/example/events';
+import type { EventBatch } from '@/splunk/example/events';
 
 // A small client for a test Splunk's REST API, signed in as its admin. Only the
 // example's setup and feeder use it (docs/splunk-example.md). The connector

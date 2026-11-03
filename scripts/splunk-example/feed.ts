@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { eventsForMinute } from '@/lib/splunk/example/events';
+import { eventsForMinute } from '@/splunk/example/events';
 import { adminFromEnv, waitForSplunk } from './admin';
 
 // Plays the example's servers (docs/splunk-example.md): just after each minute

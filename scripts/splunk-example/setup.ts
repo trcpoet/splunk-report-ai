@@ -2,16 +2,16 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { eventsForMinute, type EventBatch } from '@/lib/splunk/example/events';
-import { EXAMPLE_INDEXES, exampleSearches } from '@/lib/splunk/example/searches';
+import { eventsForMinute, type EventBatch } from '@/splunk/example/events';
+import { EXAMPLE_INDEXES, exampleSearches } from '@/splunk/example/searches';
 import { adminFromEnv, alreadyThere, expectOk, waitForSplunk, type SplunkAdmin } from './admin';
 
 // Sets up a test Splunk for the example (docs/splunk-example.md) through its
 // REST API, the way a Splunk admin would for the app:
 // 1. indexes for the dummy logs, and the SSH log's user and source fields;
-// 2. the last 24 hours of dummy logs (lib/splunk/example/events.ts), first, so
+// 2. the last 24 hours of dummy logs (src/splunk/example/events.ts), first, so
 //    even the reports' first runs find data;
-// 3. six scheduled reports (lib/splunk/example/searches.ts);
+// 3. six scheduled reports (src/splunk/example/searches.ts);
 // 4. a service account that can read them, and a token for the connector.
 // It's safe to run again: it updates what's there, makes a new token, and only
 // sends the old logs once.

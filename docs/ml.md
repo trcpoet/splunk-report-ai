@@ -2,7 +2,7 @@
 
 How SplunkEvents spots runs worth a look, and how it learns from what people tell it. There are three layers, from simplest to most involved:
 
-1. **Plain statistics** in the app (`lib/insights.ts`): no training, and it explains itself.
+1. **Plain statistics** in the app (`src/reports/insights.ts`): no training, and it explains itself.
 2. **An Isolation Forest** in the Python job (`ml/score.py`): unsupervised. It scores every run against every other run.
 3. **A logistic regression** in the same job: supervised. It learns from the briefing's "Worth flagging?" votes which flags people find useful.
 
@@ -10,7 +10,7 @@ How to set up and run the job: [ml/README.md](../ml/README.md).
 
 ## 1. Plain statistics
 
-`lib/insights.ts` flags a report's newest run when its result count or search time stands out from the report's earlier runs:
+`src/reports/insights.ts` flags a report's newest run when its result count or search time stands out from the report's earlier runs:
 - It uses the median and the median absolute deviation, which shrug off one odd run in the history.
 - A run is flagged at 3.5 robust z-scores or more.
 - [ai.md](ai.md#the-briefing-explain-and-unusual-runs) explains it in more detail.
@@ -47,7 +47,7 @@ Those votes are labels: examples of flags people found useful, or not. The job t
 
 ## How the app uses the scores
 
-The app reads both collections in `lib/dal.ts`, with the reports, and shows them only for reports the viewer can see.
+The app reads both collections in `src/reports/dal.ts`, with the reports, and shows them only for reports the viewer can see.
 - **Briefing:** a newest run that the forest flags joins "Unusual runs" even when the statistics don't flag it, marked "Noticed by the ML model". A failed run isn't added there, since "Needs attention" already shows it. Runs the statistics flagged show the forest's score too.
 - **Order:** once the vote model has learned, both lists put the flags people find most worth attention first, and a note says so.
 - **Explain:** "At a glance" gives the forest's score for the newest run and, once learned, the chance a flag on the report is worth attention.
@@ -60,7 +60,7 @@ After a sync, when there are new runs: `npm run ml` on the machine that runs the
 
 ## What it can't do yet
 
-- **Choose how to show a report.** Learning which chart suits a report would need many reports, each with a label for which chart worked. 9 reports is far too few. Charts come from the chart saved in Splunk, plus `lib/report-config.ts`.
+- **Choose how to show a report.** Learning which chart suits a report would need many reports, each with a label for which chart worked. 9 reports is far too few. Charts come from the chart saved in Splunk, plus `src/reports/report-config.ts`.
 - **Choose which reports to collect.** The sync copies every scheduled report that emails its results. The scores could later decide which runs to keep longer, but that's a decision for the people who use the reports, not for a model.
 - **Be precise with little history.** With about 7 runs per report the scores are rough. They get better as MongoDB keeps more runs (`RUN_RETENTION_DAYS`).
 - **Learn anything before people vote.** Until there are 20 votes of both kinds, only the Isolation Forest runs.

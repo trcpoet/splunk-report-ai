@@ -24,7 +24,7 @@ def runs(counts, slug="report", statuses=None, seconds=None):
 
 
 def test_robust_z_matches_the_app():
-    # The same numbers as lib/insights.test.ts.
+    # The same numbers as src/reports/insights.test.ts.
     assert robust_z(32, [18, 20, 22, 20, 24, 16]) == pytest.approx(4.0466, abs=1e-3)
     assert robust_z(102, [100, 100, 100, 100]) == pytest.approx(0.2)
     assert robust_z(400, [40, 41, 39]) == 0.0  # too few earlier runs

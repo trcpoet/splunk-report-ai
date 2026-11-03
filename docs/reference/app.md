@@ -1,4 +1,4 @@
-# `app/`: pages and API routes
+# `src/app/`: pages and API routes
 
 Next.js 16's App Router: each folder is a URL, `page.tsx` is what it shows, `layout.tsx` wraps the pages under it, and `route.ts` is an API endpoint. Back to the [file reference](README.md).
 
@@ -21,7 +21,7 @@ Next.js 16's App Router: each folder is a URL, `page.tsx` is what it shows, `lay
 | `POST /api/ai/briefing` | `api/ai/briefing/route.ts` | signed in | The briefing's "In short" (streamed) |
 | `POST /api/ai/explain/[slug]` | `api/ai/explain/[slug]/route.ts` | signed in, may see it | Explain's summary (streamed) |
 
-Signed-out visitors to a page are sent to `/login?next=…` by `proxy.ts`. API routes answer 401 instead.
+Signed-out visitors to a page are sent to `/login?next=…` by `src/proxy.ts`. API routes answer 401 instead.
 
 ## The root
 
@@ -43,13 +43,13 @@ The root layout around every page.
 
 Home. In order:
 1. "Data as of", a warning if the reports may be out of date (`SyncNotice`), and the headline numbers (`getReportStats`);
-2. the briefing (`components/Briefing.tsx`);
+2. the briefing (`src/ai/components/Briefing.tsx`);
 3. runs per day by outcome (`RunOutcomes`, from `getRunOutcomes`), beside the run health grid (`RunHealthGrid`, from `getRunHealth`) on wide screens;
 4. when searches run (`SchedulerLoad`, from `getScheduleLoad`);
 5. the report list with search and filters (`ReportBrowser`, fed with `toSummary` so the browser gets summaries only).
 
 Each part streams into its own `<Reveal>`, with skeletons from `Skeletons.tsx`.
-- **Uses:** `lib/dal.ts` (`getVisibleReports`, `getRunOutcomes`, `getRunHealth`, `getScheduleLoad`, `getSyncInfo`), `lib/reports.ts`, `lib/format.ts`.
+- **Uses:** `src/reports/dal.ts` (`getVisibleReports`, `getRunOutcomes`, `getRunHealth`, `getScheduleLoad`, `getSyncInfo`), `src/reports/reports.ts`, `src/shared/format.ts`.
 - **Change it when:** you add a section to the overview. Give it a skeleton the same size.
 
 ### `error.tsx`
@@ -89,11 +89,11 @@ The browser tab icon.
 
 Sign-in.
 - **The form shows at once.** Only the check for an existing session waits for the server.
-- **Signed-in visitors** are sent on to `next` (checked by `lib/next-path.ts`).
+- **Signed-in visitors** are sent on to `next` (checked by `src/people/next-path.ts`).
 - **If the session can't be checked** (the database is down), the form stays, and signing in says what's wrong.
-- **Demo accounts:** in development or with `DEMO_MODE=true`, it lists the accounts from `lib/demo-users.ts` for one click. With `DEMO_MODE`, it also shows `DEMO_PASSWORD`.
+- **Demo accounts:** in development or with `DEMO_MODE=true`, it lists the accounts from `src/people/demo-users.ts` for one click. With `DEMO_MODE`, it also shows `DEMO_PASSWORD`.
 - **Build time:** both settings are read when the app is built, because the form is prerendered.
-- **Uses:** `components/LoginForm.tsx`, `getViewerOrNull`.
+- **Uses:** `src/people/components/LoginForm.tsx`, `getViewerOrNull`.
 
 ## `reports/[slug]/`
 
@@ -111,7 +111,7 @@ One report.
   8. **Actions and related:** Download CSV and Copy SPL (`ReportActions`), then related reports (`getSimilarReports`, as `ReportCard`s).
 - **Missing or hidden:** `getVisibleReport` returns `null` for both, and the page calls `notFound()`. `generateMetadata` titles them both "Report not found".
 - **Exports:** `generateMetadata`, `ReportPage` (default).
-- **Change it when:** a report needs another section. Most per-report behavior belongs in `lib/report-config.ts` instead.
+- **Change it when:** a report needs another section. Most per-report behavior belongs in `src/reports/report-config.ts` instead.
 
 ### `reports/[slug]/not-found.tsx`
 
@@ -126,9 +126,9 @@ Ask AI's frame, laid out like ChatGPT.
   - a hidden `<h1>`;
   - the chat sidebar (`ChatSidebar`, fed by `listChats()`, in `<Suspense>`);
   - beside it, `<div id="ai-main">`, which holds the top bar (`AiTopBar`) and then the page.
-- **Panels:** the bar gets its panels as server-rendered elements, each in its own `<Suspense>`: `ReportsPanel` and `SearchesPanel` from `components/AiPanels.tsx`, plus the attention count.
+- **Panels:** the bar gets its panels as server-rendered elements, each in its own `<Suspense>`: `ReportsPanel` and `SearchesPanel` from `src/ai/components/AiPanels.tsx`, plus the attention count.
 - **It stays put while the chat changes.** Navigating between chats or modes re-renders only the page.
-- **Change it when:** the frame changes. For the chat itself, see `components/ChatView.tsx`.
+- **Change it when:** the frame changes. For the chat itself, see `src/ai/components/ChatView.tsx`.
 
 ### `ai/page.tsx`
 
@@ -147,7 +147,7 @@ The chats page, which **Search chats** opens: an `<h2>` "Your chats", then `Chat
 
 ### `ai/actions.ts`
 
-Server Actions, called from the browser like functions. Anyone can post to them, so each checks its input with zod, and the `lib/` function checks who is asking.
+Server Actions, called from the browser like functions. Anyone can post to them, so each checks its input with zod, and the function it calls (`src/ai/chats.ts`, `src/ai/feedback.ts`, `src/ai/spl-examples.ts`) checks who is asking.
 
 | Action | Checks | Then |
 |---|---|---|
@@ -186,7 +186,7 @@ Better Auth's handler, limited to sign-in, sign-out and session lookups.
 ### `api/ai/chat/route.ts`
 
 `POST /api/ai/chat` with `{ chatId?, message }`: Ask about reports.
-1. **Checks:** `prepareTurn()` (`lib/ai/turn.ts`) checks everything first and answers JSON errors:
+1. **Checks:** `prepareTurn()` (`src/ai/turn.ts`) checks everything first and answers JSON errors:
    - 401 signed out;
    - 400 a bad question;
    - 503 AI off;

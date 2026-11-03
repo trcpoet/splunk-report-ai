@@ -1,6 +1,6 @@
-import { allPassed, checkSplunk } from '@/lib/splunk/check';
-import { describeError } from '@/lib/splunk/errors';
-import { readSyncSettings, transportFor } from '@/lib/splunk/settings';
+import { allPassed, checkSplunk } from '@/splunk/check';
+import { describeError } from '@/splunk/errors';
+import { readSyncSettings, transportFor } from '@/splunk/settings';
 
 // npm run splunk:check: tests the connection to Splunk with the sync worker's
 // own settings (SPLUNK_MODE, SPLUNK_BASE_URL, the token, SYNC_REPORTS), one

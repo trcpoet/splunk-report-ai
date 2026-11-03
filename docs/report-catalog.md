@@ -2,7 +2,7 @@
 
 What each report shows, where its numbers come from, and how to add your own. Start here on a new laptop, before reading any code.
 
-Keep this page in step with `lib/report-config.ts`: `lib/report-catalog.test.ts` fails when a report there has no section here. This repository is public, so it lists only the dummy reports. In your company's copy, add your company's reports to that copy's catalog, never here.
+Keep this page in step with `src/reports/report-config.ts`: `src/reports/report-catalog.test.ts` fails when a report there has no section here. This repository is public, so it lists only the dummy reports. In your company's copy, add your company's reports to that copy's catalog, never here.
 
 ## Where the data comes from
 
@@ -11,7 +11,7 @@ Keep this page in step with `lib/report-config.ts`: `lib/report-catalog.test.ts`
 - The token only needs to read the reports shared with it, not whole indexes.
 - The numbers are the ones people used to get by email.
 
-The SPL below is what Splunk runs. In fixture mode (dummy data) the same reports come from `lib/splunk/fixtures/reports.ts`. The Splunk example (`docs/splunk-example.md`) creates seven of them as real scheduled searches, which run every 5 minutes there.
+The SPL below is what Splunk runs. In fixture mode (dummy data) the same reports come from `src/splunk/fixtures/reports.ts`. The Splunk example (`docs/splunk-example.md`) creates seven of them as real scheduled searches, which run every 5 minutes there.
 
 ## How a report gets its look
 
@@ -21,8 +21,8 @@ Four layers, each filling in what the one before leaves open:
 |---|---|---|
 | 1. The search (SPL) | The columns: the data points. `rename` steps set their names. | Splunk |
 | 2. The chart saved with the search | Bar, column or line. A statistics table means no chart. | Splunk (the report's Visualization tab) |
-| 3. Report settings | Category and tags, who may see it, which column to plot, a limit line, the rule that turns results into a warning, and the headline numbers. | `lib/report-config.ts`, under the search's exact name |
-| 4. Worked out automatically | Anything not set: the first column labels the rows, the first number column is the measure, `_time` first means lines over time. The headline numbers are the result count (with its change since the previous run), the top row, and the search time. | `lib/splunk/map.ts` |
+| 3. Report settings | Category and tags, who may see it, which column to plot, a limit line, the rule that turns results into a warning, and the headline numbers. | `src/reports/report-config.ts`, under the search's exact name |
+| 4. Worked out automatically | Anything not set: the first column labels the rows, the first number column is the measure, `_time` first means lines over time. The headline numbers are the result count (with its change since the previous run), the top row, and the search time. | `src/splunk/map.ts` |
 
 **On screen:**
 - **The report card** on the home page shows the first headline number, such as "Overall error rate 1.21%, Budget: 2%". When the last run had no results, the card says which run the number is from.
@@ -44,7 +44,7 @@ Four layers, each filling in what the one before leaves open:
 | [Forwarder Health: Silent Hosts](#forwarder-health-silent-hosts) | Has any host stopped sending logs? | Bars | Any host is silent | Every hour at :15 |
 | [Web Requests by Host](#web-requests-by-host) | Is any web server falling behind the others? | A line per host | Never | Every hour at :05 |
 
-**Who sees a report:** admins see every report. Everyone else sees a report when one of their groups matches the report's groups. Unless `lib/report-config.ts` sets `groups`, those are the email lists it was sent to: `secops@example.com` means the `secops` group. See [report-access.md](report-access.md).
+**Who sees a report:** admins see every report. Everyone else sees a report when one of their groups matches the report's groups. Unless `src/reports/report-config.ts` sets `groups`, those are the email lists it was sent to: `secops@example.com` means the `secops` group. See [report-access.md](report-access.md).
 
 ## Each report
 
@@ -238,9 +238,9 @@ The ML job (`ml/`, [ml.md](ml.md)) has no SPL of its own and never reads result 
 
 ## Adding your company's report
 
-1. **In Splunk:** the report must be a scheduled saved search, shared (read) with the service account's role. It must email its results, or be listed in `lib/report-config.ts`. With `SYNC_REPORTS=configured`, only listed reports come in.
+1. **In Splunk:** the report must be a scheduled saved search, shared (read) with the service account's role. It must email its results, or be listed in `src/reports/report-config.ts`. With `SYNC_REPORTS=configured`, only listed reports come in.
 2. **Check the connection:** `npm run splunk:check`. It says whether the token can see the report, and whether the sync takes it.
-3. **Add its settings** to `lib/report-config.ts`, under the report's exact Splunk name: `slug`, `category` and `tags`, and optionally `groups`, `chart`, `statusRule` and `highlights`. Rules look columns up by name, so use the names the search's last step gives them.
+3. **Add its settings** to `src/reports/report-config.ts`, under the report's exact Splunk name: `slug`, `category` and `tags`, and optionally `groups`, `chart`, `statusRule` and `highlights`. Rules look columns up by name, so use the names the search's last step gives them.
    - **Before turning off the report's email in Splunk, copy its groups into `groups`.** The default groups come from the email list, and disappear with it.
 4. **Add it to this catalog**, in your company's copy: the question, the search, the columns, the chart, the headline numbers and the warning rule with its limit. `npm test` fails until you do.
 5. **Check and look:** `npm run check`, then `npm run sync`, and open the report.
