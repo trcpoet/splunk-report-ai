@@ -11,6 +11,7 @@ import { exampleText, reportExample, topK } from '@/ai/retrieval';
 import { checkSpl, pipeCommands, queryFromSteps, SplAnswerSchema } from '@/ai/spl';
 import { validateSpl } from '@/ai/validate';
 import { aiModel, embeddingModel } from '@/ai/config';
+import { reportIcon } from '@/reports/icons';
 import type { SplunkReport } from '@/reports/reports';
 import { reports as fixtures } from '@/splunk/fixtures/reports';
 
@@ -23,7 +24,7 @@ async function main() {
         return;
     }
     const { cases } = JSON.parse(readFileSync(new URL('./spl-eval-set.json', import.meta.url), 'utf8')) as { cases: Case[] };
-    const reports: SplunkReport[] = fixtures.map((fixture) => ({ ...fixture, chart: null, resultsRunAt: fixture.lastRun }));
+    const reports: SplunkReport[] = fixtures.map((fixture) => ({ ...fixture, icon: reportIcon(fixture), chart: null, resultsRunAt: fixture.lastRun }));
     const examples = reports.map(reportExample);
     const vectors = await embed(examples.map((example) => ({ title: example.title, text: exampleText(example) })), 'document');
 

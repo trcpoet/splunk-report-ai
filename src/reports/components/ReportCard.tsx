@@ -4,6 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import ExplainButton from "@/ai/components/ExplainButton";
+import ReportIcon from "@/reports/components/ReportIcon";
 import StatusBadge from "@/reports/components/StatusBadge";
 import RunHistory from "@/reports/components/RunHistory";
 import { PAGE_TRANSITION } from "@/shared/components/Transitions";
@@ -41,7 +42,10 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
             <PendingBar />
 
             <div className="flex flex-row items-center justify-between gap-2">
-                <span className="pill">{report.category}</span>
+                <div className="flex flex-row items-center gap-2">
+                    <ReportIcon name={report.icon} />
+                    <span className="pill">{report.category}</span>
+                </div>
                 <StatusBadge status={report.status} />
             </div>
 

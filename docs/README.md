@@ -27,6 +27,7 @@
 | [docker.md](docker.md) | Running everything with `docker compose up`, its settings, and sharing it with a team |
 | [kubernetes.md](kubernetes.md) | Running it on Kubernetes or OpenShift with the Helm chart: the images, the secrets, the values, and what to ask the platform team |
 | [running-inside-a-company.md](running-inside-a-company.md) | A checklist for a company's network and real data: approval for the code, outside services to turn off, the build, secrets, Splunk, the database, sign-in, the network and data handling |
+| [ideas.md](ideas.md) | Ideas not built yet, ranked, and where report icons can come from |
 
 ## Keeping the docs current
 

@@ -529,6 +529,25 @@
         @apply bg-dark-200 text-light-100 text-xs rounded-[6px] px-3 py-1;
     }
 
+    /* What a report is about (src/reports/components/ReportIcon.tsx), beside its
+       category pill and in the same quiet colors, so it helps scanning without
+       competing with the status badge or the headline number. */
+    .report-icon {
+        @apply inline-grid size-7 shrink-0 place-items-center rounded-[6px] bg-dark-200 text-light-100;
+
+        svg {
+            @apply size-4;
+        }
+    }
+
+    .report-icon-large {
+        @apply size-9 rounded-[8px];
+
+        svg {
+            @apply size-5;
+        }
+    }
+
     .status-badge {
         @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium;
 

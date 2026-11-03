@@ -34,6 +34,9 @@ export interface IReport {
     recipients: string[];
     category: ReportCategory;
     tags: string[];
+    // The card's icon. Empty, or missing on reports synced before icons, means
+    // the app's guess (src/reports/icons.ts).
+    icon?: string;
     // Groups whose members may open the report. Empty means admins only.
     allowedGroups: string[];
     chart: ReportChart | null;
@@ -144,6 +147,7 @@ const ReportSchema = new Schema<IReport>(
         recipients: { type: [String], default: [] },
         category: { type: String, required: true },
         tags: { type: [String], default: [] },
+        icon: { type: String, default: '' },
         allowedGroups: { type: [String], default: [] },
         chart: { type: ChartSchema, default: null },
         nextRun: { type: Date, default: null },

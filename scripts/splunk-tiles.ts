@@ -1,6 +1,6 @@
 import { describeError } from '@/splunk/errors';
 import { readSyncSettings, transportFor } from '@/splunk/settings';
-import { draftCard, findDashboard, inputsOf, tilesOf } from '@/splunk/tiles';
+import { draftCard, findDashboard, iconNote, inputsOf, tilesOf } from '@/splunk/tiles';
 
 // npm run splunk:tiles "<dashboard name or label>": a worksheet for moving a
 // Splunk dashboard's tiles into the app, one entry per tile: its whole search,
@@ -50,6 +50,7 @@ async function main() {
         if (inputs.length > 0) lines.push(`- **Uses dashboard inputs** (${inputs.join(', ')}): a scheduled report has none, so put fixed values in their place first.`);
         if (tile.thresholds.length > 0) lines.push(`- **Colors:** ${tile.colors.join(', ') || 'set'} around ${tile.thresholds.join(', ')}. Check which way is bad; the draft guesses from the colors.`);
         if (tile.unit || tile.decimals !== undefined) lines.push(`- **Shows:** ${[tile.decimals !== undefined ? `${tile.decimals} decimals` : '', tile.unit ? `the unit "${tile.unit}"` : ''].filter(Boolean).join(', ')}.`);
+        lines.push(`- **Icon:** ${iconNote(tile.title)}`);
         lines.push('- **Draft card** (check the column names once the report has run):', '', '```yaml', draftCard(tile).trimEnd(), '```');
     });
     console.log(lines.join('\n'));

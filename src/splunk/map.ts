@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
 import { formatCell, formatDuration, formatNumber, parseNumber } from '@/shared/format';
+import type { IconName } from '@/reports/icons';
 import type { ReportConfig, ResultSet, StatusRule } from '@/reports/report-config';
 import { MAX_CHART_BARS, MAX_CHART_SERIES, type Cell, type ChartPanel, type ChartScatter, type ChartThreshold, type ChartType, type ReportCategory, type ReportChart, type ReportHighlight, type ReportStatus } from '@/reports/reports';
 import type { JobContent, ResultsResponse, SavedSearchContent, SplunkBool, SplunkEntry } from './types';
@@ -196,6 +197,9 @@ export type ReportMeta = {
     recipients: string[];
     category: ReportCategory;
     tags: string[];
+    // The card's icon, or '' for the app's guess (src/reports/icons.ts). The
+    // guess isn't stored, so a better guess shows without a new sync.
+    icon: IconName | '';
     allowedGroups: string[];
     chartType: ChartType | null;
     nextRun: Date | null;
@@ -236,6 +240,7 @@ export function mapSavedSearch(entry: SplunkEntry<SavedSearchContent>, { config,
         recipients,
         category: config?.category ?? 'Other',
         tags: config?.tags ?? [],
+        icon: config?.icon ?? '',
         // Reports without a card are admin-only until someone gives them one.
         // So is a private search with a card's name: its owner decides what it
         // runs, so it can't take on the report's groups.

@@ -58,7 +58,7 @@ Helpers:
 ### `report-config.ts`
 
 Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts, and holds the types they become: `ReportConfig`, `StatusRule`, `HighlightRule`, `ResultSet`.
-- **`reportConfig()`:** the settings the sync uses, keyed by each report's Splunk name: slug, category, tags, `groups`, `chart`, `index`, `statusRule`, `highlights`. **`reportCards()`:** the cards as written, for `card:preview` and `splunk:check`.
+- **`reportConfig()`:** the settings the sync uses, keyed by each report's Splunk name: slug, category, tags, `icon`, `groups`, `chart`, `index`, `statusRule`, `highlights`. **`reportCards()`:** the cards as written, for `card:preview` and `splunk:check`.
 - **Read again when the file changes,** so `npm run sync:watch` picks up an edit at its next sync. A mistake throws a `ReportCardsError` that lists every problem.
 - **Who loads it:** the sync worker (`src/splunk/sync.ts`) and the scripts; the web app only reads the results. No `server-only` or `next/*` imports.
 - **Change it when:** a card needs a setting the sync doesn't have yet. To add or change a report's card, edit `config/report-cards.yaml` instead: [adding-report-cards.md](../adding-report-cards.md), and every field in [configuration.md](../configuration.md#report-cards-configreport-cardsyaml). Access in practice: [report-access.md](../report-access.md).
@@ -73,6 +73,16 @@ Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts
 - **`columns.ts` (pure):** `columnsUsed(card)`, every results column a card names, so `card:preview` and `splunk:check` can catch a misspelled one.
 - **`custom.ts`:** TypeScript rules a card can name with `custom:`, for what the file can't say. Empty for now.
 - **Tests:** `rules.test.ts` covers every building block. `load.test.ts` checks the real file (a card for every dummy report, limits that agree, the JSON Schema up to date) and the error messages.
+
+### `icons.ts` (pure)
+
+Which icon each report shows, beside its category on its card and page.
+- **`ICON_NAMES`:** the icons a card may name in `icon:`, by their [Lucide](https://lucide.dev/icons) names. The cards schema accepts only these.
+- **`iconFor({ title, tags, description, category })`:** the guess for a report without `icon:`, with the reason (`from "login" in the title`). It checks `ICON_RULES` in order against the title, then each tag, then the description; the first rule with a matching word wins. A word matches whole or as a plural (`-s`, `-es`, or `-ies` for a word ending in `y`); one ending in `*` matches any word starting with it. Case, accents and punctuation are ignored. With no match, it uses `CATEGORY_ICONS`. The rule words are turned into the texts to look for once, when the module loads.
+- **`reportIcon(report)`:** the card's icon when it's a listed name, otherwise the guess. `dal.ts` uses it, so the guess is made when the page reads the report, not stored: a better rule shows without a new sync.
+- **Used by:** `dal.ts`, the cards schema, `splunk:tiles` (its worksheet says which icon the app will pick; draft cards leave `icon:` out) and `card:preview` (it prints the icon and why).
+- **Change it when:** a kind of report gets the wrong icon (add or move a rule; earlier rules win), or a card needs an icon that isn't listed. Add the name here **and** its component in `components/ReportIcon.tsx`, then run `npm run cards:schema`. The type check fails until both lists match.
+- **Tests:** `icons.test.ts` (each demo report gets its own fitting icon, the order of title, tags and description, whole words and plurals, accents, the error for an unknown name, and the list in `docs/adding-report-cards.md` matching `ICON_NAMES`).
 
 ### `insights.ts` (pure)
 
@@ -121,11 +131,15 @@ The report list on the home page.
 
 ### `ReportCard.tsx` (client)
 
-One report as a card: title, status, its headline number from the newest results (`headline`, such as "Overall error rate 1.21%, Budget: 2%"), schedule and run dots. When the last run had no results (it failed, or its results expired), the card says which run the number is from.
+One report as a card: icon, category, title, status, its headline number from the newest results (`headline`, such as "Overall error rate 1.21%, Budget: 2%"), schedule and run dots. When the last run had no results (it failed, or its results expired), the card says which run the number is from.
 - **Prefetching:** every card prefetches the report page's shell. Pointing at a card (hover, focus, touch) also prefetches its content, so it opens at once.
 - **Explain** sits on top of the card's corner, since a button can't go inside a link.
 - **Loading bar:** a thin bar fades in while the report is still on its way.
 - **Used by:** `ReportBrowser`, and "Related reports" on a report page.
+
+### `ReportIcon.tsx` (server or client)
+
+A report's icon (`report.icon`) in a small tile, in the category pill's colors: `size="large"` in a report page's header. Decorative (`aria-hidden`), since the title beside it says the same. Each listed name is imported from `lucide-react` by itself, so the browser gets only these icons, not all of Lucide. A name that isn't listed shows the default icon rather than breaking the list.
 
 ### `StatusBadge.tsx` (server)
 

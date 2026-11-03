@@ -74,7 +74,7 @@ Reads a Splunk dashboard's tiles for `npm run splunk:tiles`, from `/servicesNS/-
 - **`joinSearch(parts)`:** a base search and the steps chained onto it, as one search, adding the `|` a post-process step may leave out.
 - **`inputsOf(search)`:** the dashboard inputs a search uses (`$time_tok$`), which a scheduled report can't have.
 - **`findDashboard(transport, nameOrLabel)`:** a dashboard by its name or its title.
-- **`guessColumn(search)` and `draftCard(tile)`:** a draft card in YAML. The column comes from the search's last step (`AS "Free GB"`, or the `stats` function). A single value gets `chart: none` and a `first` headline number; color ranges become a `fail` rule (the worst range) and a `warn` rule (the next one), `above` or `below` from which end is red.
+- **`guessColumn(search)` and `draftCard(tile)`:** a draft card in YAML. The column comes from the search's last step (`AS "Free GB"`, or the `stats` function). It has no `icon:`, so the app keeps guessing; `iconNote(title)` is the worksheet's line saying which icon that will be (`src/reports/icons.ts`). A single value gets `chart: none` and a `first` headline number; color ranges become a `fail` rule (the worst range) and a `warn` rule (the next one), `above` or `below` from which end is red.
 
 Tested in `tiles.test.ts` with dashboards in both formats.
 

@@ -26,7 +26,7 @@ One report per Splunk scheduled search. The sync upserts it by slug and recomput
 - **From Splunk:**
   - `splunk` (name, app, app label, owner, sharing, read roles);
   - `title`, `description`, `spl`, `cron`, `schedule` (text), `runsPerWeek`, `timeRange`, `index`, `recipients`, `nextRun`.
-- **From the report's card** (`config/report-cards.yaml`): `category`, `tags`, `allowedGroups`, `chart` (with `series`, the lines of a chart over time).
+- **From the report's card** (`config/report-cards.yaml`): `category`, `tags`, `icon` (empty when the card has none: the app's guess is made when it reads the report, not stored), `allowedGroups`, `chart` (with `series`, the lines of a chart over time).
 - **Derived:**
   - `latest`, the newest run with its status message;
   - `history`, the last 7 runs;
