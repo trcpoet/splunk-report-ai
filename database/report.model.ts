@@ -161,6 +161,6 @@ const ReportSchema = new Schema<IReport>(
     { timestamps: true, collection: 'reports' },
 );
 
-const Report = (models.Report as Model<IReport>) || model<IReport>('Report', ReportSchema);
+const Report = (models.Report as Model<IReport> | undefined) ?? model<IReport>('Report', ReportSchema);
 
 export default Report;

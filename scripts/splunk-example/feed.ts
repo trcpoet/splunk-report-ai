@@ -18,11 +18,13 @@ async function main() {
     for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => stop.abort());
     console.log('Sending each minute of dummy logs to Splunk. Ctrl+C stops.');
 
+    // A function, because the signal changes while the loop sleeps.
+    const stopped = () => stop.signal.aborted;
     let minute = Math.floor(Date.now() / MINUTE) * MINUTE;
-    while (!stop.signal.aborted) {
+    while (!stopped()) {
         // A couple of seconds after the minute ends, so the minute is complete.
         await sleep(Math.max(0, minute + MINUTE + 2_000 - Date.now()), undefined, { signal: stop.signal }).catch(() => {});
-        if (stop.signal.aborted) break;
+        if (stopped()) break;
 
         const when = new Date(minute).toISOString();
         try {
@@ -32,13 +34,13 @@ async function main() {
                 console.log(`${when}: sent ${batches.reduce((lines, batch) => lines + batch.lines.length, 0)} log lines.`);
             }
         } catch (error) {
-            console.error(`Couldn't send the logs for ${when}: ${error instanceof Error ? error.message : error}`);
+            console.error(`Couldn't send the logs for ${when}: ${error instanceof Error ? error.message : String(error)}`);
         }
         minute += MINUTE;
     }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
 });

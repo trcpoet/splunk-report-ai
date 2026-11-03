@@ -15,18 +15,18 @@ describe('briefingKey', () => {
 
     test('changes when a report gets a new run or a new status', () => {
         const before = briefingKey(reports);
-        assert.notEqual(briefingKey([{ ...reports[0], lastRun: '2026-10-02T10:00:00.000Z' }, reports[1]]), before);
-        assert.notEqual(briefingKey([{ ...reports[0], status: 'success' }, reports[1]]), before);
+        assert.notEqual(briefingKey([{ ...reports[0]!, lastRun: '2026-10-02T10:00:00.000Z' }, reports[1]!]), before);
+        assert.notEqual(briefingKey([{ ...reports[0]!, status: 'success' }, reports[1]!]), before);
         assert.match(before, new RegExp(`^briefing:[0-9a-f]{24}:v${PROMPT_VERSION}$`));
     });
 
     test('changes when the ML job flags a run, or learns a different tenth of attention', () => {
         const before = briefingKey(reports);
         const flagged = { score: 0.9, unusual: true, reason: 'Results far above usual.', measure: 'results' as const };
-        assert.notEqual(briefingKey([{ ...reports[0], modelRun: flagged }, reports[1]]), before);
-        assert.equal(briefingKey([{ ...reports[0], modelRun: { ...flagged, unusual: false } }, reports[1]]), before);
-        assert.equal(briefingKey([{ ...reports[0], attention: 0.71 }, reports[1]]), briefingKey([{ ...reports[0], attention: 0.69 }, reports[1]]));
-        assert.notEqual(briefingKey([{ ...reports[0], attention: 0.71 }, reports[1]]), briefingKey([{ ...reports[0], attention: 0.84 }, reports[1]]));
+        assert.notEqual(briefingKey([{ ...reports[0]!, modelRun: flagged }, reports[1]!]), before);
+        assert.equal(briefingKey([{ ...reports[0]!, modelRun: { ...flagged, unusual: false } }, reports[1]!]), before);
+        assert.equal(briefingKey([{ ...reports[0]!, attention: 0.71 }, reports[1]!]), briefingKey([{ ...reports[0]!, attention: 0.69 }, reports[1]!]));
+        assert.notEqual(briefingKey([{ ...reports[0]!, attention: 0.71 }, reports[1]!]), briefingKey([{ ...reports[0]!, attention: 0.84 }, reports[1]!]));
     });
 });
 

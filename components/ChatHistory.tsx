@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type SubmitEvent } from "react";
 import { MessagesSquare, Pencil, SquareTerminal, Trash2 } from "lucide-react";
 import { deleteChatAction, renameChatAction } from "@/app/ai/actions";
 import { CHAT_DELETED, STOP_ANSWER } from "@/lib/ai/chat-events";
@@ -48,7 +48,7 @@ export const HistoryRow = ({ chat, compact = false, current = false }: RowProps)
         if (mode === 'confirm') keepButton.current?.focus();
     }, [mode]);
 
-    const rename = (event: FormEvent) => {
+    const rename = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         startTransition(async () => {
             // A request that fails counts as not renamed, rather than breaking the page.

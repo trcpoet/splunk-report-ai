@@ -24,6 +24,6 @@ const AiEmbeddingSchema = new Schema<IAiEmbedding>(
 
 AiEmbeddingSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 86_400 });
 
-const AiEmbedding = (models.AiEmbedding as Model<IAiEmbedding>) || model<IAiEmbedding>('AiEmbedding', AiEmbeddingSchema);
+const AiEmbedding = (models.AiEmbedding as Model<IAiEmbedding> | undefined) ?? model<IAiEmbedding>('AiEmbedding', AiEmbeddingSchema);
 
 export default AiEmbedding;

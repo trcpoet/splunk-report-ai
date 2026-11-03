@@ -76,8 +76,8 @@ function daysText(days: number[]) {
     if (sameItems(days, daysOn([0, 1, 2, 3, 4]))) return 'weekdays';
     if (sameItems(days, daysOn([5, 6]))) return 'weekends';
 
-    const weekday = WEEKDAYS.findIndex((_, i) => sameItems(days, daysOn([i])));
-    if (weekday >= 0) return WEEKDAYS[weekday];
+    const weekday = WEEKDAYS.find((_, i) => sameItems(days, daysOn([i])));
+    if (weekday) return weekday;
 
     return days.length === 1 ? 'once a month' : `${plural(days.length, 'day', 'days')} a month`;
 }
@@ -127,14 +127,16 @@ function runsAt({ starts, length }: Placed, minute: number) {
 
     while (low <= high) {
         const middle = (low + high) >> 1;
-        if (starts[middle] <= minute) {
+        const start = starts[middle];
+        if (start !== undefined && start <= minute) {
             last = middle;
             low = middle + 1;
         } else {
             high = middle - 1;
         }
     }
-    return last >= 0 && minute < starts[last] + length;
+    const lastStart = starts[last];
+    return lastStart !== undefined && minute < lastStart + length;
 }
 
 export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes = 5): ScheduleLoad {
@@ -155,15 +157,15 @@ export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes 
             const to = Math.min(start + length, MONTH_MINUTES);
             if (to <= from) continue;
 
-            change[from] += 1;
-            change[to] -= 1;
+            change[from] = (change[from] ?? 0) + 1;
+            change[to] = (change[to] ?? 0) - 1;
         }
     }
 
     const running = new Int32Array(MONTH_MINUTES);
     let now = 0;
     for (let minute = 0; minute < MONTH_MINUTES; minute++) {
-        now += change[minute];
+        now += change[minute] ?? 0;
         running[minute] = now;
     }
 
@@ -173,7 +175,7 @@ export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes 
         let at = -1;
         for (let minute = slot * slotMinutes; minute < (slot + 1) * slotMinutes; minute++) {
             for (let day = 0; day < MONTH_DAYS; day++) {
-                const value = running[day * DAY_MINUTES + minute];
+                const value = running[day * DAY_MINUTES + minute] ?? 0;
                 if (value > most) {
                     most = value;
                     at = day * DAY_MINUTES + minute;
@@ -199,9 +201,10 @@ export function scheduleLoad(reports: Schedule[], timeZone = 'UTC', slotMinutes 
     const busiest = counts.map((count) => {
         const times: BusyTime[] = [];
         slots.forEach((slot, i) => {
-            if (slot.running !== count) return;
+            const peak = peaks[i];
+            if (slot.running !== count || !peak) return;
 
-            const when = on(peaks[i].at, count);
+            const when = on(peak.at, count);
             const last = times.at(-1);
             // Joined only when it's the same searches, on the same days.
             if (last && last.until === slot.minute && last.on === when && sameItems(last.reports, slot.reports)) {

@@ -28,6 +28,6 @@ const AiSummarySchema = new Schema<IAiSummary>(
 
 AiSummarySchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 86_400 });
 
-const AiSummary = (models.AiSummary as Model<IAiSummary>) || model<IAiSummary>('AiSummary', AiSummarySchema);
+const AiSummary = (models.AiSummary as Model<IAiSummary> | undefined) ?? model<IAiSummary>('AiSummary', AiSummarySchema);
 
 export default AiSummary;

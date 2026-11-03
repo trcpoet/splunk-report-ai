@@ -2,7 +2,7 @@
 
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { AXIS_TICK, X_TICK_MARGIN, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, TOOLTIP_CLASS } from "@/lib/chart-theme";
+import { AXIS_TICK, X_TICK_MARGIN, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, TOOLTIP_CLASS, tooltipTime } from "@/lib/chart-theme";
 import { formatCompact, formatDateTime, formatDay, formatTime } from "@/lib/format";
 import type { RunRecord } from "@/lib/reports";
 
@@ -43,7 +43,7 @@ const RunTrend = ({ runs }: { runs: RunRecord[] }) => {
                 <YAxis tickFormatter={formatCompact} tickLine={false} axisLine={false} tick={AXIS_TICK} width={40} allowDecimals={false} />
                 <ChartTooltip
                     cursor={LINE_CURSOR}
-                    content={<ChartTooltipContent className={TOOLTIP_CLASS} labelFormatter={(_, payload) => payload?.[0]?.payload?.when} />}
+                    content={<ChartTooltipContent className={TOOLTIP_CLASS} labelFormatter={tooltipTime} />}
                 />
                 <Line dataKey="results" type="linear" stroke="var(--color-results)" strokeWidth={LINE_WIDTH} connectNulls={false} dot={lastDot} activeDot={endDot} />
             </LineChart>

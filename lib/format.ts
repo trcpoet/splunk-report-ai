@@ -1,3 +1,5 @@
+import type { Cell } from '@/lib/reports';
+
 // Formatting is done by hand (always UTC, fixed English month names) so the
 // server and the browser render exactly the same text.
 
@@ -13,7 +15,7 @@ export const formatDateTime = (iso: string) => {
 };
 
 export const formatNumber = (value: number) => {
-    const [whole, fraction] = value.toString().split('.');
+    const [whole = '', fraction] = value.toString().split('.');
     const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return fraction ? `${grouped}.${fraction}` : grouped;
 };
@@ -26,15 +28,17 @@ const SIZE_UNITS: Record<string, number> = { K: 2 ** 10, M: 2 ** 20, G: 2 ** 30,
 const FORMATTED_NUMBER = /^(-)?\$?((?:0|[1-9]\d{0,2}(?:,\d{3})+|[1-9]\d*)(?:\.\d+)?)\s?(%|[KMGTP](?:i?B)?)?$/;
 
 // The number in a results cell, so formatted text can be sorted and charted
-// like the numbers next to it. null when the cell isn't a number.
-export const parseNumber = (cell: string | number): number | null => {
+// like the numbers next to it. null when the cell isn't a number, or is
+// missing: live results can have rows shorter than their columns.
+export const parseNumber = (cell: Cell | undefined): number | null => {
     if (typeof cell === 'number') return cell;
+    if (cell === undefined) return null;
 
-    const match = cell.trim().match(FORMATTED_NUMBER);
-    if (!match) return null;
+    const [, minus, digits, unit] = cell.trim().match(FORMATTED_NUMBER) ?? [];
+    if (!digits) return null;
 
-    const [, minus, digits, unit] = match;
-    const value = Number(digits.replace(/,/g, '')) * (unit && unit !== '%' ? SIZE_UNITS[unit[0]] : 1);
+    const scale = unit && unit !== '%' ? (SIZE_UNITS[unit.charAt(0)] ?? 1) : 1;
+    const value = Number(digits.replace(/,/g, '')) * scale;
     return minus ? -value : value;
 };
 
@@ -49,8 +53,9 @@ const formatSplunkTime = (time: string) => {
     return `${iso.slice(0, 19).replace('T', ' ')}${fraction === '.000' ? '' : fraction} UTC`;
 };
 
-// A results cell as it's shown.
-export const formatCell = (cell: string | number) => {
+// A results cell as it's shown. A missing cell shows as empty.
+export const formatCell = (cell: Cell | undefined) => {
+    if (cell === undefined) return '';
     if (typeof cell === 'number') return formatNumber(cell);
     return SPLUNK_TIME.test(cell) && !Number.isNaN(Date.parse(cell)) ? formatSplunkTime(cell) : cell;
 };
@@ -112,6 +117,6 @@ export const formatList = (items: string[]) => LIST.format(items);
 
 // The first line of some text, shortened to `max` characters, for titles.
 export const firstLine = (text: string, max = 80) => {
-    const line = text.trim().split('\n')[0].replace(/\s+/g, ' ');
+    const line = (text.trim().split('\n')[0] ?? '').replace(/\s+/g, ' ');
     return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 };

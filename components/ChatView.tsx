@@ -1,13 +1,14 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent, type SubmitEvent } from "react";
 import { ArrowDown, ArrowUp, RotateCcw, Square } from "lucide-react";
 import ChatAnswer, { type ReportChipData } from "@/components/ChatAnswer";
 import CopyButton from "@/components/CopyButton";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import SplAnswer from "@/components/SplAnswer";
 import { track } from "@/lib/analytics";
+import { replyError } from "@/lib/api-reply";
 import { CHAT_SAVED, NEW_CHAT, STOP_ANSWER, type SavedChat } from "@/lib/ai/chat-events";
 import { replaceReportMarkers } from "@/lib/ai/report-links";
 import { readEvents } from "@/lib/ai/stream";
@@ -221,8 +222,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
             });
 
             if (!response.ok || !response.body) {
-                const body = await response.json().catch(() => null);
-                return fail(body?.message ?? 'Something went wrong. Try again.');
+                return fail((await replyError(response)) ?? 'Something went wrong. Try again.');
             }
 
             if (kind === 'spl') {
@@ -235,7 +235,8 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
 
             let id = chatId;
             let answer = '';
-            let finished = false;
+            // Set inside the callback, so it's an object: TypeScript can't see that change.
+            const stream = { finished: false };
             await readEvents(response.body, (event) => {
                 if (event.type === 'start') {
                     id = event.chatId;
@@ -243,7 +244,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                     answer += event.text;
                     update({ text: answer, state: 'streaming' });
                 } else if (event.type === 'done') {
-                    finished = true;
+                    stream.finished = true;
                     update({
                         id: event.messageId,
                         state: undefined,
@@ -252,12 +253,12 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                     if (id) saved(id, text, idTime(event.messageId));
                     setAnnouncement('Answer ready.');
                 } else {
-                    finished = true;
+                    stream.finished = true;
                     fail(event.message);
                 }
             });
             // The connection closed without a "done" (the server timed out, say).
-            if (!finished) fail("The answer stopped before it finished, so it wasn't saved. Try again.");
+            if (!stream.finished) fail("The answer stopped before it finished, so it wasn't saved. Try again.");
         } catch {
             if (controller.signal.aborted) {
                 update({ state: 'stopped', note: "Stopped. This answer wasn't saved." });
@@ -272,24 +273,30 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
         }
     };
 
+    // Buttons and keys start a send without waiting for it: send() shows its
+    // own errors in the chat.
+    const ask = (text: string) => {
+        void send(text);
+    };
+
     // Asks a question that didn't get an answer again, in place of the failed try.
     const retry = (index: number) => {
         const question = messages[index - 1];
         if (!question) return;
         setMessages((list) => list.filter((_, i) => i !== index && i !== index - 1));
-        send(question.text);
+        ask(question.text);
     };
 
-    const submit = (event: FormEvent) => {
+    const submit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
-        send(draft);
+        ask(draft);
     };
 
     // Enter sends; Shift+Enter starts a new line.
     const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
-            send(draft);
+            ask(draft);
         }
     };
 
@@ -328,7 +335,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                         )}
 
                         {message.spl ? (
-                            <SplAnswer answer={message.spl} splunkWebUrl={splunkWebUrl} reveal={message.fresh} onFollowUp={send} busy={busy || !ai.enabled} messageId={message.id} saved={Boolean(savedExamples[message.id])} />
+                            <SplAnswer answer={message.spl} splunkWebUrl={splunkWebUrl} reveal={message.fresh} onFollowUp={ask} busy={busy || !ai.enabled} messageId={message.id} saved={Boolean(savedExamples[message.id])} />
                         ) : message.text ? (
                             <ChatAnswer text={message.text} reports={reports} streaming={message.state === 'streaming'} />
                         ) : null}
@@ -400,7 +407,7 @@ const ChatView = ({ kind, chat, reports, suggestions, ai, prefill = '', splunkWe
                 {empty && ai.enabled && suggestions.length > 0 && (
                     <div className="chips suggestions" role="group" aria-label="Suggestions">
                         {suggestions.map((suggestion) => (
-                            <button key={suggestion} type="button" className="chip" onClick={() => send(suggestion)}>
+                            <button key={suggestion} type="button" className="chip" onClick={() => ask(suggestion)}>
                                 {suggestion}
                             </button>
                         ))}

@@ -27,18 +27,25 @@ const MAX_SAVED = 500;
 // embedded fresh each time: they're rarely asked twice.
 async function embedDocuments(inputs: EmbedInput[]): Promise<number[][]> {
     const model = embeddingModelInUse();
-    const keys = inputs.map(({ text, title }) =>
-        createHash('sha256').update(`${model}|${EMBEDDING_DIMENSIONS}|document|${title ?? ''}|${text}`).digest('hex'));
+    const items = inputs.map((input) => ({
+        input,
+        key: createHash('sha256').update(`${model}|${EMBEDDING_DIMENSIONS}|document|${input.title ?? ''}|${input.text}`).digest('hex'),
+    }));
+    const keys = items.map(({ key }) => key);
 
     const saved = new Map((await AiEmbedding.find({ _id: { $in: keys } }, { vector: 1 }).lean()).map(({ _id, vector }) => [_id, vector]));
-    const missing = inputs.map((input, i) => ({ input, key: keys[i] })).filter(({ key }) => !saved.has(key));
+    const missing = items.filter(({ key }) => !saved.has(key));
 
     if (missing.length > 0) {
         const vectors = await embed(missing.map(({ input }) => input), 'document');
-        await AiEmbedding.bulkWrite(missing.map(({ key }, i) => ({
-            updateOne: { filter: { _id: key }, update: { $set: { vector: vectors[i], model, createdAt: new Date() } }, upsert: true },
+        // Never cache a vector against the wrong text.
+        if (vectors.length !== missing.length) throw new Error(`Asked for ${missing.length} embeddings and got ${vectors.length}.`);
+
+        const fresh = missing.map(({ key }, i) => ({ key, vector: vectors[i] ?? [] }));
+        await AiEmbedding.bulkWrite(fresh.map(({ key, vector }) => ({
+            updateOne: { filter: { _id: key }, update: { $set: { vector, model, createdAt: new Date() } }, upsert: true },
         })));
-        missing.forEach(({ key }, i) => saved.set(key, vectors[i]));
+        for (const { key, vector } of fresh) saved.set(key, vector);
     }
     return keys.map((key) => saved.get(key) ?? []);
 }
@@ -63,7 +70,8 @@ export async function findSimilarExamples(viewer: Viewer, request: string, repor
         embed([{ text: request }], 'query'),
         embedDocuments(candidates.map((example) => ({ title: example.title, text: exampleText(example) }))),
     ]);
-    return topK(query, candidates.map((item, i) => ({ item, vector: vectors[i] })), SIMILAR_EXAMPLES);
+    if (!query) return [];
+    return topK(query, candidates.map((item, i) => ({ item, vector: vectors[i] ?? [] })), SIMILAR_EXAMPLES);
 }
 
 // Saves a Write SPL answer from one of the viewer's own chats as an example.

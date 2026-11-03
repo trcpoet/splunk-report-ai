@@ -130,8 +130,9 @@ const notFound = (what: string) => new SplunkHttpError(404, `Unknown ${what}`);
 // Serves the dummy reports, or another list (the tests pass edited copies).
 export function fixtureTransport(source: FixtureReport[] = reports): SplunkTransport {
     const byName = new Map(source.map((report) => [report.title, report]));
-    const runs = new Map(source.map((report) => [report.slug, buildRuns(report)]));
-    const jobs = new Map(source.flatMap((report) => runs.get(report.slug)!.map((run) => [run.sid, { report, run }] as const)));
+    const built = source.map((report) => ({ report, reportRuns: buildRuns(report) }));
+    const runs = new Map(built.map(({ report, reportRuns }) => [report.slug, reportRuns]));
+    const jobs = new Map(built.flatMap(({ report, reportRuns }) => reportRuns.map((run) => [run.sid, { report, run }] as const)));
 
     const apps = () => feed<AppContent>(Object.entries(APP_IDS).map(([label, name]) => ({ name, content: { label } })));
 
@@ -140,7 +141,7 @@ export function fixtureTransport(source: FixtureReport[] = reports): SplunkTrans
         if (!report) throw notFound(`saved search ${name}`);
 
         // Newest first.
-        const entries = [...runs.get(report.slug)!].reverse().map((run): SplunkEntry<HistoryContent> => ({
+        const entries = [...(runs.get(report.slug) ?? [])].reverse().map((run): SplunkEntry<HistoryContent> => ({
             name: run.sid,
             published: run.runAt,
             content: { isDone: true, isScheduled: true },
@@ -171,10 +172,12 @@ export function fixtureTransport(source: FixtureReport[] = reports): SplunkTrans
 
     const results = (sid: string, params: QueryParams): ResultsResponse => {
         const found = jobs.get(sid);
-        if (!found?.run.rows) throw notFound(`results for ${sid}`);
+        const stored = found?.run.rows;
+        if (!found || !stored) throw notFound(`results for ${sid}`);
 
-        const { report, run } = found;
-        const rows = Number(params.count) > 0 ? run.rows!.slice(0, Number(params.count)) : run.rows!;
+        const { report } = found;
+        const count = Number(params.count);
+        const rows = count > 0 ? stored.slice(0, count) : stored;
         return {
             fields: report.columns.map((name) => ({ name })),
             results: rows.map((row) => Object.fromEntries(report.columns.map((column, i) => [column, String(row[i])]))),
@@ -185,9 +188,9 @@ export function fixtureTransport(source: FixtureReport[] = reports): SplunkTrans
     const routes: [RegExp, (match: string[], params: QueryParams) => unknown][] = [
         [/^\/services\/apps\/local$/, () => apps()],
         [/^\/servicesNS\/[^/]+\/[^/]+\/saved\/searches$/, () => feed(source.map(savedSearch))],
-        [/^\/servicesNS\/[^/]+\/[^/]+\/saved\/searches\/([^/]+)\/history$/, ([name], params) => history(name, params)],
-        [/^\/services\/search\/jobs\/([^/]+)$/, ([sid]) => job(sid)],
-        [/^\/services\/search\/v2\/jobs\/([^/]+)\/results$/, ([sid], params) => results(sid, params)],
+        [/^\/servicesNS\/[^/]+\/[^/]+\/saved\/searches\/([^/]+)\/history$/, ([name = ''], params) => history(name, params)],
+        [/^\/services\/search\/jobs\/([^/]+)$/, ([sid = '']) => job(sid)],
+        [/^\/services\/search\/v2\/jobs\/([^/]+)\/results$/, ([sid = ''], params) => results(sid, params)],
     ];
 
     return {

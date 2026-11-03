@@ -32,7 +32,7 @@ const MAX_PHONE_LABELS = 3;
 
 const AXIS_LABEL = { fill: 'var(--color-light-200)', fontSize: 12 };
 
-const asText = (cell: Cell) => (typeof cell === 'number' ? formatNumber(cell) : cell);
+const asText = (cell: Cell | undefined) => (typeof cell === 'number' ? formatNumber(cell) : (cell ?? ''));
 
 // 1, 10, 100, ... up to the top of a log axis.
 const powersOfTen = (top: number) => Array.from({ length: Math.floor(Math.log10(top)) + 1 }, (_, i) => 10 ** i);
@@ -59,7 +59,9 @@ function ScatterTooltip({ active, payload, xName, yName }: { active?: boolean; p
 // both measures and the results table below is the table view.
 const ReportScatter = ({ chart, columns, rows }: Props) => {
     const { scatter } = chart;
-    const [labelAt, xAt, yAt] = [chart.x, scatter.x, chart.y].map((name) => columns.indexOf(name));
+    const labelAt = columns.indexOf(chart.x);
+    const xAt = columns.indexOf(scatter.x);
+    const yAt = columns.indexOf(chart.y);
 
     const plotted = rows
         .map((row) => ({ row, x: parseNumber(row[xAt]) ?? Number.NaN, y: parseNumber(row[yAt]) ?? Number.NaN }))
@@ -86,7 +88,7 @@ const ReportScatter = ({ chart, columns, rows }: Props) => {
     ]);
 
     const data: Point[] = points.map(({ row, x, y }) => ({
-        label: String(row[labelAt]),
+        label: String(row[labelAt] ?? ''),
         x,
         y,
         xText: asText(row[xAt]),

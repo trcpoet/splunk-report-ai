@@ -32,15 +32,29 @@ interface LightRaysProps {
 
 const DEFAULT_COLOR = "#ffffff";
 
+// "#ff8800" → [1, 0.53, 0]. Anything else is white.
 const hexToRgb = (hex: string): [number, number, number] => {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return m
-        ? [
-            parseInt(m[1], 16) / 255,
-            parseInt(m[2], 16) / 255,
-            parseInt(m[3], 16) / 255,
-        ]
-        : [1, 1, 1];
+    const [, r = 'ff', g = 'ff', b = 'ff'] = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex) ?? [];
+    return [parseInt(r, 16) / 255, parseInt(g, 16) / 255, parseInt(b, 16) / 255];
+};
+
+// The shader's inputs. ogl reads each one's value on every frame.
+type RayUniforms = {
+    iTime: { value: number };
+    iResolution: { value: number[] };
+    rayPos: { value: number[] };
+    rayDir: { value: number[] };
+    raysColor: { value: number[] };
+    raysSpeed: { value: number };
+    lightSpread: { value: number };
+    rayLength: { value: number };
+    pulsating: { value: number };
+    fadeDistance: { value: number };
+    saturation: { value: number };
+    mousePos: { value: number[] };
+    mouseInfluence: { value: number };
+    noiseAmount: { value: number };
+    distortion: { value: number };
 };
 
 const getAnchorAndDir = (
@@ -87,7 +101,7 @@ const LightRays: React.FC<LightRaysProps> = ({
                                                  className = "",
                                              }) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const uniformsRef = useRef<Record<string, { value: unknown }> | null>(null);
+    const uniformsRef = useRef<RayUniforms | null>(null);
     const rendererRef = useRef<Renderer | null>(null);
     const mouseRef = useRef({ x: 0.5, y: 0.5 });
     const smoothMouseRef = useRef({ x: 0.5, y: 0.5 });
@@ -106,7 +120,7 @@ const LightRays: React.FC<LightRaysProps> = ({
         observerRef.current = new IntersectionObserver(
             (entries) => {
                 const entry = entries[0];
-                setIsVisible(entry.isIntersecting);
+                if (entry) setIsVisible(entry.isIntersecting);
             },
             { threshold: 0.1 }
         );
@@ -130,10 +144,9 @@ const LightRays: React.FC<LightRaysProps> = ({
         }
 
         const initializeWebGL = async () => {
-            if (!containerRef.current) return;
-
             await new Promise((resolve) => setTimeout(resolve, 10));
 
+            // The component may have gone in the meantime.
             if (!containerRef.current) return;
 
             const renderer = new Renderer({
@@ -260,7 +273,7 @@ void main() {
   gl_FragColor  = color;
 }`;
 
-            const uniforms = {
+            const uniforms: RayUniforms = {
                 iTime: { value: 0 },
                 iResolution: { value: [1, 1] },
 
@@ -291,7 +304,7 @@ void main() {
             meshRef.current = mesh;
 
             const updatePlacement = () => {
-                if (!containerRef.current || !renderer) return;
+                if (!containerRef.current) return;
 
                 renderer.dpr = Math.min(window.devicePixelRatio, 2);
 
@@ -360,21 +373,17 @@ void main() {
 
                 window.removeEventListener("resize", onResize);
 
-                if (renderer) {
-                    try {
-                        const canvas = renderer.gl.canvas;
-                        const loseContextExt =
-                            renderer.gl.getExtension("WEBGL_lose_context");
-                        if (loseContextExt) {
-                            loseContextExt.loseContext();
-                        }
-
-                        if (canvas && canvas.parentNode) {
-                            canvas.parentNode.removeChild(canvas);
-                        }
-                    } catch (error) {
-                        console.warn("Error during WebGL cleanup:", error);
+                try {
+                    const canvas = renderer.gl.canvas;
+                    const loseContextExt =
+                        renderer.gl.getExtension("WEBGL_lose_context");
+                    if (loseContextExt) {
+                        loseContextExt.loseContext();
                     }
+
+                    canvas.remove();
+                } catch (error) {
+                    console.warn("Error during WebGL cleanup:", error);
                 }
 
                 rendererRef.current = null;
@@ -384,7 +393,7 @@ void main() {
         };
 
         // Browsers without WebGL (e.g. GPU disabled on remote desktops) just skip the effect.
-        initializeWebGL().catch((error) => console.warn("LightRays: WebGL unavailable", error));
+        initializeWebGL().catch((error: unknown) => console.warn("LightRays: WebGL unavailable", error));
 
         return () => {
             if (cleanupFunctionRef.current) {
@@ -446,6 +455,8 @@ void main() {
     ]);
 
     useEffect(() => {
+        if (!followMouse) return;
+
         const handleMouseMove = (e: MouseEvent) => {
             if (!containerRef.current || !rendererRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
@@ -454,10 +465,8 @@ void main() {
             mouseRef.current = { x, y };
         };
 
-        if (followMouse) {
-            window.addEventListener("mousemove", handleMouseMove);
-            return () => window.removeEventListener("mousemove", handleMouseMove);
-        }
+        window.addEventListener("mousemove", handleMouseMove);
+        return () => window.removeEventListener("mousemove", handleMouseMove);
     }, [followMouse]);
 
     return (

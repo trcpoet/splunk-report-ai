@@ -29,13 +29,13 @@ export async function countRequest(userId: string | null): Promise<string | null
 
     if (userId) {
         const user = await add(`${userId}:${day}`, { requests: 1 });
-        if ((user?.requests ?? 0) > dailyLimit()) {
+        if (user.requests > dailyLimit()) {
             return `You've used today's ${dailyLimit()} AI requests. More are available after midnight UTC.`;
         }
     }
 
     const site = await add(`site:${day}`, { requests: 1 });
-    if ((site?.requests ?? 0) > siteDailyLimit()) {
+    if (site.requests > siteDailyLimit()) {
         return 'The AI has answered as many questions as it can for everyone today. It answers again after midnight UTC.';
     }
     return null;

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --cache",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm test",
     "sync": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts",
     "sync:watch": "node --env-file-if-exists=.env.local --import tsx worker/sync.ts --watch",
     "seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo-users.ts",
@@ -50,6 +52,7 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.59.0"
   }
 }

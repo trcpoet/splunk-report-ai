@@ -95,7 +95,11 @@ const syslogTime = (date: Date) => `${MONTHS[date.getUTCMonth()]} ${String(date.
 export function eventsForMinute(minute: Date, { live = true, now = minute.getTime() }: EventOptions = {}): EventBatch[] {
     const start = Math.floor(minute.getTime() / MINUTE) * MINUTE;
     const random = seeded(start / MINUTE);
-    const pick = <T>(items: readonly T[]) => items[Math.floor(random() * items.length)];
+    const pick = <T>(items: readonly T[]): T => {
+        const item = items[Math.floor(random() * items.length)];
+        if (item === undefined) throw new Error('pick() needs a list with something in it.');
+        return item;
+    };
     // A user, the first ones in the list far more often than the last.
     const usual = <T>(items: readonly T[]) => items[Math.floor(items.length * random() ** 2.5)];
     const moment = () => new Date(start + Math.floor(random() * MINUTE));

@@ -35,6 +35,12 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
 - don't clear a page's state just before leaving it, because returning to its address brings that same instance back;
 - select visible elements in browser tests (`:visible`, `checkVisibility()`).
 
+**The error checks are at their strictest.** `npm run check` runs them all: the type check, ESLint and the tests.
+- TypeScript treats every `list[i]` and `record[key]` as possibly missing (`noUncheckedIndexedAccess`). Check it, or give a default such as `?? ''`. Live Splunk results can have rows shorter than their columns, so a missing cell reads as empty (`formatCell`, `parseNumber`).
+- ESLint adds typescript-eslint's `strictTypeChecked` rules: a promise is awaited, or started on purpose with `void`; a `catch` callback takes `unknown`; a condition that is always true or always false is an error.
+- Don't quiet a check with `!` or `as` in app code: check the value instead. Tests may use `!`, because a wrong guess fails the test anyway.
+- To read a reply from the app's own API in the browser, use `readJson` and `replyError` (`lib/api-reply.ts`).
+
 **The React Compiler's lint rules are on.** No `setState` directly in an effect's body, no `Date.now()` or `Math.random()` while rendering, and no changing props or captured variables.
 
 **Access.**

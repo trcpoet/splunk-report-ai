@@ -31,7 +31,8 @@ async function main() {
     let total = 0;
     for (const { request, indexes, fields, commands } of cases) {
         const [query] = await embed([{ text: request }], 'query');
-        const closest = topK(query, examples.map((item, i) => ({ item, vector: vectors[i] })), 5);
+        if (!query) throw new Error(`No embedding came back for "${request}".`);
+        const closest = topK(query, examples.map((item, i) => ({ item, vector: vectors[i] ?? [] })), 5);
         const { value } = await generateJson({
             system: `${SPL_PROMPT}\n\n${splContext(reports, closest)}`,
             turns: [{ role: 'user', text: request }],
@@ -58,7 +59,7 @@ async function main() {
     console.log(`\nScore: ${((total / cases.length) * 100).toFixed(0)}% across ${cases.length} requests.`);
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
     console.error(error);
     process.exitCode = 1;
 });

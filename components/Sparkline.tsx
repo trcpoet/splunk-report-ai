@@ -21,8 +21,10 @@ const Sparkline = ({ values, label, usual, highlightLast = false }: Props) => {
     const low = Math.min(...values, usual ?? Infinity);
     const high = Math.max(...values, usual ?? -Infinity);
     const y = (value: number) => (high === low ? HEIGHT / 2 : HEIGHT - PAD - ((value - low) / (high - low)) * (HEIGHT - 2 * PAD));
-    const points = values.map((value, i) => [PAD + (i / (values.length - 1)) * (WIDTH - 2 * PAD), y(value)]);
-    const [endX, endY] = points[points.length - 1];
+    const points = values.map((value, i): [x: number, y: number] => [PAD + (i / (values.length - 1)) * (WIDTH - 2 * PAD), y(value)]);
+    const end = points.at(-1);
+    if (!end) return null;
+    const [endX, endY] = end;
 
     return (
         <svg className="sparkline" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width={WIDTH} height={HEIGHT} role="img" aria-label={label}>

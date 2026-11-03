@@ -24,8 +24,11 @@ export function onSessionChange(callback: () => void) {
 
     const from = tabId();
     const channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = (event: MessageEvent<{ from?: string }>) => {
-        if (event.data?.from !== from) callback();
+    // Another tab's message, or one with no sender, counts; this tab's own doesn't.
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+        const { data } = event;
+        const sender = typeof data === 'object' && data !== null && 'from' in data ? data.from : undefined;
+        if (sender !== from) callback();
     };
     return () => channel.close();
 }

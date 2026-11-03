@@ -3,7 +3,7 @@
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell as BarCell, LabelList, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import type { LabelProps } from "recharts";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { AXIS_TICK, X_TICK_MARGIN, BAND_CURSOR, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, MAX_BAR_SIZE, METER_TRACK_FILL, OVER_THRESHOLD_FILL, THRESHOLD_LINE, TOOLTIP_CLASS } from "@/lib/chart-theme";
+import { AXIS_TICK, X_TICK_MARGIN, BAND_CURSOR, CHART_CLASS, GRID_STROKE, LINE_CURSOR, LINE_WIDTH, MAX_BAR_SIZE, METER_TRACK_FILL, OVER_THRESHOLD_FILL, THRESHOLD_LINE, TOOLTIP_CLASS, tooltipTime } from "@/lib/chart-theme";
 import { columnLabel, formatCell, formatCompact, formatList, formatNumber, parseNumber, timeAxisLabels } from "@/lib/format";
 import { MAX_CHART_BARS, MAX_CHART_POINTS, type Cell, type ReportChart as ChartSpec } from "@/lib/reports";
 
@@ -19,12 +19,10 @@ const isTimeAxis = ({ x }: ChartSpec) => x === '_time';
 
 // What each row is called along the x-axis.
 const axisLabels = (chart: ChartSpec, rows: Cell[][], x: number) => {
-    const names = rows.map((row) => String(row[x]));
+    const names = rows.map((row) => String(row[x] ?? ''));
     return isTimeAxis(chart) ? timeAxisLabels(names) : names;
 };
 
-// Time labels are short, so the tooltip says the whole time.
-const fullTime = (_: unknown, payload?: readonly { payload?: { when?: string } }[]) => payload?.[0]?.payload?.when;
 
 // One measure from the latest results, in one color. A single series needs no
 // legend: the heading names what is plotted, and the results table below the
@@ -40,7 +38,7 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     const data = rows
         .map((row, i) => {
             const cell = row[y];
-            return { label: labels[i], when: formatCell(row[x]), value: parseNumber(cell) ?? Number.NaN, text: formatCell(cell) };
+            return { label: labels[i] ?? '', when: formatCell(row[x]), value: parseNumber(cell) ?? Number.NaN, text: formatCell(cell) };
         })
         .filter((point) => Number.isFinite(point.value));
 
@@ -49,18 +47,24 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     const { threshold, max } = chart;
     const isBars = chart.type === 'bar' || chart.type === 'column';
     const config = { value: { label: chart.y, color: 'var(--chart-1)' } } satisfies ChartConfig;
-    const peak = data.reduce((best, point, i) => (point.value > data[best].value ? i : best), 0);
+    // The first point with the largest value.
+    const largest = Math.max(...data.map(({ value }) => value));
+    const peak = data.findIndex((point) => point.value === largest);
     const isOver = (value: number) => threshold !== undefined && value > threshold.value;
     const description = `${isBars ? 'Bar' : 'Line'} chart of ${chart.y} by ${chart.x}${threshold ? `, with a line at the ${threshold.label}` : ''}`;
 
     // Only the largest value and the values past the threshold get a label; the
     // axis, tooltip and table carry the rest.
     const valueLabel = (placement: 'end' | 'top') => function ValueLabel({ index, viewBox }: LabelProps) {
-        if (index === undefined || (index !== peak && !isOver(data[index].value))) return null;
+        const point = index === undefined ? undefined : data[index];
+        if (!point || (index !== peak && !isOver(point.value))) return null;
 
         const box = (viewBox ?? {}) as Box;
-        const [left, top, width, height] = [box.x, box.y, box.width, box.height].map(Number);
-        const text = data[index].text;
+        const left = Number(box.x);
+        const top = Number(box.y);
+        const width = Number(box.width);
+        const height = Number(box.height);
+        const text = point.text;
 
         return placement === 'end'
             ? <text x={left + width + 6} y={top + height / 2} dominantBaseline="central" className="fill-light-100 text-xs">{text}</text>
@@ -70,7 +74,7 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     const tooltip = (
         <ChartTooltip
             cursor={isBars ? BAND_CURSOR : LINE_CURSOR}
-            content={<ChartTooltipContent className={TOOLTIP_CLASS} {...(isTimeAxis(chart) ? { labelFormatter: fullTime } : {})} />}
+            content={<ChartTooltipContent className={TOOLTIP_CLASS} {...(isTimeAxis(chart) ? { labelFormatter: tooltipTime } : {})} />}
         />
     );
 
@@ -87,6 +91,9 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
     );
 
     const barFills = threshold && data.map((point, i) => (
+        // Recharts 4 removes Cell for Bar's shape prop. That draws hovered bars
+        // differently, so the move is its own change, checked on screen.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         <BarCell key={i} fill={isOver(point.value) ? OVER_THRESHOLD_FILL : 'var(--color-value)'} />
     ));
 
@@ -98,7 +105,7 @@ const SingleChart = ({ chart, columns, rows }: Props) => {
         // Room above the plot for the threshold's label.
         const top = threshold ? 22 : 4;
         // Room after the bars for the longest value label, such as "$18,402,117".
-        const right = Math.max(56, ...data.filter((point, i) => i === peak || isOver(point.value)).map(({ text }) => String(text).length * 7 + 10));
+        const right = Math.max(56, ...data.filter((point, i) => i === peak || isOver(point.value)).map(({ text }) => text.length * 7 + 10));
 
         return (
             <ChartContainer config={config} className={CHART_CLASS} style={{ height: data.length * 36 + 36 + top }} aria-label={description}>
@@ -224,7 +231,7 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
 
     const labels = axisLabels(chart, rows, x);
     const data = rows.map((row, i): LinePoint => ({
-        label: labels[i],
+        label: labels[i] ?? '',
         when: formatCell(row[x]),
         ...Object.fromEntries(series.map((name, s) => [`s${s}`, parseNumber(row[columns.indexOf(name)])])),
         ...(hasOther ? { other: otherValue(row) } : {}),
@@ -237,7 +244,7 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
     // Legend and tooltip follow the lines' order instead of sorting by name.
     const byLine = (item: { dataKey?: unknown }) => keys.indexOf(String(item.dataKey));
     const labeled = labeledLines(data, keys);
-    const names = keys.map((key) => String(config[key].label));
+    const names = hasOther ? [...series, 'Other'] : series;
     const description = `Line chart of ${formatList(names)} by ${columnLabel(chart.x).toLowerCase()}`;
     const { threshold, max } = chart;
 
@@ -247,7 +254,7 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
         const last = data.findLastIndex((point) => point[key] !== null);
 
         return function LineDot({ cx, cy, index = 0 }: { cx?: number; cy?: number; index?: number }) {
-            const alone = data[index - 1]?.[key] == null && data[index + 1]?.[key] == null && data[index][key] !== null;
+            const alone = data[index - 1]?.[key] == null && data[index + 1]?.[key] == null && data[index]?.[key] != null;
             if (cx === undefined || cy === undefined || (index !== last && !alone)) return <g key={index} />;
 
             return (
@@ -255,7 +262,7 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
                     <circle cx={cx} cy={cy} r={4} strokeWidth={2} stroke="var(--color-dark-100)" fill={`var(--color-${key})`} />
                     {index === last && labeled.has(key) && (
                         <text x={cx - 8} y={cy - 8} textAnchor="end" className="fill-light-100 text-xs" stroke="var(--color-dark-100)" strokeWidth={3} paintOrder="stroke">
-                            {config[key].label}
+                            {config[key]?.label}
                         </text>
                     )}
                 </g>
@@ -269,7 +276,7 @@ const LineSeriesChart = ({ chart, columns, rows }: Props) => {
                 <CartesianGrid vertical={false} stroke={GRID_STROKE} />
                 <XAxis tickMargin={X_TICK_MARGIN} dataKey="label" tickLine={false} axisLine={false} tick={AXIS_TICK} interval="preserveStartEnd" minTickGap={16} />
                 <YAxis domain={max === undefined ? undefined : [0, max]} tickFormatter={formatCompact} tickLine={false} axisLine={false} tick={AXIS_TICK} width={48} />
-                <ChartTooltip cursor={LINE_CURSOR} itemSorter={byLine} content={<ChartTooltipContent className={TOOLTIP_CLASS} labelFormatter={fullTime} />} />
+                <ChartTooltip cursor={LINE_CURSOR} itemSorter={byLine} content={<ChartTooltipContent className={TOOLTIP_CLASS} labelFormatter={tooltipTime} />} />
                 {keys.length > 1 && <ChartLegend itemSorter={byLine} content={<ChartLegendContent className="flex-wrap gap-y-1 [&>div]:whitespace-nowrap" />} />}
                 {keys.map((key) => (
                     <Line key={key} dataKey={key} type="linear" stroke={`var(--color-${key})`} strokeWidth={LINE_WIDTH} connectNulls={false} dot={dotFor(key)} activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--color-dark-100)' }} />

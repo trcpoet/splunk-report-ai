@@ -91,6 +91,6 @@ describe('SplAnswerSchema', () => {
     test('converts to the JSON Schema sent to Gemini, with every field required', () => {
         const schema = z.toJSONSchema(SplAnswerSchema) as { required: string[]; properties: Record<string, { maxItems?: number }> };
         assert.deepEqual([...schema.required].sort(), ['assumptions', 'fields', 'followUps', 'steps', 'summary', 'timeRange']);
-        assert.equal(schema.properties.steps.maxItems, 15);
+        assert.equal(schema.properties.steps?.maxItems, 15);
     });
 });

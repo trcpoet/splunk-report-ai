@@ -24,6 +24,7 @@ describe('robustScore', () => {
     test('uses the median and the median absolute deviation', () => {
         assert.equal(median([3, 1, 2]), 2);
         assert.equal(median([4, 1, 2, 3]), 2.5);
+        assert.equal(median([]), 0);
         // usual 20, MAD 2 → spread max(2.97, 2, 1) = 2.97
         assert.deepEqual(robustScore(32, [18, 20, 22, 20, 24, 16]).usual, 20);
         assert.ok(Math.abs(robustScore(32, [18, 20, 22, 20, 24, 16]).score - 4.05) < 0.01);
@@ -39,7 +40,7 @@ describe('findUnusualRun', () => {
         const flagged = fixtures.filter((fixture) => findUnusualRun(synced(fixture)));
         assert.deepEqual(flagged.map(({ slug }) => slug), ['failed-logins-by-user']);
         assert.equal(
-            findUnusualRun(synced(flagged[0]))!.message,
+            findUnusualRun(synced(flagged[0]!))!.message,
             '117 results, about 3.3× the usual 36 (compared with the previous 6 runs).',
         );
     });
@@ -47,8 +48,8 @@ describe('findUnusualRun', () => {
     test('says when results drop well below the usual', () => {
         const unusual = findUnusualRun(history([40, 42, 38, 41, 39, 40], 2));
         assert.equal(unusual?.measure, 'results');
-        assert.ok(unusual!.score < 0);
-        assert.match(unusual!.message, /^2 results, well below the usual 40/);
+        assert.ok(unusual.score < 0);
+        assert.match(unusual.message, /^2 results, well below the usual 40/);
     });
 
     test('notices a slow search', () => {
@@ -112,9 +113,9 @@ describe('profileResults', () => {
 
     test('describes each column in a sentence', () => {
         const [user, failures, , last] = profile.columns;
-        assert.equal(describeColumn(user, profile.rows), 'A different value in every row.');
-        assert.equal(describeColumn(failures, profile.rows), '29 to 312, median 79. Highest: svc_backup.');
-        assert.equal(describeColumn(last, profile.rows), '2026-10-02 18:05 to 2026-10-03 05:58.');
+        assert.equal(describeColumn(user!, profile.rows), 'A different value in every row.');
+        assert.equal(describeColumn(failures!, profile.rows), '29 to 312, median 79. Highest: svc_backup.');
+        assert.equal(describeColumn(last!, profile.rows), '2026-10-02 18:05 to 2026-10-03 05:58.');
     });
 
     test('reads formatted numbers such as "$1,234" and "1.84%"', () => {
@@ -124,13 +125,18 @@ describe('profileResults', () => {
 
     test('names the most common value of a repeating text column, and counts empty cells', () => {
         const repeated = profileResults(['Host', 'Mount'], [['a', '/var'], ['b', '/var'], ['c', '/'], ['d', '']])!;
-        assert.equal(describeColumn(repeated.columns[1], 4), '2 different values, mostly /var (2 of 4). 1 empty.');
+        assert.equal(describeColumn(repeated.columns[1]!, 4), '2 different values, mostly /var (2 of 4). 1 empty.');
     });
 
     test('has nothing to say about a run with no rows, or a column with no values', () => {
         assert.equal(profileResults(['Host', 'Mount'], []), null);
+    });
+
+    test('counts the missing cells of short rows as empty', () => {
+        const short = profileResults(['Host', 'Used %'], [['a', 91], ['b'], ['c', 97]])!;
+        assert.equal(describeColumn(short.columns[1]!, 3), '91 to 97, median 94. Highest: c. 1 empty.');
         const blank = profileResults(['Host', 'Mount'], [['a', ''], ['b', '']])!;
-        assert.equal(describeColumn(blank.columns[1], 2), 'Empty in every row.');
+        assert.equal(describeColumn(blank.columns[1]!, 2), 'Empty in every row.');
     });
 });
 

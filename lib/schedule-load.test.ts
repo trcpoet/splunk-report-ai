@@ -43,8 +43,8 @@ describe('scheduleLoad', () => {
         });
 
         // Every time with 3 at once, not just the first few.
-        assert.equal(load.busiest[1].running, 3);
-        assert.deepEqual(load.busiest[1].times.map(({ minute, on }) => [minute, on]), [0, 4, 5, 6, 7, 12, 16, 20].map((hour) => [at(hour), null]));
+        assert.equal(load.busiest[1]!.running, 3);
+        assert.deepEqual(load.busiest[1]!.times.map(({ minute, on }) => [minute, on]), [0, 4, 5, 6, 7, 12, 16, 20].map((hour) => [at(hour), null]));
         assert.equal(load.busiest.length, 2);
     });
 
@@ -60,12 +60,12 @@ describe('scheduleLoad', () => {
 
     test('a run lasts its usual time, in whole minutes', () => {
         const weekly = scheduleLoad([{ title: 'Long', cron: '0 8 * * 1', history: ran(126, 132, 138) }], 'UTC', 1);
-        const running = (minute: number) => weekly.slots[minute].running;
+        const running = (minute: number) => weekly.slots[minute]!.running;
 
         // 132 s takes three minutes: 08:00, 08:01 and 08:02.
         assert.deepEqual([at(8) - 1, at(8), at(8, 2), at(8, 3)].map(running), [0, 1, 1, 0]);
         // Without finished runs, a search counts for a minute.
-        assert.equal(scheduleLoad([report('New', '0 8 * * *')], 'UTC', 1).slots[at(8, 1)].running, 0);
+        assert.equal(scheduleLoad([report('New', '0 8 * * *')], 'UTC', 1).slots[at(8, 1)]!.running, 0);
     });
 
     test('carries runs past midnight', () => {
@@ -88,14 +88,14 @@ describe('scheduleLoad', () => {
             report('C', '5 8 * * *'),
             report('D', '5 8 * * *'),
         ]);
-        assert.deepEqual(mixed.busiest[0].times, [
+        assert.deepEqual(mixed.busiest[0]!.times, [
             { minute: at(8), until: at(8, 5), on: 'Mondays', reports: ['A', 'B'] },
             { minute: at(8, 5), until: at(8, 10), on: null, reports: ['C', 'D'] },
         ]);
     });
 
     test('says which days, in words', () => {
-        const on = (cron: string) => scheduleLoad([report('A', cron), report('B', cron)]).busiest[0].times[0].on;
+        const on = (cron: string) => scheduleLoad([report('A', cron), report('B', cron)]).busiest[0]!.times[0]!.on;
 
         assert.equal(on('0 8 1 * *'), 'once a month');
         assert.equal(on('0 8 1,15 * *'), '2 days a month');
@@ -110,7 +110,7 @@ describe('scheduleLoad', () => {
         for (const timeZone of ['America/Chicago', 'Asia/Kolkata']) {
             const local = scheduleLoad(daily, timeZone);
             assert.equal(local.timeZone, timeZone);
-            assert.equal(local.slots[at(6) / 5].running, 1, timeZone);
+            assert.equal(local.slots[at(6) / 5]!.running, 1, timeZone);
             assert.equal(local.slots.reduce((sum, { running }) => sum + running, 0), 1, timeZone);
         }
 
@@ -121,7 +121,7 @@ describe('scheduleLoad', () => {
     test('leaves out schedules it cannot read or place, and handles none at all', () => {
         const broken = scheduleLoad([report('Broken', 'every day'), report('June', '0 8 15 6 *'), report('Hourly', '0 * * * *')]);
         assert.equal(broken.total, 1);
-        assert.equal(broken.slots[0].running, 1);
+        assert.equal(broken.slots[0]!.running, 1);
 
         const empty = scheduleLoad([]);
         assert.equal(empty.slots.every(({ running }) => running === 0), true);

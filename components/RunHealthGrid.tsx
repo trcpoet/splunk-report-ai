@@ -84,8 +84,8 @@ function HealthTable({ rows, days, label, quietHead = false }: { rows: RunHealth
                         <th scope="row">
                             <Link href={`/reports/${row.slug}`} title={row.title} transitionTypes={PAGE_TRANSITION}>{row.title}</Link>
                         </th>
-                        {row.cells.map((cell, i) => (
-                            <HealthCell key={days[i]} day={days[i]} cell={cell} end={i >= days.length - 3} />
+                        {days.map((day, i) => (
+                            <HealthCell key={day} day={day} cell={row.cells[i] ?? null} end={i >= days.length - 3} />
                         ))}
                     </tr>
                 ))}
@@ -98,7 +98,9 @@ function HealthTable({ rows, days, label, quietHead = false }: { rows: RunHealth
 // The "Scheduled runs per day" chart beside it counts the same runs.
 const RunHealthGrid = ({ health }: { health: RunHealth }) => {
     const { days, rows } = health;
-    if (days.length === 0 || rows.length === 0) return null;
+    const [first] = days;
+    const last = days.at(-1);
+    if (!first || !last || rows.length === 0) return null;
 
     const more = rows.slice(VISIBLE_ROWS);
 
@@ -106,7 +108,7 @@ const RunHealthGrid = ({ health }: { health: RunHealth }) => {
         <figure className="chart-card">
             <figcaption className="flex flex-col gap-0.5">
                 <span className="chart-heading">Run health by report</span>
-                <span className="chart-subtitle">Worst outcome each day, {dayLabel(days[0])} to {dayLabel(days.at(-1)!)} (UTC)</span>
+                <span className="chart-subtitle">Worst outcome each day, {dayLabel(first)} to {dayLabel(last)} (UTC)</span>
             </figcaption>
 
             <HealthTable rows={rows.slice(0, VISIBLE_ROWS)} days={days} label="Run health by report" />

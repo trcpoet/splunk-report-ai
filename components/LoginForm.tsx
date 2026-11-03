@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { safeNextPath } from "@/lib/next-path";
@@ -70,16 +70,16 @@ const LoginForm = ({ demoAccounts, demoPassword }: Props) => {
         window.location.replace(safeNextPath(new URLSearchParams(window.location.search).get('next')));
     }
 
-    const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
-        signIn(email, password, 'form');
+        void signIn(email, password, 'form');
     }
 
     // Without the demo password (local development), a click fills in the email
     // and moves on to the password.
     const pickAccount = (account: string) => {
         if (demoPassword) {
-            signIn(account, demoPassword, account);
+            void signIn(account, demoPassword, account);
             return;
         }
         setEmail(account);

@@ -74,7 +74,7 @@ const ReportActions = ({ slug, lastRun, spl, columns, rows }: Props) => {
                 {download === 'done' ? <Check aria-hidden="true" /> : <Download aria-hidden="true" />}
                 {download === 'done' ? 'Downloaded' : 'Download CSV'}
             </button>
-            <button type="button" className="btn-secondary" onClick={copySpl}>
+            <button type="button" className="btn-secondary" onClick={() => void copySpl()}>
                 {copy === 'done' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 {copy === 'done' ? 'Copied' : 'Copy SPL query'}
             </button>

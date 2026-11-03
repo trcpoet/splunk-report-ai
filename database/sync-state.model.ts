@@ -39,6 +39,6 @@ const SyncStateSchema = new Schema<ISyncState>(
 
 export const SYNC_STATE_ID = 'splunk';
 
-const SyncState = (models.SyncState as Model<ISyncState>) || model<ISyncState>('SyncState', SyncStateSchema);
+const SyncState = (models.SyncState as Model<ISyncState> | undefined) ?? model<ISyncState>('SyncState', SyncStateSchema);
 
 export default SyncState;

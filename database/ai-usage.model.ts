@@ -28,6 +28,6 @@ const AiUsageSchema = new Schema<IAiUsage>(
 
 AiUsageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7 * 86_400 });
 
-const AiUsage = (models.AiUsage as Model<IAiUsage>) || model<IAiUsage>('AiUsage', AiUsageSchema);
+const AiUsage = (models.AiUsage as Model<IAiUsage> | undefined) ?? model<IAiUsage>('AiUsage', AiUsageSchema);
 
 export default AiUsage;

@@ -48,6 +48,6 @@ const ReportRunSchema = new Schema<IReportRun>(
 ReportRunSchema.index({ reportSlug: 1, runAt: -1 });
 ReportRunSchema.index({ runAt: 1 }, { expireAfterSeconds: RETENTION_DAYS * 86_400 });
 
-const ReportRun = (models.ReportRun as Model<IReportRun>) || model<IReportRun>('ReportRun', ReportRunSchema);
+const ReportRun = (models.ReportRun as Model<IReportRun> | undefined) ?? model<IReportRun>('ReportRun', ReportRunSchema);
 
 export default ReportRun;

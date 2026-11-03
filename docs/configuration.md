@@ -234,8 +234,8 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 | `.github/workflows/ci.yml` | Jobs "Lint, test and build" (required by the `main` ruleset; keep its name in sync), "ML (Python)" and "Docker". |
 | `.github/workflows/splunk-example.yml` | "Splunk example" (not required): runs `docker-compose.splunk.yml` and checks the six reports arrive from Splunk. It runs when `lib/splunk/`, `worker/` or the example change, on Mondays, and by hand. |
 | `.github/workflows/helm.yml` | "Helm" (not required). It lints and renders the chart, then installs it on a throwaway kind cluster and runs the connector and the ML job once. It runs when the chart or the images change. |
-| `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks. |
-| `tsconfig.json` | `@/*` maps to the repo root. |
+| `eslint.config.mjs` | Next's Core Web Vitals and TypeScript rules, including the React Compiler's checks, plus typescript-eslint's `strictTypeChecked` rules for `.ts`/`.tsx` (not shadcn's `components/ui/`). Turned off, with the reason next to each: `no-confusing-void-expression` (style) and `require-await` (Next.js needs some functions async). Tests may use `!`. |
+| `tsconfig.json` | `@/*` maps to the repo root. `strict`, plus `noUncheckedIndexedAccess`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noImplicitOverride`, `noUnusedLocals` and `noUnusedParameters`. |
 | `package.json` | The scripts. Tests are `lib/**/*.test.ts`, run with `node --test` through `tsx`. |
 
 ## Developer tools

@@ -26,6 +26,14 @@ describe('parseNumber', () => {
     });
 });
 
+describe('a missing cell', () => {
+    // Live results can have rows shorter than their columns.
+    test('is not a number, and shows as empty', () => {
+        assert.equal(parseNumber(undefined), null);
+        assert.equal(formatCell(undefined), '');
+    });
+});
+
 describe('formatClock', () => {
     test('shows minutes after midnight as a time of day', () => {
         assert.deepEqual([0, 75, 480, 1435, 1440].map(formatClock), ['00:00', '01:15', '08:00', '23:55', '24:00']);

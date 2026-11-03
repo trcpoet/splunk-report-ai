@@ -31,6 +31,6 @@ const SavedSplExampleSchema = new Schema<ISavedSplExample>(
 
 SavedSplExampleSchema.index({ allowedGroups: 1, createdAt: -1 });
 
-const SavedSplExample = (models.SavedSplExample as Model<ISavedSplExample>) || model<ISavedSplExample>('SavedSplExample', SavedSplExampleSchema);
+const SavedSplExample = (models.SavedSplExample as Model<ISavedSplExample> | undefined) ?? model<ISavedSplExample>('SavedSplExample', SavedSplExampleSchema);
 
 export default SavedSplExample;
