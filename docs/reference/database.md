@@ -73,7 +73,7 @@ How many AI requests each account, and the whole site, made on a day: `requests`
 
 ## `ai-summary.model.ts`
 
-AI text made once and shown to everyone it applies to: `kind` (`report` for Explain, `briefing`), `text`, `model`, `createdAt`.
+AI text made once and shown to everyone it applies to: `kind` (`report` for Explain, `report-spl` for Explain report and SPL, `briefing`), `text`, `model`, `createdAt`.
 - **`_id` is the cache key**, which changes when the data or the prompt changes, so an old summary is simply never asked for again.
 - **Used by:** `lib/ai/summaries.ts`, and `lib/feedback.ts` to check summary votes.
 

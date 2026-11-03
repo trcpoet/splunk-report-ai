@@ -1,7 +1,7 @@
 import { aiOffMessage, aiStatus } from "@/lib/ai/config";
 import { reportsContext } from "@/lib/ai/context";
 import { briefingKey } from "@/lib/ai/keys";
-import { BRIEFING_PROMPT } from "@/lib/ai/prompts";
+import { BRIEFING_PROMPT, WRITE_BRIEFING } from "@/lib/ai/prompts";
 import { streamSummary } from "@/lib/ai/summaries";
 import { jsonError } from "@/lib/ai/turn";
 import { getSyncInfo, getViewerOrNull, getVisibleReports, getVisibleReportsWithResults } from "@/lib/dal";
@@ -30,6 +30,6 @@ export async function POST() {
         kind: 'briefing',
         // The results load only when a new briefing is written.
         system: async () => `${BRIEFING_PROMPT}\n\n${reportsContext(await getVisibleReportsWithResults(), sync)}`,
-        question: 'Write my briefing.',
+        question: WRITE_BRIEFING,
     });
 }

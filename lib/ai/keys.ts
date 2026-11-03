@@ -6,15 +6,30 @@ import type { ReportListItem } from '@/lib/reports';
 // changes when what the text was written from changes (a new run, a status,
 // the prompt), so a stale summary is simply never asked for again.
 
-type ReportRun = Pick<ReportListItem, 'slug' | 'lastRun' | 'resultsRunAt' | 'modelRun'>;
+type ReportRun = Pick<ReportListItem, 'slug' | 'lastRun' | 'resultsRunAt' | 'modelRun' | 'spl'>;
 
 // Whether the ML job flags the newest run: a summary written before it did
 // doesn't mention it, so a flag asks for a new one.
 const modelFlag = (modelRun?: ReportListItem['modelRun']) => (modelRun?.unusual ? 'model' : '');
 
-// One report's Explain summary, for its current run.
-export const reportSummaryKey = ({ slug, lastRun, resultsRunAt, modelRun }: ReportRun) =>
-    `report:${slug}:${lastRun}:${resultsRunAt ?? ''}:${modelFlag(modelRun)}:v${PROMPT_VERSION}`;
+// Both report summaries explain the search too, and someone may edit it in
+// Splunk before the report runs again, so their keys include a hash of it.
+const searchHash = (spl: string) => createHash('sha256').update(spl).digest('hex').slice(0, 12);
+
+const reportKey = (kind: 'report' | 'report-spl', { slug, lastRun, resultsRunAt, modelRun, spl }: ReportRun) =>
+    `${kind}:${slug}:${lastRun}:${resultsRunAt ?? ''}:${modelFlag(modelRun)}:${searchHash(spl)}:v${PROMPT_VERSION}`;
+
+// One report's Explain summary, for its current run and search.
+export const reportSummaryKey = (report: ReportRun) => reportKey('report', report);
+
+// One report's "Explain report and SPL" text, for its current run and search.
+export const reportAndSplKey = (report: ReportRun) => reportKey('report-spl', report);
+
+// The report a saved summary is about, from its key ("report:<slug>:…" or
+// "report-spl:<slug>:…"), or undefined for a briefing. Votes on a summary
+// check that the voter can see that report. Any slug counts, even an empty
+// one, so a summary of a report is never taken for a briefing.
+export const summarySlug = (key: string) => key.match(/^report(?:-spl)?:([^:]*):/)?.[1];
 
 // The briefing for one set of reports. People who see the same reports share it,
 // since it's written only from those reports. The order they come in doesn't

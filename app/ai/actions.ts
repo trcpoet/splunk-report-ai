@@ -38,7 +38,8 @@ export async function deleteChatAction(id: string): Promise<Result> {
 
 const VoteSchema = z.object({
     kind: z.enum(['answer', 'summary', 'flag']),
-    targetId: z.string().min(1).max(200),
+    // Summary keys hold the report's slug, which comes from its Splunk name.
+    targetId: z.string().min(1).max(1000),
     value: z.enum(['up', 'down']).nullable(),
 });
 

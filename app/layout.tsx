@@ -39,7 +39,8 @@ export default function RootLayout({
       <Navbar />
       <AutoRefresh />
 
-          <div className="absolute inset-0 top-0 z-[-1] min-h-screen">
+          {/* Decoration only, so screen readers skip it. */}
+          <div className="absolute inset-0 top-0 z-[-1] min-h-screen" aria-hidden="true">
               <LightRays
                   raysOrigin="top-center-offset"
                   raysColor="#5dfeca"

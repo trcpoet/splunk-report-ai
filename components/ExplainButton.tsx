@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
-import { MessageCircleQuestion, X } from "lucide-react";
+import { BookOpenText, MessageCircleQuestion, X } from "lucide-react";
 import ChatAnswer from "@/components/ChatAnswer";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import { usePanel } from "@/components/SidePanel";
@@ -46,17 +46,28 @@ function modelSentence(run: ModelRun, attention?: number) {
     return score + where + learned;
 }
 
-// What's inside the panel. It mounts when the panel opens, so nothing loads
-// for the cards nobody opens.
-type ContentProps = { slug: string; title: string; given?: SplunkReport; headingId: string; close: () => void };
+// What changes between Explain and "Explain report and SPL".
+const MODES = {
+    report: { label: 'Explain', Icon: MessageCircleQuestion, heading: 'In plain words', query: '', lines: 4 },
+    spl: { label: 'Explain report and SPL', Icon: BookOpenText, heading: 'The report and its search, in plain words', query: '?with=spl', lines: 8 },
+} as const;
 
-function ExplainContent({ slug, title, given, headingId, close }: ContentProps) {
-    const summary = useSummary(`/api/ai/explain/${slug}`);
+// What's inside the panel. It mounts when the panel opens, so nothing loads
+// for the cards nobody opens. With withSpl ("Explain report and SPL"), the AI
+// also walks through the search, and the panel shows the search instead of
+// the statistics.
+type ContentProps = { slug: string; title: string; given?: SplunkReport; withSpl: boolean; headingId: string; close: () => void };
+
+function ExplainContent({ slug, title, given, withSpl, headingId, close }: ContentProps) {
+    const mode = withSpl ? MODES.spl : MODES.report;
+    const summary = useSummary(`/api/ai/explain/${slug}${mode.query}`);
     const { report, error } = useReport(slug, given);
 
-    const unusual = report ? findUnusualRun(report.history, report.modelRun) : null;
-    const trend = report && unusual ? unusualTrend(report.history, unusual) : null;
-    const profile = report ? profileResults(report.columns, report.rows, report.resultCount) : null;
+    // The statistics for "At a glance", which "Explain report and SPL" doesn't show.
+    const glance = report && !withSpl ? report : null;
+    const unusual = glance ? findUnusualRun(glance.history, glance.modelRun) : null;
+    const trend = glance && unusual ? unusualTrend(glance.history, unusual) : null;
+    const profile = glance ? profileResults(glance.columns, glance.rows, glance.resultCount) : null;
     // The summary may name the report as [[slug]], which shows as its chip.
     const chips = report ? { [report.slug]: { slug: report.slug, title: report.title, status: report.status } } : {};
 
@@ -73,9 +84,9 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
             </header>
 
             <section className="explain-section" aria-busy={summary.status === 'loading' || summary.status === 'streaming'}>
-                <h3>In plain words</h3>
+                <h3>{mode.heading}</h3>
                 {summary.status === 'loading' ? (
-                    <SkeletonParagraph count={4} className="text-sm" />
+                    <SkeletonParagraph count={mode.lines} className="text-sm" />
                 ) : summary.status === 'failed' && !summary.text ? (
                     <p className="ai-notice">{summary.error}</p>
                 ) : (
@@ -85,6 +96,12 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
                 {summary.status === 'done' && summary.id && <FeedbackButtons kind="summary" targetId={summary.id} initial={summary.vote} />}
             </section>
 
+            {withSpl ? (
+                <section className="explain-section">
+                    <h3>The search (SPL)</h3>
+                    {report ? <pre className="spl whitespace-pre-wrap break-words">{report.spl}</pre> : error ? <p className="answer-note">{error}</p> : <SkeletonParagraph count={3} className="text-sm" />}
+                </section>
+            ) : (
             <section className="explain-section">
                 <h3>At a glance</h3>
                 {error ? (
@@ -126,13 +143,15 @@ function ExplainContent({ slug, title, given, headingId, close }: ContentProps) 
                     </>
                 )}
             </section>
+            )}
 
             <section className="explain-section">
                 <h3>Ask more</h3>
                 <div className="chips">
                     {/* Close first: a page left behind with the panel open would block the next one. */}
                     <Link href={`/ai/reports?about=${slug}`} className="chip" onClick={close}>Ask about this report</Link>
-                    <Link href={`/ai/spl?explain=${slug}`} className="chip" onClick={close}>Explain its search step by step</Link>
+                    {/* "Explain report and SPL" has just done that. */}
+                    {!withSpl && <Link href={`/ai/spl?explain=${slug}`} className="chip" onClick={close}>Explain its search step by step</Link>}
                     <Link href={`/reports/${slug}`} className="chip" onClick={close}>Open the report</Link>
                 </div>
             </section>
@@ -145,29 +164,34 @@ type Props = {
     title: string;
     // The report with its results, when the page has it already (a report page).
     report?: SplunkReport;
+    // "Explain report and SPL": the report and its search, one pipe command at a time.
+    withSpl?: boolean;
     className?: string;
 };
 
 // "Explain" on a report card or a report page: opens a side panel (a bottom
 // sheet on phones, usePanel in components/SidePanel.tsx) with an AI summary of
 // the latest run, a plain-statistics look at the results, and ways to dig further.
-const ExplainButton = ({ slug, title, report, className = 'explain-trigger' }: Props) => {
+// With withSpl, it's "Explain report and SPL" under the report page's Copy SPL
+// query, and the panel explains the search step by step as well.
+const ExplainButton = ({ slug, title, report, withSpl = false, className = 'explain-trigger' }: Props) => {
     const panel = usePanel();
     const headingId = useId();
+    const mode = withSpl ? MODES.spl : MODES.report;
 
     const show = () => {
         panel.show();
-        track('report_explained', { slug });
+        track('report_explained', { slug, withSpl });
     };
 
     return (
         <>
             <button type="button" className={className} onClick={show} aria-haspopup="dialog">
-                <MessageCircleQuestion aria-hidden="true" />
-                Explain<span className="sr-only"> {title}</span>
+                <mode.Icon aria-hidden="true" />
+                {mode.label}<span className="sr-only"> {title}</span>
             </button>
             <dialog {...panel.dialogProps} className="explain-panel" aria-labelledby={headingId}>
-                {panel.open && <ExplainContent slug={slug} title={title} given={report} headingId={headingId} close={panel.close} />}
+                {panel.open && <ExplainContent slug={slug} title={title} given={report} withSpl={withSpl} headingId={headingId} close={panel.close} />}
             </dialog>
         </>
     )

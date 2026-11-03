@@ -160,7 +160,9 @@ export const ReportSkeleton = () => (
                 <div className="side-card">
                     <div className="text-2xl font-bold"><Line className="w-28" /></div>
                     <p className="text-sm"><Line className="w-full" /><br /><Line className="w-3/4" /></p>
+                    {/* Download CSV, Copy SPL query, Explain report and SPL. */}
                     <div className="flex flex-col gap-3">
+                        <div className="skeleton-block h-11" />
                         <div className="skeleton-block h-11" />
                         <div className="skeleton-block h-11" />
                     </div>

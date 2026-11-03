@@ -132,7 +132,7 @@ Previous and Next with where you are ("Rows 1 to 50 of 312", "Page 2 of 16"), fo
 
 ### `ReportActions.tsx` (client)
 
-**Download CSV** (built in the browser from the rows) and **Copy SPL**. Each confirms for a moment; a failed copy says so.
+**Download CSV** (built in the browser from the rows) and **Copy SPL**. Each confirms for a moment; a failed copy says so. `explain` goes under Copy SPL: the report page puts **Explain report and SPL** there.
 
 ## Charts
 
@@ -225,6 +225,8 @@ A hook that asks a summary endpoint and follows its NDJSON stream.
 - **In plain words:** the AI summary, from `/api/ai/explain/[slug]`;
 - **At a glance:** the unusual run, the ML score, the status message, and one sentence per results column (`lib/insights.ts`);
 - **Ask more:** links into Ask AI.
+
+With `withSpl`, it's **Explain report and SPL**, under Copy SPL query in the report page's Delivery card. Its panel shows the AI's longer text from `/api/ai/explain/[slug]?with=spl` (what the report is for, what the latest run found, and the search one pipe command at a time), then the search itself, then Ask more.
 
 The panel's content mounts only when it opens. On a card, the report is fetched from `/api/reports/[slug]`.
 

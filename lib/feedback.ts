@@ -2,6 +2,7 @@ import 'server-only';
 import { connection } from 'next/server';
 import { AiFeedback, AiSummary, type FeedbackKind, type FlagDetails, type Vote } from '@/database';
 import type { Viewer } from '@/lib/access';
+import { summarySlug } from '@/lib/ai/keys';
 import { isOwnAnswer } from '@/lib/chats';
 import { getVisibleReports } from '@/lib/dal';
 import { findUnusualRun } from '@/lib/insights';
@@ -32,11 +33,12 @@ async function findTarget(kind: FeedbackKind, targetId: string): Promise<Target 
     const visible = (slug: string) => reports.find((report) => report.slug === slug);
 
     if (kind === 'summary') {
-        // "report:<slug>:…" (Explain) or "briefing:<hash>:…" (lib/ai/keys.ts).
-        const slug = targetId.match(/^report:([a-z0-9-]+):/)?.[1];
-        if (slug && !visible(slug)) return null;
+        // "report:<slug>:…" (Explain), "report-spl:<slug>:…" (Explain report
+        // and SPL) or "briefing:<hash>:…" (lib/ai/keys.ts).
+        const slug = summarySlug(targetId);
+        if (slug !== undefined && !visible(slug)) return null;
         if (!(await AiSummary.exists({ _id: targetId }))) return null;
-        return slug ? { reportSlug: slug } : {};
+        return slug !== undefined ? { reportSlug: slug } : {};
     }
 
     // A flag: "<slug>:<runAt>:<reason>" (flagId in lib/ai/keys.ts).
