@@ -70,7 +70,9 @@ const ICONS = {
 // A report's icon in a small tile, beside its category. Decorative: the title
 // next to it already says what the report is.
 const ReportIcon = ({ name, size = 'small' }: { name: IconName; size?: 'small' | 'large' }) => {
-    const Icon = ICONS[name];
+    // Report data should only hold listed names, but one that slipped through
+    // shows the default icon instead of breaking the whole list of cards.
+    const Icon = (ICONS as Partial<Record<string, LucideIcon>>)[name] ?? FileChartColumnIncreasing;
     return (
         <span className={size === 'large' ? 'report-icon report-icon-large' : 'report-icon'} aria-hidden="true">
             <Icon strokeWidth={1.75} />

@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
 import { formatCell, formatDuration, formatNumber, parseNumber } from '@/shared/format';
+import type { IconName } from '@/reports/icons';
 import type { ReportConfig, ResultSet, StatusRule } from '@/reports/report-config';
 import { MAX_CHART_BARS, MAX_CHART_SERIES, type Cell, type ChartPanel, type ChartScatter, type ChartThreshold, type ChartType, type ReportCategory, type ReportChart, type ReportHighlight, type ReportStatus } from '@/reports/reports';
 import type { JobContent, ResultsResponse, SavedSearchContent, SplunkBool, SplunkEntry } from './types';
@@ -198,7 +199,7 @@ export type ReportMeta = {
     tags: string[];
     // The card's icon, or '' for the app's guess (src/reports/icons.ts). The
     // guess isn't stored, so a better guess shows without a new sync.
-    icon: string;
+    icon: IconName | '';
     allowedGroups: string[];
     chartType: ChartType | null;
     nextRun: Date | null;

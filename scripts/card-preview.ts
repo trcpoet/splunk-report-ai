@@ -1,4 +1,4 @@
-import { iconFor, isIconName } from '@/reports/icons';
+import { iconFor } from '@/reports/icons';
 import { formatCell, formatDateTime, formatNumber } from '@/shared/format';
 import { describeError } from '@/splunk/errors';
 import { findReport, previewReport } from '@/splunk/preview';
@@ -33,7 +33,7 @@ async function main() {
     console.log(hasCard ? '  Card: config/report-cards.yaml' : '  No card in config/report-cards.yaml yet: the defaults apply, and only admins see it.');
     console.log(`  ${report.meta.schedule}, ${report.meta.timeRange.toLowerCase()}`);
     const guess = iconFor(report.meta);
-    console.log(isIconName(report.meta.icon)
+    console.log(report.meta.icon
         ? `  Icon: ${report.meta.icon} (set in the card)`
         : `  Icon: ${guess.icon} (guessed ${guess.reason}; add icon: to the card to choose another)`);
 

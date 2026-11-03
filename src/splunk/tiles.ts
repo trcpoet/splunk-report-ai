@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import { stringify } from 'yaml';
-import { iconFor } from '@/reports/icons';
+import { CATEGORY_ICONS, iconFor } from '@/reports/icons';
 import type { ReportCategory } from '@/reports/reports';
 import type { SplunkEntry, SplunkFeed } from './types';
 import type { SplunkTransport } from './transport';
@@ -221,6 +221,15 @@ const isRed = (color: string) => {
     return red > 150 && red > green * 1.5 && red > blue * 1.5;
 };
 
+// The worksheet's note on a tile's icon. The draft card leaves `icon:` out,
+// so the app keeps guessing (and a better rule, or a changed category, still
+// counts); this says what it will show until someone picks one.
+export function iconNote(title: string): string {
+    const { icon, reason } = iconFor({ title, category: 'Other' });
+    if (icon !== CATEGORY_ICONS.Other) return `The app will show \`${icon}\` (${reason}). Add \`icon:\` to the card only if that's wrong.`;
+    return "No word in the title picks an icon, so the card will show its category's icon. Add `icon:` to the card to choose one.";
+}
+
 export function draftCard(tile: Tile, category: ReportCategory = 'Other'): string {
     const column = tile.kind === 'single value' ? guessColumn(tile.search) : '<column>';
     const lowIsBad = tile.colors.length > 0 && isRed(tile.colors[0] ?? '') && !isRed(tile.colors.at(-1) ?? '');
@@ -228,10 +237,7 @@ export function draftCard(tile: Tile, category: ReportCategory = 'Other'): strin
     const compare = (limit: number) => (lowIsBad ? { column, below: limit } : { column, above: limit });
     const word = lowIsBad ? 'below' : 'above';
 
-    // The app would guess the same icon from the title alone; the search
-    // often says more ("index=firewall"), so the draft writes its guess down.
-    const { icon } = iconFor({ title: tile.title, description: tile.search, category });
-    const card: Record<string, unknown> = { slug: slugify(tile.title), category, icon, tags: [] };
+    const card: Record<string, unknown> = { slug: slugify(tile.title), category, tags: [] };
     if (tile.kind === 'single value') {
         card.chart = 'none';
         card.highlights = [{

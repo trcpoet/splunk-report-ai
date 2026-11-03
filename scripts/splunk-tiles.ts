@@ -1,6 +1,6 @@
 import { describeError } from '@/splunk/errors';
 import { readSyncSettings, transportFor } from '@/splunk/settings';
-import { draftCard, findDashboard, inputsOf, tilesOf } from '@/splunk/tiles';
+import { draftCard, findDashboard, iconNote, inputsOf, tilesOf } from '@/splunk/tiles';
 
 // npm run splunk:tiles "<dashboard name or label>": a worksheet for moving a
 // Splunk dashboard's tiles into the app, one entry per tile: its whole search,
@@ -36,7 +36,7 @@ async function main() {
         '',
         `${tiles.length} tiles. For each one:`,
         '1. In Splunk, save its search as a report, schedule it, and share it with the service account\'s role. Skip this for a tile that already shows a report.',
-        '2. Copy its draft card into config/report-cards.yaml, and fix what\'s marked to check: the column names, the category, who sees it. The icon is a guess from the title and search: keep it, pick another from the list in docs/adding-report-cards.md, or delete the line to let the app choose.',
+        '2. Copy its draft card into config/report-cards.yaml, and fix what\'s marked to check: the column names, the category, who sees it.',
         '3. Once the report has run: npm run card:preview "<the report\'s name>", which lists its real columns. Then npm run check and npm run sync.',
         '',
         'docs/adding-report-cards.md explains every part of a card.',
@@ -50,6 +50,7 @@ async function main() {
         if (inputs.length > 0) lines.push(`- **Uses dashboard inputs** (${inputs.join(', ')}): a scheduled report has none, so put fixed values in their place first.`);
         if (tile.thresholds.length > 0) lines.push(`- **Colors:** ${tile.colors.join(', ') || 'set'} around ${tile.thresholds.join(', ')}. Check which way is bad; the draft guesses from the colors.`);
         if (tile.unit || tile.decimals !== undefined) lines.push(`- **Shows:** ${[tile.decimals !== undefined ? `${tile.decimals} decimals` : '', tile.unit ? `the unit "${tile.unit}"` : ''].filter(Boolean).join(', ')}.`);
+        lines.push(`- **Icon:** ${iconNote(tile.title)}`);
         lines.push('- **Draft card** (check the column names once the report has run):', '', '```yaml', draftCard(tile).trimEnd(), '```');
     });
     console.log(lines.join('\n'));

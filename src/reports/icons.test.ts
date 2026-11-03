@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { parseReportCards, ReportCardsError } from '@/reports/cards/load';
 import { CATEGORIES } from '@/reports/cards/schema';
@@ -39,9 +40,31 @@ describe('iconFor', () => {
         assert.equal(iconFor({ title: 'Logins per hour', category: 'Other' }).icon, 'key-round');
         assert.equal(iconFor({ title: 'Authentication failures', category: 'Other' }).icon, 'key-round');
         assert.equal(iconFor({ title: 'Remote-access tunnels', category: 'Other' }).icon, 'globe-lock');
-        // "ram" is a whole word only: "random" isn't memory.
+        assert.equal(iconFor({ title: 'Vulnerability scan results', category: 'Other' }).icon, 'radar');
+        // A word ending in y matches its -ies plural.
+        assert.equal(iconFor({ title: 'API latencies by host', category: 'Other' }).icon, 'timer');
+        // "ram" is a whole word only: "random" isn't memory, and an author isn't auth.
         assert.equal(iconFor({ title: 'Random sample', category: 'Other' }).icon, CATEGORY_ICONS.Other);
+        assert.equal(iconFor({ title: 'Changes by author', category: 'Other' }).icon, CATEGORY_ICONS.Other);
         assert.equal(iconFor({ title: 'RAM per host', category: 'Other' }).icon, 'memory-stick');
+    });
+
+    test('ignores accents, and matches each tag on its own', () => {
+        assert.equal(iconFor({ title: 'Échecs de login', category: 'Other' }).icon, 'key-round');
+        assert.equal(iconFor({ title: 'Sécurité', category: 'Security' }).icon, CATEGORY_ICONS.Security);
+        // "remote" and "access" as two tags aren't the phrase "remote access".
+        assert.equal(iconFor({ title: 'Nightly summary', tags: ['remote', 'access'], category: 'Other' }).icon, CATEGORY_ICONS.Other);
+        assert.equal(iconFor({ title: 'Nightly summary', tags: ['remote-access'], category: 'Other' }).icon, 'globe-lock');
+    });
+});
+
+describe('the icon list in docs/adding-report-cards.md', () => {
+    test('names exactly the icons in ICON_NAMES', () => {
+        const docs = readFileSync('docs/adding-report-cards.md', 'utf8');
+        const section = docs.slice(docs.indexOf('### The icon'), docs.indexOf('### The chart'));
+        const table = section.split('\n').filter((line) => /^\| (Security|Operations|Infrastructure|Business|Compliance|Anything) \|/.test(line));
+        const named = table.flatMap((line) => [...line.matchAll(/`([a-z0-9-]+)`/g)].map((match) => match[1]));
+        assert.deepEqual([...named].sort(), [...ICON_NAMES].sort());
     });
 });
 

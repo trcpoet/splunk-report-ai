@@ -44,9 +44,10 @@ export const CATEGORY_ICONS: Record<ReportCategory, IconName> = {
 // Checked in order, and the first rule with a matching word wins, so the
 // specific ones come first: "VPN Sessions by Country" is about the VPN, and
 // "Daily Payment Volume & Latency" about payments. A word matches the whole
-// word or its plural ("login" matches "logins"); a word ending in * matches
-// any word starting with it ("auth*" matches "authentication"). Upper case,
-// hyphens and punctuation don't matter, and a word can be a phrase.
+// word or its plural ("login" matches "logins", "latency" "latencies"); a word
+// ending in * matches any word starting with it ("vulnerab*" matches
+// "vulnerability"). Upper case, accents, hyphens and punctuation don't
+// matter, and a word can be a phrase. Each tag is matched on its own.
 export const ICON_RULES: { icon: IconName; words: string[] }[] = [
     { icon: 'globe-lock', words: ['vpn', 'remote access', 'tunnel'] },
     { icon: 'brick-wall-fire', words: ['firewall', 'deny', 'denied', 'blocked connection'] },
@@ -54,9 +55,10 @@ export const ICON_RULES: { icon: IconName; words: string[] }[] = [
     { icon: 'mail-warning', words: ['phish*', 'spam'] },
     { icon: 'bug', words: ['vulnerab*', 'cve', 'malware', 'virus', 'exploit*', 'ransomware'] },
     { icon: 'user-lock', words: ['lockout', 'locked out', 'locked account'] },
-    { icon: 'key-round', words: ['login', 'logon', 'log in', 'sign in', 'signin', 'auth*', 'password', 'credential', 'mfa', '2fa', 'sso'] },
+    { icon: 'key-round', words: ['login', 'logon', 'log in', 'sign in', 'signin', 'auth', 'authentication', 'authenticated', 'authorization', 'password', 'credential', 'mfa', '2fa', 'sso'] },
     { icon: 'user-cog', words: ['privilege*', 'admin*', 'role', 'permission', 'group membership', 'sudo'] },
     { icon: 'file-lock', words: ['dlp', 'data loss', 'encrypt*', 'sensitive', 'pii', 'exfil*'] },
+    { icon: 'shield-check', words: ['certificate', 'tls', 'ssl'] },
     { icon: 'shield-alert', words: ['threat', 'attack', 'intrusion', 'suspicious', 'anomal*', 'brute force', 'fraud'] },
     { icon: 'credit-card', words: ['payment', 'transaction', 'checkout', 'credit card', 'card payment'] },
     { icon: 'receipt-text', words: ['invoice', 'billing', 'refund', 'chargeback'] },
@@ -73,12 +75,12 @@ export const ICON_RULES: { icon: IconName; words: string[] }[] = [
     { icon: 'network', words: ['network', 'dns', 'dhcp', 'bandwidth', 'router', 'switch', 'packet', 'netflow', 'connection'] },
     { icon: 'timer', words: ['latency', 'response time', 'slow', 'timeout', 'duration'] },
     { icon: 'gauge', words: ['utiliz*', 'utilis*', 'capacity', 'saturation', 'usage', 'sla', 'slo'] },
-    { icon: 'clipboard-check', words: ['audit', 'review', 'attest*', 'certif*', 'change management'] },
-    { icon: 'scale', words: ['compliance', 'pci', 'sox', 'gdpr', 'hipaa', 'regulat*', 'policy', 'policies', 'retention'] },
+    { icon: 'clipboard-check', words: ['audit', 'review', 'attest*', 'certification', 'change management'] },
+    { icon: 'scale', words: ['compliance', 'pci', 'sox', 'gdpr', 'hipaa', 'regulat*', 'policy', 'retention'] },
     { icon: 'route', words: ['api', 'endpoint', 'gateway'] },
     { icon: 'workflow', words: ['job', 'batch', 'pipeline', 'etl', 'cron', 'schedul*'] },
     { icon: 'siren', words: ['incident', 'alert', 'on call', 'escalat*'] },
-    { icon: 'earth', words: ['country', 'countries', 'geo*', 'region', 'location', 'travel'] },
+    { icon: 'earth', words: ['country', 'geo', 'geoip', 'geolocation', 'geographic', 'region', 'location', 'travel'] },
     { icon: 'globe', words: ['web', 'http', 'https', 'request', 'url', 'website', 'site', 'traffic', 'browser'] },
     { icon: 'mail', words: ['email', 'smtp', 'mailbox'] },
     { icon: 'server', words: ['host', 'server', 'node', 'machine', 'vm'] },
@@ -87,15 +89,22 @@ export const ICON_RULES: { icon: IconName; words: string[] }[] = [
     { icon: 'activity', words: ['performance', 'health', 'availability', 'uptime', 'apm', 'throughput'] },
 ];
 
-// Lower case, with anything but letters and digits as single spaces, and a
-// space at each end, so " login " finds the whole word.
-const normalize = (text: string) => ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
+// Lower case without accents, with anything but letters and digits as single
+// spaces, and a space at each end, so " login " finds the whole word.
+const normalize = (text: string) =>
+    ` ${text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
 
-function matches(text: string, word: string): boolean {
-    if (word.endsWith('*')) return text.includes(normalize(word.slice(0, -1)).trimEnd());
-    const whole = normalize(word).trim();
-    return [whole, `${whole}s`, `${whole}es`].some((form) => text.includes(` ${form} `));
-}
+// Each rule word as the texts it looks for, worked out once: whole words
+// with their plurals (" login ", " logins "), or a word's start (" vulnerab").
+const MATCHERS = ICON_RULES.map(({ icon, words }) => ({
+    icon,
+    words: words.map((word) => {
+        if (word.endsWith('*')) return { word, forms: [normalize(word.slice(0, -1)).trimEnd()] };
+        const whole = normalize(word).trim();
+        const plurals = whole.endsWith('y') ? [`${whole.slice(0, -1)}ies`] : [`${whole}s`, `${whole}es`];
+        return { word, forms: [whole, ...plurals].map((form) => ` ${form} `) };
+    }),
+}));
 
 export type IconChoice = { icon: IconName; reason: string };
 
@@ -104,20 +113,21 @@ type IconInput = { title: string; tags?: readonly string[]; description?: string
 // The guess for a report without an `icon:` in its card, and why, as
 // `npm run card:preview` prints it: 'from "login" in the title'.
 export function iconFor({ title, tags = [], description = '', category }: IconInput): IconChoice {
-    const places: [string, string][] = [
-        ['the title', normalize(title)],
-        ['the tags', normalize(tags.join(' '))],
-        ['the description', normalize(description)],
+    const places: [string, string[]][] = [
+        ['the title', [normalize(title)]],
+        ['the tags', tags.map(normalize)],
+        ['the description', [normalize(description)]],
     ];
-    for (const [place, text] of places) {
-        for (const rule of ICON_RULES) {
-            const word = rule.words.find((candidate) => matches(text, candidate));
-            if (word) return { icon: rule.icon, reason: `from "${word}" in ${place}` };
+    for (const [place, texts] of places) {
+        for (const rule of MATCHERS) {
+            const match = rule.words.find(({ forms }) => texts.some((text) => forms.some((form) => text.includes(form))));
+            if (match) return { icon: rule.icon, reason: `from "${match.word}" in ${place}` };
         }
     }
     return { icon: CATEGORY_ICONS[category], reason: `the ${category} category's icon` };
 }
 
-// The icon a report shows: its card's choice, or the guess.
+// The icon a report shows: its card's choice, or the guess. The choice is
+// checked, since it comes from the database.
 export const reportIcon = (report: IconInput & { icon?: string | null }): IconName =>
     isIconName(report.icon) ? report.icon : iconFor(report).icon;

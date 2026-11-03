@@ -67,6 +67,7 @@ Use the dashboard's title, or its name from its address in Splunk (`…/app/sear
 - its **whole search**: a search chained to a base search is written out in full;
 - its time range, units, decimals and color ranges;
 - a warning when the search uses **dashboard inputs** (`$time_tok$`), which a scheduled report doesn't have;
+- the **icon** the app will pick from its title;
 - a **draft card**.
 
 **2. Turn each tile into a scheduled report** (a Splunk admin, or you if you may). Skip this for a tile that already shows a saved report: the worksheet says "Already a report".
@@ -78,7 +79,7 @@ Use the dashboard's title, or its name from its address in Splunk (`…/app/sear
 **3. Paste the draft card** into `config/report-cards.yaml`, under the report's name, and fix what the draft can't know:
 - the column names (the draft guesses them from the search's last step: check them with `npm run card:preview`);
 - `category`, `tags` and `groups`;
-- `icon`, which the draft guesses from the tile's title and search (see [The icon](#the-icon));
+- `icon`, only if the worksheet's **Icon** line (the icon the app will pick from the title) doesn't fit (see [The icon](#the-icon));
 - whether high or low is bad (the draft guesses from the tile's colors: a red first range means low is bad).
 
 **4. Follow steps 4 to 6 above:** preview, check, sync, and describe it in the catalog.
@@ -99,7 +100,6 @@ Use the dashboard's title, or its name from its address in Splunk (`…/app/sear
 Failed sign-ins (24h):
   slug: failed-sign-ins-24h
   category: Other            # change: Security
-  icon: key-round            # guessed from "sign in" in the title
   tags: []
   chart: none
   highlights:
@@ -158,7 +158,7 @@ Set `icon:` when the guess doesn't fit. Use one of these names. They're [Lucide]
 
 | For | Names |
 |---|---|
-| Security | `shield`, `shield-alert`, `shield-check`, `key-round` (sign-ins), `user-lock` (lockouts), `user-cog` (privileges), `brick-wall-fire` (firewall), `globe-lock` (VPN), `radar` (scans), `bug`, `mail-warning` (phishing), `file-lock` (data loss), `scan-search` |
+| Security | `shield`, `shield-alert`, `shield-check` (certificates), `key-round` (sign-ins), `user-lock` (lockouts), `user-cog` (privileges), `brick-wall-fire` (firewall), `globe-lock` (VPN), `radar` (scans), `bug`, `mail-warning` (phishing), `file-lock` (data loss), `scan-search` |
 | Operations | `activity`, `server-crash` (errors), `globe` (web), `timer` (latency), `gauge` (usage), `route` (APIs), `workflow` (jobs), `siren` (incidents), `container`, `clock-alert`, `heart-pulse`, `webhook` |
 | Infrastructure | `server`, `hard-drive`, `cpu`, `memory-stick`, `radio-tower` (forwarders), `database`, `database-zap` (license, ingest), `network`, `cloud`, `cloud-alert`, `wifi-off`, `plug-zap`, `layers` |
 | Business | `trending-up`, `credit-card` (payments), `banknote`, `receipt-text`, `shopping-cart`, `users-round`, `chart-line`, `landmark` |

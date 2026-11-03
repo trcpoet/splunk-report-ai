@@ -78,11 +78,11 @@ Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts
 
 Which icon each report shows, beside its category on its card and page.
 - **`ICON_NAMES`:** the icons a card may name in `icon:`, by their [Lucide](https://lucide.dev/icons) names. The cards schema accepts only these.
-- **`iconFor({ title, tags, description, category })`:** the guess for a report without `icon:`, with the reason (`from "login" in the title`). It checks `ICON_RULES` in order against the title, then the tags, then the description; the first rule with a matching word wins. A word matches whole or as a plural; one ending in `*` matches any word starting with it. With no match, it uses `CATEGORY_ICONS`.
+- **`iconFor({ title, tags, description, category })`:** the guess for a report without `icon:`, with the reason (`from "login" in the title`). It checks `ICON_RULES` in order against the title, then each tag, then the description; the first rule with a matching word wins. A word matches whole or as a plural (`-s`, `-es`, or `-ies` for a word ending in `y`); one ending in `*` matches any word starting with it. Case, accents and punctuation are ignored. With no match, it uses `CATEGORY_ICONS`. The rule words are turned into the texts to look for once, when the module loads.
 - **`reportIcon(report)`:** the card's icon when it's a listed name, otherwise the guess. `dal.ts` uses it, so the guess is made when the page reads the report, not stored: a better rule shows without a new sync.
-- **Used by:** `dal.ts`, the cards schema, `splunk:tiles` (its draft cards write the guess down) and `card:preview` (it prints the icon and why).
+- **Used by:** `dal.ts`, the cards schema, `splunk:tiles` (its worksheet says which icon the app will pick; draft cards leave `icon:` out) and `card:preview` (it prints the icon and why).
 - **Change it when:** a kind of report gets the wrong icon (add or move a rule; earlier rules win), or a card needs an icon that isn't listed. Add the name here **and** its component in `components/ReportIcon.tsx`, then run `npm run cards:schema`. The type check fails until both lists match.
-- **Tests:** `icons.test.ts` (each demo report gets its own fitting icon, the order of title, tags and description, whole words, the error for an unknown name).
+- **Tests:** `icons.test.ts` (each demo report gets its own fitting icon, the order of title, tags and description, whole words and plurals, accents, the error for an unknown name, and the list in `docs/adding-report-cards.md` matching `ICON_NAMES`).
 
 ### `insights.ts` (pure)
 
@@ -139,7 +139,7 @@ One report as a card: icon, category, title, status, its headline number from th
 
 ### `ReportIcon.tsx` (server or client)
 
-A report's icon (`report.icon`) in a small tile, in the category pill's colors: `size="large"` in a report page's header. Decorative (`aria-hidden`), since the title beside it says the same. Each listed name is imported from `lucide-react` by itself, so the browser gets only these icons, not all of Lucide.
+A report's icon (`report.icon`) in a small tile, in the category pill's colors: `size="large"` in a report page's header. Decorative (`aria-hidden`), since the title beside it says the same. Each listed name is imported from `lucide-react` by itself, so the browser gets only these icons, not all of Lucide. A name that isn't listed shows the default icon rather than breaking the list.
 
 ### `StatusBadge.tsx` (server)
 

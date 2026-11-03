@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { parseReportCards } from '@/reports/cards/load';
-import { draftCard, guessColumn, inputsOf, joinSearch, tilesOf } from '@/splunk/tiles';
+import { draftCard, guessColumn, iconNote, inputsOf, joinSearch, tilesOf } from '@/splunk/tiles';
 
 // A Dashboard Studio dashboard, as Splunk's REST API returns it in eai:data.
 const studio = `<dashboard version="2" theme="dark"><label>Ops KPIs</label><definition><![CDATA[${JSON.stringify({
@@ -95,7 +95,13 @@ describe('splunk:tiles', () => {
         assert.deepEqual(card.fail?.when, { column: 'Used %', above: 95 });
         assert.deepEqual(card.warn?.when, { column: 'Used %', above: 85 });
         assert.deepEqual(card.highlights?.[0]?.value, { first: 'Used %' });
-        assert.equal(card.icon, 'hard-drive');
+        // No icon: the app keeps guessing, so a better rule or a changed category still counts.
+        assert.equal(card.icon, undefined);
+    });
+
+    test("the worksheet says which icon the app will show, or that it's the category's", () => {
+        assert.equal(iconNote('Fullest disk'), 'The app will show `hard-drive` (from "disk" in the title). Add `icon:` to the card only if that\'s wrong.');
+        assert.match(iconNote('Nightly summary'), /category's icon/);
     });
 
     test('a tile whose first color is red warns on low values', () => {
