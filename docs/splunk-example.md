@@ -99,11 +99,11 @@ Splunk's image is x86 only. Under emulation it's slow, and parts of it fail. Ins
 | What | Here |
 |---|---|
 | Indexes | `wineventlog`, `linux_secure`, `web`, `firewall`, `os` |
-| Six scheduled reports | In **Search & Reporting**, shared with everyone. Each is a dummy report's SPL (`lib/splunk/fixtures/reports.ts`), plus a last step that names the columns as `lib/report-config.ts` expects (`lib/splunk/example/searches.ts`). |
+| Six scheduled reports | In **Search & Reporting**, shared with everyone. Each is a dummy report's SPL (`src/splunk/fixtures/reports.ts`), plus a last step that names the columns as their cards in `config/report-cards.yaml` expect (`src/splunk/example/searches.ts`). |
 | Role `splunk_events_reader` | It imports `user`, so it reads what's shared with it, and nothing writes. |
 | User `splunk-events-sync` | The service account. Nobody signs in as it. |
 | A token for that user | It lasts 30 days. The setup writes it to a file, and the connector reads it with `SPLUNK_TOKEN_FILE`. It never sees the admin password. |
-| Logs | The last 24 hours (`lib/splunk/example/events.ts`), then a minute at a time from the feeder. |
+| Logs | The last 24 hours (`src/splunk/example/events.ts`), then a minute at a time from the feeder. |
 
 **Who sees which report** works as with a real Splunk: the reports' email recipients (`secops@example.com`, …) become the groups. No email is sent.
 
@@ -124,7 +124,7 @@ Set `MONGODB_URI` in `.env`, for example to Atlas, with **its own database name*
 The connector and its REST calls stay the same. What changes:
 - **`SPLUNK_BASE_URL`** becomes your search head on HTTPS, `https://…:8089`. If your company has its own certificate authority, add `NODE_EXTRA_CA_CERTS`.
 - **The token** comes from your admins, for a service account, in `SPLUNK_TOKEN` or `SPLUNK_TOKEN_FILE`.
-- **`lib/report-config.ts`** lists your reports by name. Status rules and charts use your searches' column names.
+- **`config/report-cards.yaml`** has a card for each of your reports, by name. Their rules and charts use your searches' column names ([adding-report-cards.md](adding-report-cards.md)).
 - **There's no setup script and no feeder:** your Splunk already has the logs and the reports.
 
 [connecting-live-splunk.md](connecting-live-splunk.md) walks through it.

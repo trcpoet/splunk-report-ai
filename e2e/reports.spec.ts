@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { sortByLastRun, type ReportSummary, type SplunkReport } from '@/lib/reports';
+import { sortByLastRun, type ReportSummary, type SplunkReport } from '@/reports/reports';
 
 // The report list and a report page, signed in as the admin, who sees every
 // report. Works against the dummy reports and against a real Splunk.

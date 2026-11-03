@@ -1,24 +1,24 @@
-# `database/`: the Mongoose models
+# `src/database/`: the Mongoose models
 
 One file per MongoDB collection, all in the `splunkevents` database. MongoDB itself enforces no schema; these Mongoose models check it in code. Who writes and reads each collection is in [architecture.md](../architecture.md#where-data-lives), and a plain-language introduction to MongoDB is in [mongodb-and-access.md](../mongodb-and-access.md). Back to the [file reference](README.md).
 
-Code never imports a model file directly: it imports from `database/index.ts`, which exports every model and its types. Models are created once (`models.X || model(...)`), so dev hot reloads don't redefine them.
+The models are grouped by area: `reports/`, `ai/` and `people/`. Code never imports a model file directly: it imports from `src/database/index.ts`, which exports every model and its types. Models are created once (`models.X ?? model(...)`), so dev hot reloads don't redefine them. `mongodb.ts`, at the end, is the connection.
 
 | File | Collection | Key | Kept |
 |---|---|---|---|
-| `report.model.ts` | `reports` | `slug` (unique) | Kept; `disabled` once no longer scheduled |
-| `report-run.model.ts` | `report_runs` | `sid` (unique) | `RUN_RETENTION_DAYS` (TTL on `runAt`) |
-| `sync-state.model.ts` | `sync_state` | `_id: 'splunk'` | One document |
-| `user-access.model.ts` | `user_access` | `email` (unique, lowercase) | Until changed |
-| `chat.model.ts` | `chats` | `_id`; indexed by `userId` + `updatedAt` | Until deleted; `expiresAt` (TTL) in demo mode |
-| `ai-usage.model.ts` | `ai_usage` | `_id: '<userId>:<YYYY-MM-DD>'` or `'site:<YYYY-MM-DD>'` | 7 days (TTL) |
-| `ai-summary.model.ts` | `ai_summaries` | `_id`: the cache key from `lib/ai/keys.ts` | 30 days (TTL) |
-| `ai-feedback.model.ts` | `ai_feedback` | `userId` + `kind` + `targetId` (unique) | Kept |
-| `ai-embedding.model.ts` | `ai_embeddings` | `_id`: a hash of the model, size, purpose and text | 90 days (TTL) |
-| `spl-example.model.ts` | `spl_examples` | `_id`: the answer's message id | Until taken back |
-| `ml-score.model.ts` | `ml_run_scores`, `ml_report_scores` | `_id`: the run's sid; the report's slug | Replaced by each ML run |
+| `reports/report.model.ts` | `reports` | `slug` (unique) | Kept; `disabled` once no longer scheduled |
+| `reports/report-run.model.ts` | `report_runs` | `sid` (unique) | `RUN_RETENTION_DAYS` (TTL on `runAt`) |
+| `reports/sync-state.model.ts` | `sync_state` | `_id: 'splunk'` | One document |
+| `people/user-access.model.ts` | `user_access` | `email` (unique, lowercase) | Until changed |
+| `ai/chat.model.ts` | `chats` | `_id`; indexed by `userId` + `updatedAt` | Until deleted; `expiresAt` (TTL) in demo mode |
+| `ai/ai-usage.model.ts` | `ai_usage` | `_id: '<userId>:<YYYY-MM-DD>'` or `'site:<YYYY-MM-DD>'` | 7 days (TTL) |
+| `ai/ai-summary.model.ts` | `ai_summaries` | `_id`: the cache key from `src/ai/keys.ts` | 30 days (TTL) |
+| `ai/ai-feedback.model.ts` | `ai_feedback` | `userId` + `kind` + `targetId` (unique) | Kept |
+| `ai/ai-embedding.model.ts` | `ai_embeddings` | `_id`: a hash of the model, size, purpose and text | 90 days (TTL) |
+| `ai/spl-example.model.ts` | `spl_examples` | `_id`: the answer's message id | Until taken back |
+| `reports/ml-score.model.ts` | `ml_run_scores`, `ml_report_scores` | `_id`: the run's sid; the report's slug | Replaced by each ML run |
 
-Better Auth keeps its own `user`, `session`, `account` and `verification` collections, through `lib/auth-options.ts`.
+Better Auth keeps its own `user`, `session`, `account` and `verification` collections, through `src/people/auth-options.ts`.
 
 ## `report.model.ts`
 
@@ -26,7 +26,7 @@ One report per Splunk scheduled search. The sync upserts it by slug and recomput
 - **From Splunk:**
   - `splunk` (name, app, app label, owner, sharing, read roles);
   - `title`, `description`, `spl`, `cron`, `schedule` (text), `runsPerWeek`, `timeRange`, `index`, `recipients`, `nextRun`.
-- **From `report-config`:** `category`, `tags`, `allowedGroups`, `chart` (with `series`, the lines of a chart over time).
+- **From the report's card** (`config/report-cards.yaml`): `category`, `tags`, `allowedGroups`, `chart` (with `series`, the lines of a chart over time).
 - **Derived:**
   - `latest`, the newest run with its status message;
   - `history`, the last 7 runs;
@@ -65,17 +65,17 @@ One saved Ask AI conversation. The messages live inside the chat, because they'r
   - `spl` holds the summary, steps, time range, fields, assumptions and follow-ups;
   - plus `basedOn` (the examples used). The SPL check isn't stored: the page runs it when it shows the answer.
 - **Exports:** `ChatKind`, `IChat`, `IChatMessage`, `MAX_CHAT_MESSAGES`.
-- **Access:** only `lib/chats.ts` reads and writes it, and it checks `userId` every time.
+- **Access:** only `src/ai/chats.ts` reads and writes it, and it checks `userId` every time.
 
 ## `ai-usage.model.ts`
 
-How many AI requests each account, and the whole site, made on a day: `requests`, `inputTokens`, `outputTokens`, `createdAt`. One document per account per UTC day, and one per day for the site. Read and written by `lib/ai/usage.ts`.
+How many AI requests each account, and the whole site, made on a day: `requests`, `inputTokens`, `outputTokens`, `createdAt`. One document per account per UTC day, and one per day for the site. Read and written by `src/ai/usage.ts`.
 
 ## `ai-summary.model.ts`
 
 AI text made once and shown to everyone it applies to: `kind` (`report` for Explain, `report-spl` for Explain report and SPL, `briefing`), `text`, `model`, `createdAt`.
 - **`_id` is the cache key**, which changes when the data or the prompt changes, so an old summary is simply never asked for again.
-- **Used by:** `lib/ai/summaries.ts`, and `lib/feedback.ts` to check summary votes.
+- **Used by:** `src/ai/summaries.ts`, and `src/ai/feedback.ts` to check summary votes.
 
 ## `ai-feedback.model.ts`
 
@@ -91,7 +91,7 @@ Saved vectors of the searches Write SPL compares requests with: `vector`, `model
 
 ## `spl-example.model.ts`
 
-Searches saved from Write SPL with "Save as example": `request`, `summary`, `query`, `allowedGroups` (the saver's groups), `savedBy`, `createdAt`. Indexed by `{ allowedGroups, createdAt }`, for "saved examples this viewer may use, newest first". Used by `lib/spl-examples.ts`.
+Searches saved from Write SPL with "Save as example": `request`, `summary`, `query`, `allowedGroups` (the saver's groups), `savedBy`, `createdAt`. Indexed by `{ allowedGroups, createdAt }`, for "saved examples this viewer may use, newest first". Used by `src/ai/spl-examples.ts`.
 
 ## `ml-score.model.ts`
 
@@ -99,8 +99,15 @@ What the Python ML job writes and the app reads. The job replaces both collectio
 - **`MlRunScore`** (`ml_run_scores`, `_id` the sid): `reportSlug`, `runAt`, `score` (0 typical to 1 most unusual), `unusual`, `reason`, `measure` (`results`, `duration` or `null`), `model`, `scoredAt`.
 - **`MlReportScore`** (`ml_report_scores`, `_id` the slug): `attention` (how often a flag on the report is worth it, learned from votes), `trainedOn`, `accuracy`, `model`, `scoredAt`.
 
-`lib/dal.ts` attaches them to reports as `modelRun` and `attention`.
+`src/reports/dal.ts` attaches them to reports as `modelRun` and `attention`.
 
 ## `index.ts`
 
 Exports every model, its types and its constants, so the rest of the code imports from `@/database`.
+
+## `mongodb.ts`
+
+`connectDB()`: one Mongoose connection, cached on `global` so dev hot reloads reuse it.
+- **Timeout:** inside Next.js (`NEXT_RUNTIME` set), it gives up after 5 s, so pages show an error instead of hanging. The worker keeps the driver's 30 s, to ride out an Atlas election.
+- **Also exports:** `disconnectDB()`, for scripts.
+- **No `server-only` and no `next/*` imports:** the worker and the scripts load it too.

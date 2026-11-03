@@ -1,5 +1,5 @@
 {{- if .Values.demo.enabled }}
-# The demo accounts (lib/demo-users.ts), after each install and upgrade. Only
+# The demo accounts (src/people/demo-users.ts), after each install and upgrade. Only
 # for dummy data: they all share one password.
 apiVersion: batch/v1
 kind: Job

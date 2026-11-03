@@ -1,0 +1,492 @@
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
+import { MAX_CHART_BARS, type Cell } from '@/reports/reports';
+import { buildHistory, reports as fixtures } from '@/splunk/fixtures/reports';
+import { fixtureTransport } from '@/splunk/fixtures/transport';
+import {
+    describeCron,
+    describeIndexes,
+    describeTimeRange,
+    deriveReportFields,
+    groupsFromRecipients,
+    mapResults,
+    parseRecipients,
+    parseSplunkTime,
+    resolveChart,
+    runStatus,
+    runsPerWeek,
+    toCell,
+} from '@/splunk/map';
+import { fetchNewRuns, isSyncedSearch, listScheduledReports } from '@/splunk/sync';
+import { SplunkHttpError, type SplunkTransport } from '@/splunk/transport';
+
+describe('toCell', () => {
+    test('converts numeric strings and leaves everything else alone', () => {
+        assert.equal(toCell('312'), 312);
+        assert.equal(toCell('0.87'), 0.87);
+        assert.equal(toCell('-4'), -4);
+        assert.equal(toCell('007'), '007');
+        assert.equal(toCell('192.0.2.1'), '192.0.2.1');
+        assert.equal(toCell('2026-10-02 05:41'), '2026-10-02 05:41');
+        assert.equal(toCell(['dmz', 'corp']), 'dmz, corp');
+        assert.equal(toCell(null), '');
+    });
+});
+
+describe('mapResults', () => {
+    test('keeps _time, drops other internal fields and accepts both field shapes', () => {
+        const table = mapResults({
+            fields: [{ name: '_time' }, 'host', { name: '_raw' }, { name: 'count' }],
+            results: [{ _time: '2026-10-02T06:00:00.000+00:00', host: 'web-01', _raw: 'GET /', count: '12' }],
+        });
+
+        assert.deepEqual(table, { columns: ['_time', 'host', 'count'], rows: [['2026-10-02T06:00:00.000+00:00', 'web-01', 12]] });
+    });
+
+    test("uses the first result's keys when fields are missing", () => {
+        assert.deepEqual(mapResults({ results: [{ user: 'admin', failures: '264' }] }), {
+            columns: ['user', 'failures'],
+            rows: [['admin', 264]],
+        });
+    });
+});
+
+describe('schedules, time ranges and indexes', () => {
+    test('describes every fixture schedule the way the dummy data does', () => {
+        for (const fixture of fixtures) assert.equal(describeCron(fixture.cron), fixture.schedule, fixture.slug);
+    });
+
+    test('falls back to cronstrue for other schedules', () => {
+        assert.equal(describeCron('0 9 1 * *'), 'At 09:00, on day 1 of the month (UTC)');
+        assert.equal(describeCron('0 6 * * *', 'America/Chicago'), 'Daily at 06:00 America/Chicago');
+    });
+
+    test('counts runs per week', () => {
+        for (const fixture of fixtures) assert.equal(runsPerWeek(fixture.cron), fixture.runsPerWeek, fixture.slug);
+        assert.equal(runsPerWeek('not a cron'), 0);
+    });
+
+    test('names time ranges', () => {
+        assert.equal(describeTimeRange('-24h', 'now'), 'Last 24 hours');
+        assert.equal(describeTimeRange('-1h', ''), 'Last 1 hour');
+        assert.equal(describeTimeRange('-1d@d', '@d'), 'Yesterday');
+        assert.equal(describeTimeRange('-7d@w0', '@w0'), '-7d@w0 to @w0');
+    });
+
+    test('reads indexes and sourcetypes from SPL', () => {
+        assert.equal(describeIndexes('index=web sourcetype=access_combined | stats count'), 'web (access_combined)');
+        assert.equal(describeIndexes('index=wineventlog OR (index="linux_secure" "Failed password")'), 'wineventlog, linux_secure');
+        assert.equal(describeIndexes('| metadata type=hosts index=*'), 'All indexes');
+        assert.equal(describeIndexes('| inputlookup assets.csv'), '');
+    });
+
+    test('parses Splunk timestamps', () => {
+        assert.equal(parseSplunkTime('2026-10-03 06:00:00 UTC')?.toISOString(), '2026-10-03T06:00:00.000Z');
+        assert.equal(parseSplunkTime('not a time'), null);
+    });
+});
+
+describe('recipients', () => {
+    test('turns email lists into groups', () => {
+        const recipients = parseRecipients('SecOps@example.com, soc-tier1@example.com;secops@example.com');
+        assert.deepEqual(recipients, ['secops@example.com', 'soc-tier1@example.com']);
+        assert.deepEqual(groupsFromRecipients(recipients), ['secops', 'soc-tier1']);
+    });
+});
+
+describe('runStatus', () => {
+    const rule = () => ({ status: 'warning' as const, message: 'Over budget.' });
+    const results = { columns: ['host'], rows: [['web-01']], resultCount: 1 };
+
+    test('a failed job wins, with its error message', () => {
+        const job = { dispatchState: 'FAILED', messages: [{ type: 'FATAL', text: 'Search was skipped.' }] };
+        assert.deepEqual(runStatus(job, results, rule), { status: 'failed', statusMessage: 'Search was skipped.' });
+    });
+
+    test('the status rule runs only when results are available', () => {
+        assert.deepEqual(runStatus({ dispatchState: 'DONE' }, results, rule), { status: 'warning', statusMessage: 'Over budget.' });
+        assert.deepEqual(runStatus({ dispatchState: 'DONE' }, null, rule), { status: 'success' });
+    });
+
+    test('job warnings make a warning, in either message shape', () => {
+        assert.deepEqual(runStatus({ dispatchState: 'DONE', messages: { warn: ['Peer timed out.'] } }, null), {
+            status: 'warning',
+            statusMessage: 'Peer timed out.',
+        });
+    });
+});
+
+describe('resolveChart', () => {
+    const table = {
+        columns: ['Region', 'Transactions', 'Volume', 'Owner'],
+        rows: [['us-east', 412880, '$18,402,117', 'payments-eng'], ['eu-central', 214902, '$9,516,340', 'payments-eu']],
+    };
+
+    test('keeps panels whose columns read as numbers, including formatted text', () => {
+        const chart = resolveChart('bar', table, { panels: [{ y: 'Transactions' }, { y: 'Volume' }, { y: 'Owner' }, { y: 'Missing' }] });
+        assert.deepEqual(chart?.panels, [{ y: 'Transactions' }, { y: 'Volume' }]);
+    });
+
+    test('leaves panels out when none can be drawn', () => {
+        assert.equal(resolveChart('bar', table, { panels: [{ y: 'Owner' }] })?.panels, undefined);
+    });
+
+    test('keeps a scatter only when its measure is a numeric column', () => {
+        const scatter = { x: 'Volume', caption: 'Each dot is a region.' };
+        assert.deepEqual(resolveChart('bar', table, { scatter })?.scatter, scatter);
+        assert.equal(resolveChart('bar', table, { scatter: { ...scatter, x: 'Owner' } })?.scatter, undefined);
+        assert.equal(resolveChart('bar', table, { scatter: { ...scatter, x: 'Missing' } })?.scatter, undefined);
+    });
+});
+
+// Runs the Splunk side of the sync against the fixture transport, without
+// MongoDB, and checks that it reproduces the dummy reports.
+describe('fixture pipeline', () => {
+    const now = new Date('2026-10-02T10:00:00Z');
+    let pipeline: ReturnType<typeof runPipeline> | undefined;
+
+    async function runPipeline() {
+        const transport = fixtureTransport();
+        const scheduled = await listScheduledReports(transport, 'UTC', now);
+
+        return Promise.all(scheduled.map(async (report) => {
+            const { runs } = await fetchNewRuns(transport, report, new Set());
+            const newestFirst = [...runs].sort((a, b) => b.runAt.getTime() - a.runAt.getTime());
+            const resultsRun = newestFirst.find((run) => run.hasResults) ?? null;
+            const derived = deriveReportFields({ recent: newestFirst.slice(0, 7), resultsRun, chartType: report.meta.chartType, config: report.config });
+            const fixture = fixtures.find((candidate) => candidate.slug === report.meta.slug);
+            assert.ok(fixture, `no fixture for ${report.meta.slug}`);
+
+            return { report, runs, resultsRun, derived, fixture, transport };
+        }));
+    }
+
+    const synced = () => (pipeline ??= runPipeline());
+
+    test('finds every report with its details', async () => {
+        const results = await synced();
+        assert.equal(results.length, fixtures.length);
+
+        for (const { report: { meta }, fixture } of results) {
+            assert.deepEqual(
+                {
+                    title: meta.title,
+                    description: meta.description,
+                    spl: meta.spl,
+                    cron: meta.cron,
+                    schedule: meta.schedule,
+                    runsPerWeek: meta.runsPerWeek,
+                    timeRange: meta.timeRange,
+                    index: meta.index,
+                    recipients: meta.recipients,
+                    category: meta.category,
+                    tags: meta.tags,
+                    owner: meta.splunk.owner,
+                    app: meta.splunk.appLabel,
+                    nextRun: meta.nextRun?.toISOString(),
+                },
+                {
+                    title: fixture.title,
+                    description: fixture.description,
+                    spl: fixture.spl,
+                    cron: fixture.cron,
+                    schedule: fixture.schedule,
+                    runsPerWeek: fixture.runsPerWeek,
+                    timeRange: fixture.timeRange,
+                    index: fixture.index,
+                    recipients: fixture.recipients,
+                    category: fixture.category,
+                    tags: fixture.tags,
+                    owner: fixture.owner,
+                    app: fixture.app,
+                    nextRun: new Date(fixture.nextRun).toISOString(),
+                },
+                fixture.slug,
+            );
+            assert.deepEqual(meta.allowedGroups, groupsFromRecipients(fixture.recipients), fixture.slug);
+        }
+    });
+
+    test('reproduces each report status, message and run history', async () => {
+        for (const { derived, fixture } of await synced()) {
+            assert.equal(derived.latest?.status, fixture.status, fixture.slug);
+            assert.equal(derived.latest.statusMessage, fixture.statusMessage, fixture.slug);
+            assert.deepEqual(
+                derived.history.map((run) => [run.runAt.toISOString(), run.status]),
+                fixture.history.map((run) => [new Date(run.runAt).toISOString(), run.status]),
+                fixture.slug,
+            );
+        }
+    });
+
+    test('keeps the newest results and marks older ones expired', async () => {
+        for (const { runs, resultsRun, fixture } of await synced()) {
+            assert.deepEqual(resultsRun?.columns, fixture.columns, fixture.slug);
+            assert.deepEqual(resultsRun.rows, fixture.rows, fixture.slug);
+            assert.equal(resultsRun.resultCount, fixture.resultCount, fixture.slug);
+
+            const failed = fixture.history.filter((run) => run.status === 'failed').length;
+            assert.equal(runs.filter((run) => run.resultsExpired).length, fixture.history.length - 1 - failed, fixture.slug);
+        }
+    });
+
+    test('picks charts from the Splunk display settings and the cards', async () => {
+        const charts = Object.fromEntries((await synced()).map(({ fixture, derived }) => [fixture.slug, derived.chart]));
+
+        assert.equal(charts['privileged-group-changes'], null);
+        assert.deepEqual(charts['web-5xx-error-rate'], { type: 'column', x: 'Host', y: 'Error rate %', threshold: { value: 2, label: '2% error budget' } });
+        assert.deepEqual(charts['disk-space-over-85'], { type: 'bar', x: 'Host', y: 'Used %', threshold: { value: 95, label: '95% critical' }, max: 100 });
+        assert.deepEqual(charts['forwarder-health-missing-hosts'], { type: 'bar', x: 'Host', y: 'Minutes silent' });
+
+        const { scatter: loginScatter, ...logins } = charts['failed-logins-by-user']!;
+        assert.deepEqual(logins, { type: 'bar', x: 'User', y: 'Failures' });
+        assert.equal(loginScatter?.x, 'Distinct sources');
+
+        const firewall = charts['firewall-denied-top-sources']!;
+        assert.equal(firewall.y, 'Denied');
+        assert.equal(firewall.scatter?.x, 'Distinct ports');
+        assert.equal(firewall.scatter.log, true);
+
+        // Volume and Decline rate are text ("$18,402,117", "1.84%") but still count as numbers.
+        const payments = charts['payments-volume-latency']!;
+        assert.equal(payments.type, 'bar');
+        assert.deepEqual(payments.panels, [
+            { y: 'Transactions' },
+            { y: 'Volume' },
+            { y: 'p95 latency (ms)', threshold: { value: 400, label: '400 ms SLO' } },
+            { y: 'Decline rate' },
+        ]);
+    });
+
+    test('builds highlights, with the custom ones for web 5xx and license usage', async () => {
+        const results = await synced();
+        const bySlug = (slug: string) => results.find(({ fixture }) => fixture.slug === slug)!;
+
+        const web = bySlug('web-5xx-error-rate');
+        assert.deepEqual(web.derived.highlights, web.fixture.highlights);
+
+        const license = bySlug('license-usage-by-index');
+        assert.deepEqual(license.derived.highlights, license.fixture.highlights);
+
+        const logins = bySlug('failed-logins-by-user');
+        assert.deepEqual(logins.derived.highlights, [
+            { label: 'Results', value: '117', note: '+87 vs. previous run', trend: [30, 38, 46, 34, 42, 30, 117] },
+            { label: 'Top user', value: 'svc_backup', note: 'Failures: 312' },
+            { label: 'Search time', value: '41s' },
+        ]);
+    });
+
+    test('the results sparkline skips runs that failed', async () => {
+        const disk = (await synced()).find(({ fixture }) => fixture.slug === 'disk-space-over-85')!;
+        const oldestFirst = [...disk.runs].sort((a, b) => a.runAt.getTime() - b.runAt.getTime());
+        const finished = oldestFirst.filter((run) => run.status !== 'failed').map((run) => run.resultCount);
+
+        assert.ok(finished.length < oldestFirst.length);
+        assert.deepEqual(disk.derived.highlights[0]!.trend, finished);
+    });
+
+    test('a second pass finds no new runs', async () => {
+        for (const { report, runs, transport } of await synced()) {
+            const again = await fetchNewRuns(transport, report, new Set(runs.map((run) => run.sid)));
+            assert.equal(again.runs.length, 0, report.meta.slug);
+        }
+    });
+
+    test('moving a fixture forward by one run adds exactly that run', async () => {
+        const web = fixtures.find((fixture) => fixture.slug === 'web-5xx-error-rate')!;
+        const nextHour = {
+            ...web,
+            lastRun: '2026-10-02T10:00:00Z',
+            nextRun: '2026-10-02T11:00:00Z',
+            history: buildHistory('2026-10-02T10:00:00Z', 1, 'sssswww', 6, 12),
+        };
+
+        const runsOf = async (source: typeof fixtures, known: Set<string>) => {
+            const transport = fixtureTransport(source);
+            const [report] = await listScheduledReports(transport, 'UTC', now);
+            return (await fetchNewRuns(transport, report!, known)).runs;
+        };
+
+        const before = await runsOf([web], new Set());
+        const added = await runsOf([nextHour], new Set(before.map((run) => run.sid)));
+
+        assert.deepEqual(added.map((run) => run.runAt.toISOString()), ['2026-10-02T10:00:00.000Z']);
+    });
+});
+
+describe('charts of live results', () => {
+    const TIME = '2026-10-02T06:00:00.000+00:00';
+    const overTime = (columns: string[], rowCount = 3, value = (column: number) => column + 1) => ({
+        columns: ['_time', ...columns],
+        rows: Array.from({ length: rowCount }, (): Cell[] => [TIME, ...columns.map((_, i) => value(i))]),
+    });
+
+    test('a timechart with several measures draws a line for each, whatever chart was saved', () => {
+        const chart = resolveChart('column', overTime(['web-01', 'web-02', 'web-03']));
+
+        assert.equal(chart?.type, 'line');
+        assert.equal(chart.x, '_time');
+        assert.deepEqual(chart.series, ['web-01', 'web-02', 'web-03']);
+    });
+
+    test('too many series keep the largest, in the results order, with room for Other', () => {
+        const hosts = ['a', 'b', 'c', 'd', 'e', 'f'];
+        const sizes = [1, 9, 2, 8, 7, 3];
+        const chart = resolveChart('line', overTime(hosts, 3, (column) => sizes[column]!));
+
+        assert.deepEqual(chart?.series, ['b', 'd', 'e', 'f']);
+    });
+
+    test("Splunk's OTHER and NULL columns join the Other line instead of taking a color", () => {
+        const chart = resolveChart('line', overTime(['web-01', 'web-02', 'OTHER', 'NULL'], 3, (column) => [1, 2, 900, 3][column]!));
+        assert.deepEqual(chart?.series, ['web-01', 'web-02']);
+    });
+
+    test('a measure picked on a card stays one measure', () => {
+        const chart = resolveChart('column', overTime(['web-01', 'web-02']), { y: 'web-02' });
+
+        assert.equal(chart?.type, 'column');
+        assert.equal(chart.y, 'web-02');
+        assert.equal(chart.series, undefined);
+    });
+
+    test('time with more points than bars can show draws as a line', () => {
+        assert.equal(resolveChart('column', overTime(['count'], MAX_CHART_BARS))?.type, 'column');
+        assert.equal(resolveChart('column', overTime(['count'], MAX_CHART_BARS + 1))?.type, 'line');
+    });
+
+    test('more rows than bars can show stay bars when they are not over time', () => {
+        const rows = Array.from({ length: MAX_CHART_BARS + 1 }, (_, i): Cell[] => [`host-${i}`, i]);
+        assert.equal(resolveChart('bar', { columns: ['Host', 'Count'], rows })?.type, 'bar');
+    });
+
+    test('a gap in a measure no longer costs the report its chart', () => {
+        const rows: Cell[][] = [['a', 1], ['b', ''], ['c', 3], ['d', 4], ['e', 5]];
+        assert.equal(resolveChart('bar', { columns: ['Host', 'Count'], rows })?.y, 'Count');
+    });
+
+    test('a column that is mostly text is not a measure', () => {
+        const rows: Cell[][] = [['a', 'up'], ['b', 'down'], ['c', 3], ['d', 'up'], ['e', 'up']];
+        assert.equal(resolveChart('bar', { columns: ['Host', 'State'], rows }), null);
+    });
+
+    const run = { sid: 'one', runAt: new Date('2026-10-02T06:00:00Z'), status: 'success' as const, durationSec: 4, resultCount: 2 };
+
+    test('the top row reads formatted numbers instead of showing NaN', () => {
+        const resultsRun = { ...run, columns: ['Region', 'Volume'], rows: [['east', '$1,500'], ['west', '$22,000']] };
+        const config = { slug: 'volume', category: 'Business' as const, tags: [], chart: { y: 'Volume' } };
+        const { highlights } = deriveReportFields({ recent: [run], resultsRun, chartType: 'bar', config });
+
+        assert.deepEqual(highlights.find(({ label }) => label === 'Top region'), { label: 'Top region', value: 'west', note: 'Volume: $22,000' });
+    });
+
+    test('a time series has no top row', () => {
+        const resultsRun = { ...run, ...overTime(['count']) };
+        const { highlights } = deriveReportFields({ recent: [run], resultsRun, chartType: 'line' });
+
+        assert.deepEqual(highlights.map(({ label }) => label), ['Results', 'Search time']);
+    });
+});
+
+describe('which scheduled searches the sync takes (SYNC_REPORTS)', () => {
+    const entry = (name: string, content: Record<string, unknown>) => ({
+        name,
+        content: { search: 'index=main', cron_schedule: '0 6 * * *', is_scheduled: true, ...content },
+    });
+    const emailed = entry('Someone else\'s emailed search', { 'action.email': true });
+    const configured = entry('Failed Login Attempts by User', { 'action.email': false });
+    const neither = entry('A quiet search', { 'action.email': false });
+    const unscheduled = entry('Failed Login Attempts by User', { is_scheduled: false });
+
+    test('emailed, the default: every emailed search, plus the ones with a card', () => {
+        assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search)), [true, true, false]);
+    });
+
+    test('configured: only the ones with a card', () => {
+        assert.deepEqual([emailed, configured, neither].map((search) => isSyncedSearch(search, 'configured')), [false, true, false]);
+    });
+
+    test('never a search that is not scheduled', () => {
+        assert.equal(isSyncedSearch(unscheduled), false);
+    });
+});
+
+describe('saved searches that share a name', () => {
+    const now = new Date('2026-10-03T00:00:00Z');
+    const search = (app: string, owner: string, sharing: string, query: string) => ({
+        name: 'Disk check',
+        acl: { app, owner, sharing },
+        content: { search: query, cron_schedule: '0 6 * * *', is_scheduled: true, 'action.email': true, 'action.email.to': 'ops@example.com' },
+    });
+    const listing = (entries: ReturnType<typeof search>[]): SplunkTransport => ({
+        get: async <T>(path: string) => ({ entry: path.includes('saved/searches') ? entries : [] }) as T,
+    });
+
+    test('keep the shared one, not a private copy, and say so', async () => {
+        const logged: string[] = [];
+        const entries = [search('search', 'j.smith', 'user', 'index=mine'), search('ops', 'nobody', 'app', 'index=shared')];
+        const reports = await listScheduledReports(listing(entries), 'UTC', now, (message) => logged.push(message));
+
+        assert.deepEqual(reports.map(({ meta }) => meta.spl), ['index=shared']);
+        assert.match(logged[0]!, /Skipped "Disk check" in search\/j\.smith/);
+    });
+
+    test('a private search alone under a configured name stays admin-only', async () => {
+        const entry = { ...search('search', 'j.smith', 'user', 'index=mine'), name: 'Failed Login Attempts by User' };
+        const [report] = await listScheduledReports(listing([entry]), 'UTC', now);
+
+        assert.deepEqual(report!.meta.allowedGroups, []);
+    });
+
+    test('with no shared one, keep one and always the same one', async () => {
+        const first = search('alpha', 'nobody', 'app', 'index=alpha');
+        const second = search('beta', 'nobody', 'app', 'index=beta');
+
+        for (const entries of [[first, second], [second, first]]) {
+            const reports = await listScheduledReports(listing(entries), 'UTC', now);
+            assert.deepEqual(reports.map(({ meta }) => meta.spl), ['index=alpha']);
+        }
+    });
+});
+
+describe('fetchNewRuns when a job can\'t be read', () => {
+    const now = new Date('2026-10-03T00:00:00Z');
+    const entry = { name: 'Disk check', content: { search: 'index=os', cron_schedule: '0 6 * * *', is_scheduled: true, 'action.email': true } };
+
+    // A history of these sids, where 'gone' answers 404 and 'broken' answers 500.
+    const transportOf = (sids: string[]): SplunkTransport => ({
+        get: async <T>(path: string) => {
+            if (path.includes('/saved/searches')) {
+                return { entry: path.endsWith('/history') ? sids.map((name) => ({ name, content: {} })) : [entry] } as T;
+            }
+            if (path.endsWith('/results')) return { fields: ['count'], results: [{ count: '1' }] } as T;
+            if (path.endsWith('/apps/local')) return { entry: [] } as T;
+
+            const sid = decodeURIComponent(path.split('/').at(-1)!);
+            if (sid.startsWith('gone')) throw new SplunkHttpError(404, 'Unknown sid');
+            if (sid.startsWith('broken')) throw new SplunkHttpError(500, 'Server error');
+            return { entry: [{ name: sid, content: { sid, dispatchState: 'DONE', isDone: true, resultCount: 1 } }] } as T;
+        },
+    });
+
+    const fetched = async (sids: string[]) => {
+        const transport = transportOf(sids);
+        const [report] = await listScheduledReports(transport, 'UTC', now);
+        return fetchNewRuns(transport, report!, new Set());
+    };
+
+    test('counts the jobs Splunk answers 404 for, rather than hiding them', async () => {
+        const { runs, unreadable, failure } = await fetched(['ok_at_1700000000_1', 'gone_at_1700003600_2']);
+
+        assert.deepEqual(runs.map(({ sid }) => sid), ['ok_at_1700000000_1']);
+        assert.equal(unreadable, 1);
+        assert.equal(failure, undefined);
+    });
+
+    test('keeps the runs it already fetched when a later job fails', async () => {
+        const { runs, failure } = await fetched(['ok_at_1700000000_1', 'broken_at_1700003600_2', 'later_at_1700007200_3']);
+
+        assert.deepEqual(runs.map(({ sid }) => sid), ['ok_at_1700000000_1']);
+        assert.ok(failure instanceof SplunkHttpError);
+    });
+});

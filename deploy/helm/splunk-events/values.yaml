@@ -68,7 +68,8 @@ connector:
     configMap: ""
     key: ca.crt
   # More settings for the connector, from .env.example, such as SYNC_MAX_ROWS,
-  # or SYNC_REPORTS: configured to sync only the reports in lib/report-config.ts.
+  # or SYNC_REPORTS: configured to sync only the reports with a card in
+  # config/report-cards.yaml.
   # The connector checks its settings when it starts. Secrets don't go here.
   env: {}
   resources:
@@ -93,7 +94,7 @@ ml:
 # reports' runs have fixed dates, so fixture mode needs a long one, like 3650.
 runRetentionDays: ""
 
-# Demo accounts (lib/demo-users.ts), which all share secrets.DEMO_PASSWORD.
+# Demo accounts (src/people/demo-users.ts), which all share secrets.DEMO_PASSWORD.
 # Only for dummy data. Build the app image with --build-arg DEMO_MODE=true too.
 demo:
   enabled: false

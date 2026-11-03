@@ -1,7 +1,7 @@
 """Features for the ML job, worked out from each report's run history.
 
 Pure functions on pandas DataFrames, so the tests run without a database.
-The robust z-score matches lib/insights.ts in the app, so the job and the
+The robust z-score matches src/reports/insights.ts in the app, so the job and the
 app's statistics agree on what "far from usual" means.
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pandas as pd
 
-# Like lib/insights.ts: at least 4 earlier successful runs to compare with,
+# Like src/reports/insights.ts: at least 4 earlier successful runs to compare with,
 # and the 6 most recent of them.
 MIN_BASELINE = 4
 BASELINE_RUNS = 6

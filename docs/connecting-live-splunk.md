@@ -10,7 +10,7 @@ Company Splunk ──► sync worker (npm run sync) ──► MongoDB ──► 
 
 - The **web app never talks to Splunk.** It only reads MongoDB.
 - The **sync worker** is the only part that talks to Splunk. It asks for the scheduled reports and their latest results, and saves them in MongoDB.
-- Today the worker reads **fake Splunk** (the files in `lib/splunk/fixtures/`). Going live means pointing it at **real Splunk**. That's 4 settings in `.env.local`. No app code changes.
+- Today the worker reads **fake Splunk** (the files in `src/splunk/fixtures/`). Going live means pointing it at **real Splunk**. That's 4 settings in `.env.local`. No app code changes.
 - **To watch it work before you have access,** run the example with a test Splunk: [splunk-example.md](splunk-example.md). It's Splunk Enterprise's trial in Docker, with dummy reports, and the same connector.
 
 > **Splunk MCP is a separate thing.** The `splunk` MCP server in the Claude Code plugin lets Claude look inside Splunk while you work. The app doesn't use it, and you don't need it for live data. See "Optional: Splunk MCP for Claude Code" at the end.
@@ -20,7 +20,7 @@ Company Splunk ──► sync worker (npm run sync) ──► MongoDB ──► 
 `trcpoet/splunk-report-ai` is a **public** GitHub repo. Once you connect real Splunk, your copy will hold company details:
 
 - `.env.local`: the Splunk address and token. Git already ignores it, so it's never committed.
-- `lib/report-config.ts`: real report names, team names and rules. **This file is committed.**
+- `config/report-cards.yaml`: real report names, team names and limits. **This file is committed.**
 - MongoDB: real results. It lives on your laptop, not in git.
 
 So on the work laptop:
@@ -115,8 +115,9 @@ It only reads, and checks one thing at a time:
 1. Splunk answers at that address.
 2. The token works, and whose it is (the user and its roles).
 3. How many scheduled searches the token can see, and how many the sync takes (`SYNC_REPORTS`).
-4. Which reports in `lib/report-config.ts` Splunk doesn't have: a typo, or a report not shared with the token's role.
+4. Which cards in `config/report-cards.yaml` are for reports Splunk doesn't have: a typo, or a report not shared with the token's role.
 5. A run's results can be read.
+6. Every column a card names is in its report's newest results.
 
 Each problem comes with what to fix, for example:
 
@@ -172,23 +173,23 @@ Sign in as `admin@example.com`. Admins see every report, so you should see your 
 Which reports come in, with `SYNC_REPORTS=emailed` (the default):
 
 - every scheduled report that **emails its results**, and
-- every scheduled report **listed in `lib/report-config.ts`**, even if it doesn't email.
+- every scheduled report **with a card in `config/report-cards.yaml`**, even if it doesn't email.
 
-With `SYNC_REPORTS=configured`, only the ones in `lib/report-config.ts` come in. Use it when the token can see hundreds of emailed searches and the app should show a chosen few. The home page lists 20 reports a page, newest run first, either way.
+With `SYNC_REPORTS=configured`, only the ones with a card come in. Use it when the token can see hundreds of emailed searches and the app should show a chosen few. The home page lists 20 reports a page, newest run first, either way.
 
 To keep the data fresh, run the worker on a timer next to the app:
 
 ```bash
-npm run sync:watch     # every SYNC_INTERVAL_MINUTES (default 15)
+SYNC_INTERVAL_MINUTES=60 npm run sync:watch     # every hour; the default is every 15 minutes
 ```
 
-Splunk deletes a run's results after a while (`dispatch.ttl`, by default two schedule periods). Sync more often than that, or some runs are stored without their results.
+Splunk deletes a run's results after a while (`dispatch.ttl`, by default two schedule periods). Sync more often than that, or some runs are stored without their results. When Splunk runs each report, how often the app copies new runs, and how to choose: [How often reports update](configuration.md#how-often-reports-update).
 
 ## Step 6: Decide who sees which report
 
-Right after going live, **only admins see the real reports**, because none of them are in `lib/report-config.ts` yet. That's on purpose: nothing is shown to a team until you say so.
+Right after going live, **only admins see the real reports**, because none of them has a card yet. That's on purpose: nothing is shown to a team until you say so.
 
-For each report, add an entry to `lib/report-config.ts` and choose its teams. [Report settings and access](report-access.md) explains how, with examples.
+For each report, add a card to `config/report-cards.yaml` and choose its teams. [Adding report cards](adding-report-cards.md) is the step-by-step guide, including how to turn a dashboard's tiles into cards, and [Report settings and access](report-access.md) explains the teams, with examples.
 
 ## Company certificates
 
@@ -207,7 +208,8 @@ Don't turn off certificate checks (`NODE_TLS_REJECT_UNAUTHORIZED=0`): that would
 |---|---|
 | "The sync worker's settings need fixing", with a list | Each line names a setting to fix: an empty `SPLUNK_BASE_URL` or token, an address without `https://`, an unknown `SPLUNK_MODE` or `SYNC_REPORTS`, or a time zone the runtime doesn't know. |
 | A line starting with `→` in the sync log | What to check for a common mistake: a wrong or expired token, port 8000 (Splunk Web) instead of 8089, a certificate Node doesn't trust. `npm run splunk:check` gives the same advice. |
-| The sync finishes but no reports appear | The admin view shows only reports that email their results or are in `report-config.ts`. Add the report's exact name to `report-config.ts`. |
+| The sync finishes but no reports appear | The admin view shows only reports that email their results or have a card. Give the report a card under its exact name. |
+| `config/report-cards.yaml needs fixing`, with a list | A mistake in a card: each line says where. [When something is wrong](adding-report-cards.md#when-something-is-wrong) explains each one. |
 | A report's results are older than its last run | The worker ran after Splunk deleted the newest results. Run `sync:watch` more often. |
 | A report says "No runs yet" | No run of it is stored. It may simply not have run, or the sync log says why: look for `Splunk answered 404`, which means its jobs expired or the token can't read them. |
 | The home page says the last sync had problems | Sign in as an admin to see the reason. A report that failed shows its own reason on its page. |

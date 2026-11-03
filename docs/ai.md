@@ -7,7 +7,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - **Ask AI** (navbar) is laid out like ChatGPT. Your chats run down the left, and a switch at the top picks one of two modes:
   - **Ask about reports:** questions about your reports, answered from their latest runs.
   - **Write SPL:** describe a search, or paste one, and get the SPL step by step.
-- **The AI is Google Gemini** (`gemini-3.8-flash` by default), through Google's `@google/genai` SDK. One file, `lib/ai/llm.ts`, talks to it.
+- **The AI is Google Gemini** (`gemini-3.8-flash` by default), through Google's `@google/genai` SDK. One file, `src/ai/llm.ts`, talks to it.
 - **It only sees the reports you can see**, the same ones the rest of the app shows you.
 - **It never runs a search.** Write SPL gives you a search to copy into Splunk.
 - **Without a key, AI answers are off** and the page says so. Everything else in the app works as before.
@@ -63,7 +63,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 - The answer is the search as a pipeline: the whole query, then each pipe command with one sentence on what it does.
 - Point at a step, or press its number, to highlight it in the query.
 - A badge says whether the search only reads events, or changes data or does something outside the search (for example `outputlookup` writes a lookup, `sendemail` sends mail). Searches that name no index get a warning too.
-- **Each search is checked as it's shown**, without running it (`lib/ai/validate.ts`). A built-in SPL checker catches unknown commands, quotes, brackets or macros that never close, and a pipe with nothing after it. It runs each time, so older answers get today's checks too.
+- **Each search is checked as it's shown**, without running it (`src/ai/validate.ts`). A built-in SPL checker catches unknown commands, quotes, brackets or macros that never close, and a pipe with nothing after it. It runs each time, so older answers get today's checks too.
   - It doesn't know apps' own commands, macros or field names, so Splunk may still find a problem.
   - A search that fails the check says why, and offers **Fix the error**, which asks again with the checker's message.
 - **Copy SPL** (above the search, like a code block in ChatGPT) copies the search. **Open in Splunk** (when `SPLUNK_WEB_URL` is set) opens it in Splunk's search page, where it runs only when you press Enter there.
@@ -87,7 +87,7 @@ A plain-language guide to the **Ask AI** page: what it does, how to turn it on, 
 
 Each report page's SPL section also has **Explain it step by step**, which opens Write SPL with that search.
 
-**Unusual runs, in plain statistics** (`lib/insights.ts`):
+**Unusual runs, in plain statistics** (`src/reports/insights.ts`):
 - The newest run's result count and search time are compared with the earlier successful runs (at least 4).
 - The median of those runs is what's usual, and the median absolute deviation is how much they normally vary. Both ignore one odd run in the history, unlike the average.
 - A run 3.5 or more of those spreads away from usual is flagged, with a floor so a perfectly steady history doesn't flag small changes.
@@ -109,7 +109,7 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 3. **Showing what was used.** The answer says which searches it was **based on**.
 4. **Falling back.** If the examples can't be compared (no key, a quota, the network), the AI gets every report's search instead, as before.
 
-`lib/ai/retrieval.ts` holds the comparing, and `lib/spl-examples.ts` the examples. Over time, saved searches teach Write SPL your team's style and field names, with no training.
+`src/ai/retrieval.ts` holds the comparing, and `src/ai/spl-examples.ts` the examples. Over time, saved searches teach Write SPL your team's style and field names, with no training.
 
 **Measuring it:** `npm run eval:spl` runs Write SPL on 10 requests over the demo reports (`scripts/spl-eval-set.json`).
 - It scores each answer: does it parse, does it only read data, does it use the expected index and fields.
@@ -117,7 +117,7 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 
 ## What the AI can see, and what it can't
 
-- **Only your reports.** For each one: its status and message, highlights, the last 7 runs, its SPL, and up to 20 rows of its latest results, plus the time of the last sync. It gets exactly what `lib/dal.ts` lets you see, so it can't mention a report you can't open.
+- **Only your reports.** For each one: its status and message, highlights, the last 7 runs, its SPL, and up to 20 rows of its latest results, plus the time of the last sync. It gets exactly what `src/reports/dal.ts` lets you see, so it can't mention a report you can't open.
 - **Only your chats.** A chat belongs to the account that started it. Anyone else gets "Chat not found", the same answer as for a deleted chat.
 - **No tools.** It can't run searches, open links or change anything. It writes text, and that's all.
 
@@ -125,29 +125,29 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 
 | File | Job |
 |---|---|
-| `lib/ai/llm.ts` | The only file that talks to Gemini, plus the canned answers for `AI_PROVIDER=fake` |
-| `lib/ai/config.ts` | The settings above, and whether AI is on |
-| `lib/ai/prompts.ts` | What the AI is told, in plain English |
-| `lib/ai/context.ts` | Your reports as text for the AI |
-| `lib/ai/spl.ts` | The shape of a Write SPL answer, and the safety check |
-| `lib/ai/validate.ts` | Checking each Write SPL search with the built-in SPL checker |
-| `lib/ai/stream.ts` | How streamed answers reach the browser (one JSON event per line) |
-| `lib/ai/turn.ts` | The checks before each question: signed in, AI on, your chat, today's limit |
-| `lib/ai/usage.ts` | Daily limits |
-| `lib/ai/report-links.ts` | Turns `[[report-id]]` in answers into report links |
-| `lib/ai/suggestions.ts` | Suggested questions |
-| `lib/ai/summaries.ts`, `lib/ai/keys.ts` | Explain summaries and briefings: written once, saved under a key that changes with the data |
-| `lib/insights.ts` | Unusual runs and the results profile (plain statistics, no AI) |
-| `lib/feedback.ts` | 👍 / 👎 votes |
-| `lib/chats.ts` | Saved chats (each function checks the owner) |
-| `app/api/ai/chat`, `app/api/ai/spl` | The two chat endpoints |
-| `app/api/ai/explain/[slug]`, `app/api/ai/briefing` | The two summary endpoints |
-| `app/ai/` | The pages, and the rename and delete actions |
-| `components/ChatView.tsx`, `ChatAnswer.tsx`, `SplAnswer.tsx` | The chat, an answer, and a Write SPL answer |
-| `components/ChatSidebar.tsx`, `ChatHistory.tsx`, `lib/chat-list.ts` | The sidebar and the chats page; chats saved since the page loaded join the sidebar's list |
-| `components/AiTopBar.tsx`, `SidePanel.tsx`, `AiPanels.tsx` | The bar with the mode switch, and the Reports and Searches panels |
-| `lib/ai/chat-events.ts` | The events the chat, the sidebar and the bar send each other |
-| `components/Briefing.tsx`, `BriefingSummary.tsx`, `ExplainButton.tsx`, `FeedbackButtons.tsx` | The briefing, the Explain panel and the thumbs |
+| `src/ai/llm.ts` | The only file that talks to Gemini, plus the canned answers for `AI_PROVIDER=fake` |
+| `src/ai/config.ts` | The settings above, and whether AI is on |
+| `src/ai/prompts.ts` | What the AI is told, in plain English |
+| `src/ai/context.ts` | Your reports as text for the AI |
+| `src/ai/spl.ts` | The shape of a Write SPL answer, and the safety check |
+| `src/ai/validate.ts` | Checking each Write SPL search with the built-in SPL checker |
+| `src/ai/stream.ts` | How streamed answers reach the browser (one JSON event per line) |
+| `src/ai/turn.ts` | The checks before each question: signed in, AI on, your chat, today's limit |
+| `src/ai/usage.ts` | Daily limits |
+| `src/ai/report-links.ts` | Turns `[[report-id]]` in answers into report links |
+| `src/ai/suggestions.ts` | Suggested questions |
+| `src/ai/summaries.ts`, `src/ai/keys.ts` | Explain summaries and briefings: written once, saved under a key that changes with the data |
+| `src/reports/insights.ts` | Unusual runs and the results profile (plain statistics, no AI) |
+| `src/ai/feedback.ts` | 👍 / 👎 votes |
+| `src/ai/chats.ts` | Saved chats (each function checks the owner) |
+| `src/app/api/ai/chat`, `src/app/api/ai/spl` | The two chat endpoints |
+| `src/app/api/ai/explain/[slug]`, `src/app/api/ai/briefing` | The two summary endpoints |
+| `src/app/ai/` | The pages, and the rename and delete actions |
+| `src/ai/components/ChatView.tsx`, `ChatAnswer.tsx`, `SplAnswer.tsx` | The chat, an answer, and a Write SPL answer |
+| `src/ai/components/ChatSidebar.tsx`, `ChatHistory.tsx`, `src/ai/chat-list.ts` | The sidebar and the chats page; chats saved since the page loaded join the sidebar's list |
+| `src/ai/components/AiTopBar.tsx`, `SidePanel.tsx`, `AiPanels.tsx` | The bar with the mode switch, and the Reports and Searches panels |
+| `src/ai/chat-events.ts` | The events the chat, the sidebar and the bar send each other |
+| `src/ai/components/Briefing.tsx`, `BriefingSummary.tsx`, `ExplainButton.tsx`, `FeedbackButtons.tsx` | The briefing, the Explain panel and the thumbs |
 
 ## What it costs
 
@@ -187,11 +187,11 @@ Write SPL shows the AI the searches **most like your request**, instead of every
 - **Live company data:** with `SPLUNK_MODE=live`, AI stays off until `AI_ALLOW_LIVE_DATA=true`. Set it only once your company has approved sending report data to the provider. A company would more likely use Vertex AI or its own LLM; see below.
 - **Report data can't give the AI orders.** Result rows come from logs, so they can contain any text, including text that looks like instructions. The rows are wrapped in tags the instructions call data, angle brackets are removed from them, and the AI has no tools to misuse.
 - **Answers can't send you elsewhere.** Links in answers show as plain text, except links to your reports, and images aren't shown at all. Answers are Markdown, shown without running any HTML in them.
-- **The key stays on the server.** `GEMINI_API_KEY` is read only by `lib/ai/llm.ts`, which can't be imported into browser code. Never put it in a `NEXT_PUBLIC_` variable.
+- **The key stays on the server.** `GEMINI_API_KEY` is read only by `src/ai/llm.ts`, which can't be imported into browser code. Never put it in a `NEXT_PUBLIC_` variable.
 
 ## Using another AI
 
-Everything that talks to the AI is in `lib/ai/llm.ts`, behind two functions: `streamText` (Ask about reports) and `generateJson` (Write SPL). Keep their inputs and outputs, and change what's inside.
+Everything that talks to the AI is in `src/ai/llm.ts`, behind two functions: `streamText` (Ask about reports) and `generateJson` (Write SPL). Keep their inputs and outputs, and change what's inside.
 
 - **Gemini through Google Cloud (Vertex AI).** This uses the same SDK, under Google Cloud's terms for company data. Create the client with `new GoogleGenAI({ vertexai: true, project, location })` instead of an API key, and sign in with `gcloud auth application-default login`.
 - **A company's own LLM.** Replace the two functions with calls to its API. `streamText` gets the instructions, the conversation and an abort signal, and passes each piece of text to `onText`. `generateJson` gets a JSON Schema (from `z.toJSONSchema`) and must return JSON that matches it. If the LLM can't stream, call `onText` once with the whole answer.
@@ -210,7 +210,7 @@ Some companies already sign people in to Splunk with their company login (Active
 
 **Suggested setup at work:**
 1. Keep MongoDB for the pages and the run history.
-2. Point `lib/ai/llm.ts` at the approved internal LLM instead of Gemini.
+2. Point `src/ai/llm.ts` at the approved internal LLM instead of Gemini.
 3. For questions the stored reports can't answer, the approved LLM can search Splunk live, as you, through its existing connection.
 
 Ask your Splunk admin which integration the company uses before building on it.
@@ -219,8 +219,8 @@ The full recommendation is in [splunk-data-and-ai-strategy.md](splunk-data-and-a
 
 ## Splunk's JavaScript SDK, or Python?
 
-- **The sync uses neither.** `lib/splunk/transport.ts` calls Splunk's REST API directly: five read-only endpoints, with retries, tested against fake Splunk responses (`lib/splunk/fixtures/transport.ts`). The JavaScript SDK (`splunk-sdk` on npm) wouldn't add anything.
-- **Keep the sync in TypeScript.** The status rules and highlights in `lib/report-config.ts` are TypeScript, and the sync runs them, so a Python sync would mean writing them twice.
+- **The sync uses neither.** `src/splunk/transport.ts` calls Splunk's REST API directly: five read-only endpoints, with retries, tested against fake Splunk responses (`src/splunk/fixtures/transport.ts`). The JavaScript SDK (`splunk-sdk` on npm) wouldn't add anything.
+- **Keep the sync in TypeScript.** The sync turns each card's rules and headline numbers (`config/report-cards.yaml`) into TypeScript functions (`src/reports/cards/rules.ts`), so a Python sync would mean writing that twice.
 - **Python is the better tool for analysis:** pandas for tables of runs, and scikit-learn for anomaly detection. A Python job can read MongoDB and write its results back, so MongoDB is the hand-off between the two languages. Splunk's Python SDK (`splunklib`) is worth adding only if that analysis needs raw events beyond the scheduled reports.
 
 ## Ideas for later

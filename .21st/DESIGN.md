@@ -13,7 +13,7 @@ Generated from project sources at 2026-11-02T04:05:45.179Z.
 
 ## Sources
 
-- Tokens: app/globals.css
+- Tokens: src/app/globals.css
 - Components: components/ui
 - Assets: None detected
 - Instructions: AGENTS.md, CLAUDE.md
@@ -27,47 +27,47 @@ Generated from project sources at 2026-11-02T04:05:45.179Z.
 
 ### Colors
 
-- `--color-blue`: `var(--color-blue)` (app/globals.css)
-- `--color-light-100`: `var(--color-light-100)` (app/globals.css)
-- `--color-light-200`: `var(--color-light-200)` (app/globals.css)
-- `--color-border-dark`: `var(--color-border-dark)` (app/globals.css)
-- `--color-dark-100`: `var(--color-dark-100)` (app/globals.css)
-- `--color-dark-200`: `var(--color-dark-200)` (app/globals.css)
-- `--background`: `#030708` (app/globals.css)
-- `--foreground`: `#ffffff` (app/globals.css)
-- `--primary`: `#59deca` (app/globals.css)
-- `--muted`: `oklch(0.97 0 0)` (app/globals.css)
-- `--muted-foreground`: `oklch(0.556 0 0)` (app/globals.css)
-- `--border`: `oklch(0.922 0 0)` (app/globals.css)
-- `--chart-1`: `#3987e5` (app/globals.css)
-- `--chart-2`: `#d95926` (app/globals.css)
-- `--chart-3`: `#199e70` (app/globals.css)
-- `--chart-4`: `#c98500` (app/globals.css)
-- `--chart-5`: `#d55181` (app/globals.css)
-- `--color-background`: `var(--background)` (app/globals.css)
-- `--color-foreground`: `var(--foreground)` (app/globals.css)
-- `--color-chart-5`: `var(--chart-5)` (app/globals.css)
-- `--color-chart-4`: `var(--chart-4)` (app/globals.css)
-- `--color-chart-3`: `var(--chart-3)` (app/globals.css)
-- `--color-chart-2`: `var(--chart-2)` (app/globals.css)
-- `--color-chart-1`: `var(--chart-1)` (app/globals.css)
-- `--color-border`: `var(--border)` (app/globals.css)
-- `--color-muted-foreground`: `var(--muted-foreground)` (app/globals.css)
-- `--color-muted`: `var(--muted)` (app/globals.css)
-- `--color-primary`: `var(--primary)` (app/globals.css)
+- `--color-blue`: `var(--color-blue)` (src/app/globals.css)
+- `--color-light-100`: `var(--color-light-100)` (src/app/globals.css)
+- `--color-light-200`: `var(--color-light-200)` (src/app/globals.css)
+- `--color-border-dark`: `var(--color-border-dark)` (src/app/globals.css)
+- `--color-dark-100`: `var(--color-dark-100)` (src/app/globals.css)
+- `--color-dark-200`: `var(--color-dark-200)` (src/app/globals.css)
+- `--background`: `#030708` (src/app/globals.css)
+- `--foreground`: `#ffffff` (src/app/globals.css)
+- `--primary`: `#59deca` (src/app/globals.css)
+- `--muted`: `oklch(0.97 0 0)` (src/app/globals.css)
+- `--muted-foreground`: `oklch(0.556 0 0)` (src/app/globals.css)
+- `--border`: `oklch(0.922 0 0)` (src/app/globals.css)
+- `--chart-1`: `#3987e5` (src/app/globals.css)
+- `--chart-2`: `#d95926` (src/app/globals.css)
+- `--chart-3`: `#199e70` (src/app/globals.css)
+- `--chart-4`: `#c98500` (src/app/globals.css)
+- `--chart-5`: `#d55181` (src/app/globals.css)
+- `--color-background`: `var(--background)` (src/app/globals.css)
+- `--color-foreground`: `var(--foreground)` (src/app/globals.css)
+- `--color-chart-5`: `var(--chart-5)` (src/app/globals.css)
+- `--color-chart-4`: `var(--chart-4)` (src/app/globals.css)
+- `--color-chart-3`: `var(--chart-3)` (src/app/globals.css)
+- `--color-chart-2`: `var(--chart-2)` (src/app/globals.css)
+- `--color-chart-1`: `var(--chart-1)` (src/app/globals.css)
+- `--color-border`: `var(--border)` (src/app/globals.css)
+- `--color-muted-foreground`: `var(--muted-foreground)` (src/app/globals.css)
+- `--color-muted`: `var(--muted)` (src/app/globals.css)
+- `--color-primary`: `var(--primary)` (src/app/globals.css)
 
 ### Typography
 
-- `--font-schibsted-grotesk`: `var(--font-schibsted-grotesk)` (app/globals.css)
-- `--font-martian-mono`: `var(--font-martian-mono)` (app/globals.css)
+- `--font-schibsted-grotesk`: `var(--font-schibsted-grotesk)` (src/app/globals.css)
+- `--font-martian-mono`: `var(--font-martian-mono)` (src/app/globals.css)
 
 ### Radius
 
-- `--radius`: `0.625rem` (app/globals.css)
-- `--radius-sm`: `calc(var(--radius) - 4px)` (app/globals.css)
-- `--radius-md`: `calc(var(--radius) - 2px)` (app/globals.css)
-- `--radius-lg`: `var(--radius)` (app/globals.css)
-- `--radius-xl`: `calc(var(--radius) + 4px)` (app/globals.css)
+- `--radius`: `0.625rem` (src/app/globals.css)
+- `--radius-sm`: `calc(var(--radius) - 4px)` (src/app/globals.css)
+- `--radius-md`: `calc(var(--radius) - 2px)` (src/app/globals.css)
+- `--radius-lg`: `var(--radius)` (src/app/globals.css)
+- `--radius-xl`: `calc(var(--radius) + 4px)` (src/app/globals.css)
 
 ## Constraints
 

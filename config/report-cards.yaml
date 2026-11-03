@@ -1,0 +1,130 @@
+# yaml-language-server: $schema=./report-cards.schema.json
+#
+# The report cards: what each Splunk report looks like in the app. One entry
+# per report, under its exact Splunk name. Splunk decides what the report
+# searches and when it runs; this file decides how its card and page show it.
+#
+# How to add or change a card: docs/adding-report-cards.md. Every field is
+# described in report-cards.schema.json, which editors use to check this file
+# as you type. After a change: npm run check, then npm run sync.
+
+Failed Login Attempts by User:
+  slug: failed-logins-by-user
+  category: Security
+  tags: [security, authentication, daily]
+  chart:
+    scatter:
+      x: Distinct sources
+      caption: "Each dot is an account. High and to the left: many failures from one source, which suggests password guessing. Further right: failures from many sources, which suggests password spraying."
+
+Web Server 5xx Error Rate:
+  slug: web-5xx-error-rate
+  category: Operations
+  tags: [web, availability, hourly]
+  # The limit line and the warn rule both use the 2% error budget: keep them equal.
+  chart:
+    y: Error rate %
+    threshold: { value: 2, label: 2% error budget }
+  warn:
+    when: { column: Error rate %, above: 2 }
+    one: "{Host} is returning {Error rate %}% server errors, above the 2% threshold. The other hosts are within budget."
+    many: "{count} hosts are above the 2% error budget: {list}."
+    item: "{Host} ({Error rate %}%)"
+  highlights:
+    - label: Overall error rate
+      value: { ratio: [sum: 5xx errors, sum: Requests] }
+      format: { percent: true, decimals: 2 }
+      note: "Budget: 2%"
+      meter: { of: 2 }
+    - label: Requests (1h)
+      value: { sum: Requests }
+    - label: Worst host
+      value: { top: Host, by: Error rate % }
+      note: "{Error rate %|2}% errors"
+
+"Firewall Denied Connections: Top Sources":
+  slug: firewall-denied-top-sources
+  category: Security
+  tags: [security, network, firewall]
+  chart:
+    scatter:
+      x: Distinct ports
+      log: true
+      caption: "Each dot is a source IP. Far right: hundreds of ports, which suggests a port scan. Far left: one port hit again and again, which suggests a flood. Ports use a log scale."
+
+License Usage by Index:
+  slug: license-usage-by-index
+  category: Infrastructure
+  tags: [licensing, capacity, daily]
+  index: _internal (license_usage.log)
+  highlights:
+    - label: Total ingested
+      value: { sum: GB ingested }
+      format: { decimals: 1, suffix: " GB" }
+      note: Yesterday
+    - label: License used
+      value: { ratio: [sum: GB ingested, 500] }
+      format: { percent: true, decimals: 1 }
+      note: of 500 GB/day
+      meter: { of: 100 }
+    - label: Largest index
+      value: { top: Index, by: GB ingested }
+      note: "{GB ingested|number} GB"
+
+Daily Payment Volume & Latency:
+  slug: payments-volume-latency
+  category: Business
+  tags: [business, payments, daily]
+  # Four measures with different units, so four small charts.
+  chart:
+    type: bar
+    panels:
+      - y: Transactions
+      - y: Volume
+      - y: p95 latency (ms)
+        threshold: { value: 400, label: 400 ms SLO }
+      - y: Decline rate
+
+Disk Space Utilization Above 85%:
+  slug: disk-space-over-85
+  category: Infrastructure
+  tags: [infrastructure, capacity, alerting]
+  # The limit line and the warn rule both use 95%: keep them equal.
+  chart:
+    threshold: { value: 95, label: 95% critical }
+    max: 100
+  warn:
+    when: { column: Used %, above: 95 }
+    one: "One mount is above 95%: {list}."
+    many: "{count} mounts are above 95%: {list}."
+    item: "{Host} {Mount} ({Used %}%)"
+
+Privileged Group Membership Changes:
+  slug: privileged-group-changes
+  category: Compliance
+  tags: [compliance, security, audit]
+  index: wineventlog (Security)
+
+VPN Sessions by Country:
+  slug: vpn-sessions-by-country
+  category: Security
+  tags: [security, remote-access, weekly]
+
+"Forwarder Health: Silent Hosts":
+  slug: forwarder-health-missing-hosts
+  category: Infrastructure
+  tags: [infrastructure, forwarders, hourly]
+  index: All indexes (metadata)
+  # Any result is a forwarder that went quiet. The message names the one that
+  # has been quiet longest.
+  warn:
+    when: { results: { above: 0 } }
+    row: { top: Minutes silent }
+    one: "{Host} has been silent for over {Minutes silent|hours}."
+    many: "{count|number} forwarders have been silent for more than 60 minutes, including {Host}, which has been down for over {Minutes silent|hours}."
+
+# A timechart: the sync draws a line per host (src/splunk/map.ts, resolveChart).
+Web Requests by Host:
+  slug: web-requests-by-host
+  category: Operations
+  tags: [web, traffic, hourly]

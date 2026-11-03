@@ -11,12 +11,10 @@ name: Splunk example
 on:
   pull_request:
     paths:
-      - lib/splunk/**
+      - src/**
       - worker/**
       - scripts/splunk-example/**
       - scripts/splunk-check.ts
-      - app/**
-      - components/**
       - e2e/**
       - docker-compose.splunk.yml
       - Dockerfile
@@ -24,12 +22,10 @@ on:
   push:
     branches: [main]
     paths:
-      - lib/splunk/**
+      - src/**
       - worker/**
       - scripts/splunk-example/**
       - scripts/splunk-check.ts
-      - app/**
-      - components/**
       - e2e/**
       - docker-compose.splunk.yml
       - Dockerfile
@@ -100,13 +96,13 @@ jobs:
             jq -c '{status: .report.status, statusMessage: .report.statusMessage, columns: .report.columns, rows: (.report.rows | length), first: .report.rows[0]}' "reports/$1.json"
             exit 1
           }
-          check failed-logins-by-user '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"]' "the columns report-config expects"
+          check failed-logins-by-user '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"]' "the columns its card expects"
           check failed-logins-by-user '(.report.rows | length) > 10' "many accounts over the threshold"
           check web-5xx-error-rate '.report.status == "warning"' "web-03 is above the error budget"
           check disk-space-over-85 '.report.status == "warning"' "db-02's /data is above 95%"
           check forwarder-health-missing-hosts '[.report.rows[][0]] as $hosts | ($hosts | any(. == "db-03")) and ($hosts | any(. == "app-07"))' "the two hosts that went quiet"
           check web-requests-by-host '.report.columns[0] == "_time" and (.report.columns | length) == 7' "a timechart: _time and the six web hosts"
-          check web-requests-by-host '.report.rows[0][0] | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$")' "_time in the shape lib/format.ts reads"
+          check web-requests-by-host '.report.rows[0][0] | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$")' "_time in the shape src/shared/format.ts reads"
           check web-requests-by-host '.report.chart.type == "line" and (.report.chart.series | length) == 4' "the four largest hosts as lines, the rest as Other"
           for slug in firewall-denied-top-sources privileged-group-changes; do check "$slug" '(.report.rows | length) > 0' "has rows"; done
           for report in reports/*.json; do slug=${report#reports/}; check "${slug%.json}" '.report.status != "failed"' "didn't fail"; done

@@ -4,15 +4,15 @@
 // no database. Run it with a real GEMINI_API_KEY to measure a change to the
 // prompt, the examples or the model; AI_PROVIDER=fake only exercises it.
 import { readFileSync } from 'node:fs';
-import { splContext } from '@/lib/ai/context';
-import { embed, generateJson } from '@/lib/ai/llm';
-import { SPL_PROMPT } from '@/lib/ai/prompts';
-import { exampleText, reportExample, topK } from '@/lib/ai/retrieval';
-import { checkSpl, pipeCommands, queryFromSteps, SplAnswerSchema } from '@/lib/ai/spl';
-import { validateSpl } from '@/lib/ai/validate';
-import { aiModel, embeddingModel } from '@/lib/ai/config';
-import type { SplunkReport } from '@/lib/reports';
-import { reports as fixtures } from '@/lib/splunk/fixtures/reports';
+import { splContext } from '@/ai/context';
+import { embed, generateJson } from '@/ai/llm';
+import { SPL_PROMPT } from '@/ai/prompts';
+import { exampleText, reportExample, topK } from '@/ai/retrieval';
+import { checkSpl, pipeCommands, queryFromSteps, SplAnswerSchema } from '@/ai/spl';
+import { validateSpl } from '@/ai/validate';
+import { aiModel, embeddingModel } from '@/ai/config';
+import type { SplunkReport } from '@/reports/reports';
+import { reports as fixtures } from '@/splunk/fixtures/reports';
 
 type Case = { request: string; indexes: string[]; fields: string[]; commands?: string[] };
 

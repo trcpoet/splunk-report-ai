@@ -25,7 +25,7 @@ flowchart LR
     splunk["Splunk REST API (:8089)<br/>or the dummy fixtures"]
     worker["Sync worker<br/>worker/sync.ts"]
     db[("MongoDB<br/>splunkevents")]
-    web["Web app (Next.js 16)<br/>pages, API routes, lib/dal.ts"]
+    web["Web app (Next.js 16)<br/>pages, API routes, src/reports/dal.ts"]
     ml["ML job (Python)<br/>ml/score.py"]
     gemini["Google Gemini"]
     browser["Browser"]
@@ -44,8 +44,8 @@ flowchart LR
 
 | Program | Code | How it runs | Talks to | Secrets it holds |
 |---|---|---|---|---|
-| **Web app** | `app/`, `components/`, `lib/` | `npm run dev` or `npm start`; on Vercel; Docker's `app` service | MongoDB; Gemini (if a key is set) | `BETTER_AUTH_SECRET`, `REVALIDATE_SECRET`, `GEMINI_API_KEY` |
-| **Sync worker** | `worker/sync.ts`, `lib/splunk/` | `npm run sync` (once) or `npm run sync:watch`; Docker's `setup` service runs it once | Splunk's REST API (live) or the fixtures; MongoDB; the web app's `/api/revalidate` | `SPLUNK_TOKEN`, `REVALIDATE_SECRET` |
+| **Web app** | `src/` (pages in `src/app/`) | `npm run dev` or `npm start`; on Vercel; Docker's `app` service | MongoDB; Gemini (if a key is set) | `BETTER_AUTH_SECRET`, `REVALIDATE_SECRET`, `GEMINI_API_KEY` |
+| **Sync worker** | `worker/sync.ts`, `src/splunk/` | `npm run sync` (once) or `npm run sync:watch`; Docker's `setup` service runs it once | Splunk's REST API (live) or the fixtures; MongoDB; the web app's `/api/revalidate` | `SPLUNK_TOKEN`, `REVALIDATE_SECRET` |
 | **Seed script** | `scripts/seed-demo-users.ts` | `npm run seed`, safe to repeat | MongoDB | `DEMO_PASSWORD`, `BETTER_AUTH_SECRET` |
 | **ML job** | `ml/` | `npm run ml`; Docker's `ml` profile | MongoDB; the web app's `/api/revalidate` | `REVALIDATE_SECRET` |
 | **Write SPL eval** | `scripts/eval-spl.ts` | `npm run eval:spl` | Gemini; no database | `GEMINI_API_KEY` |
@@ -53,7 +53,7 @@ flowchart LR
 Three design choices hold this together:
 - **MongoDB is the hand-off.** The programs never call each other, except the "refresh your cache" ping to `/api/revalidate`. So each one can be written in its own language (TypeScript, Python), and deployed and restarted on its own.
 - **The worker only reads what Splunk's scheduler already ran.** It never starts a search, so it doesn't compete for the scheduler's concurrency limit.
-- **One gate for report data.** Every page and API route reads reports through `lib/dal.ts`, which checks who is asking.
+- **One gate for report data.** Every page and API route reads reports through `src/reports/dal.ts`, which checks who is asking.
 
 ## Where data lives
 
@@ -87,7 +87,7 @@ erDiagram
 | `ai_embeddings` | web app | Vectors of searches for Write SPL's retrieval | 90 days |
 | `ml_run_scores`, `ml_report_scores` | ML job | How unusual each run is, and the learned attention per report | Replaced on each run of the job |
 
-The models are in `database/`, one file per collection ([reference](reference/database.md)). MongoDB enforces no schema; Mongoose checks it in code.
+The models are in `src/database/`, one file per collection, grouped by area ([reference](reference/database.md)). MongoDB enforces no schema; Mongoose checks it in code.
 
 ## How report data moves
 
@@ -112,12 +112,12 @@ sequenceDiagram
     A->>B: only the reports this viewer may see
 ```
 
-- **Which searches are synced.** Scheduled saved searches that email their results, plus any listed in `lib/report-config.ts`. A search missing from `report-config` is still synced, but only admins can see it.
+- **Which searches are synced.** Scheduled saved searches that email their results, plus any with a card in `config/report-cards.yaml`. An emailed search without a card is still synced, but only admins can see it.
 - **Only new runs.** The worker skips sids it has already stored, so running it again adds only new runs. One failing report doesn't stop the others.
 - **Splunk forgets, MongoDB remembers.** Splunk deletes a run's results after `dispatch.ttl`, two schedule periods by default. The worker must run more often than that, and MongoDB keeps the history.
-- **Derived fields are worked out once, in the worker.** `lib/splunk/map.ts` turns Splunk's JSON into the app's models:
+- **Derived fields are worked out once, in the worker.** `src/splunk/map.ts` turns Splunk's JSON into the app's models:
   - the schedule text from the cron line;
-  - the status, from the report's status rule in `report-config`;
+  - the status, from the `warn` and `fail` rules on the report's card;
   - the chart and the headline numbers.
   The web app reads finished documents and computes nothing heavy per request.
 - **Two refreshes.** The second ping, 3 s after the first, catches a page that read the database just before the new data landed.
@@ -127,10 +127,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant P as proxy.ts
-    participant L as app/layout.tsx
+    participant P as src/proxy.ts
+    participant L as src/app/layout.tsx
     participant G as Page (server component)
-    participant D as lib/dal.ts
+    participant D as src/reports/dal.ts
     participant C as Server cache
 
     B->>P: GET /reports/web-5xx-error-rate
@@ -145,22 +145,22 @@ sequenceDiagram
 ```
 
 - **Next.js 16 with Cache Components.** Each page has a static shell, prerendered at build time, and dynamic parts that stream in.
-  - The dynamic parts sit in `<Suspense>`, or `<Reveal>`, which adds a short crossfade (`components/Transitions.tsx`).
-  - Each one has a skeleton the same size as the content (`components/Skeletons.tsx`), so nothing jumps.
-- **Server components by default.** They read data through `lib/dal.ts`. Files marked `'use client'` handle clicks, typing, charts and streaming.
-- **`proxy.ts` is not the security check.** It only redirects visitors without a session cookie. `lib/dal.ts` checks the session and the access on every read.
+  - The dynamic parts sit in `<Suspense>`, or `<Reveal>`, which adds a short crossfade (`src/shared/components/Transitions.tsx`).
+  - Each one has a skeleton the same size as the content (`src/shared/components/Skeletons.tsx`), so nothing jumps.
+- **Server components by default.** They read data through `src/reports/dal.ts`. Files marked `'use client'` handle clicks, typing, charts and streaming.
+- **`src/proxy.ts` is not the security check.** It only redirects visitors without a session cookie. `src/reports/dal.ts` checks the session and the access on every read.
 - **Hidden looks missing.** A report someone may not see gets the same 404 and "Report not found" as one that doesn't exist, so its name doesn't leak.
-- **Errors** land on `app/error.tsx` (a page failed, usually because the database didn't answer within 5 s), `app/global-error.tsx` (the layout failed), or a not-found page.
+- **Errors** land on `src/app/error.tsx` (a page failed, usually because the database didn't answer within 5 s), `src/app/global-error.tsx` (the layout failed), or a not-found page.
 
 ### Caching layers
 
 | Layer | What | Where | How long | Cleared by |
 |---|---|---|---|---|
-| Report data | Every report, results, run counts, last sync time, for all viewers | Server memory (`'use cache'` in `lib/dal.ts`, tag `reports`) | Up to a minute (`cacheLife('minutes')`), then refreshed in the background on the next visit | Every sync and ML run, through `/api/revalidate` |
+| Report data | Every report, results, run counts, last sync time, for all viewers | Server memory (`'use cache'` in `src/reports/dal.ts`, tag `reports`) | Up to a minute (`cacheLife('minutes')`), then refreshed in the background on the next visit | Every sync and ML run, through `/api/revalidate` |
 | The viewer | Session and groups | That person's browser only (`'use cache: private'`) | 5 minutes | Signing in or out (full page load) |
 | Prefetched pages | Page shells, and a report's content when you point at its card | Browser router cache | 5 minutes | Navigation, refresh |
 | Visited pages | The last 3 routes, kept hidden with their state (React Activity) | Browser | While the tab is open | Eviction, reload |
-| Open pages | Re-rendered from the server cache | Browser | Every 60 s (`components/AutoRefresh.tsx`), except Ask AI pages | — |
+| Open pages | Re-rendered from the server cache | Browser | Every 60 s (`src/shared/components/AutoRefresh.tsx`), except Ask AI pages | — |
 
 Chats, votes and usage are never cached. Their reads start with `await connection()`, so they run per request. More detail: [caching-and-loading.md](caching-and-loading.md).
 
@@ -170,18 +170,18 @@ Chats, votes and usage are never cached. Their reads start with `await connectio
 flowchart LR
     signin["Sign-in<br/>Better Auth, email + password"] --> session["Session cookie"]
     session --> viewer["getViewer()<br/>role and groups from user_access"]
-    report["Report allowedGroups<br/>(report-config groups,<br/>or its email lists)"] --> canview{"canView()<br/>lib/access.ts"}
+    report["Report allowedGroups<br/>(its card's groups,<br/>or its email lists)"] --> canview{"canView()<br/>src/people/access.ts"}
     viewer --> canview
     canview -- "admin, or a shared group" --> shown["Shown"]
     canview -- "otherwise" --> missing["404, like a missing report"]
 ```
 
-- **Sign-in** is Better Auth with email and password (`lib/auth.ts`, `lib/auth-options.ts`). Sign-up is off; accounts come from `npm run seed`. `/api/auth` serves only sign-in, sign-out and session lookups.
+- **Sign-in** is Better Auth with email and password (`src/people/auth.ts`, `src/people/auth-options.ts`). Sign-up is off; accounts come from `npm run seed`. `/api/auth` serves only sign-in, sign-out and session lookups.
 - **Access is kept apart from sign-in.** `user_access` holds each person's role and groups by email. Moving to company SSO changes how that collection is filled, not the access code.
-- **One rule.** `canView()` in `lib/access.ts`: admins see everything. Anyone else sees a report when one of their groups is in its `allowedGroups`.
-- **`allowedGroups`** come from the report's `groups` in `lib/report-config.ts`, or else from its email recipients (`secops@example.com` → `secops`). See [report-access.md](report-access.md).
-- **Everything per person is scoped to them.** Chats (`lib/chats.ts`), votes (`lib/feedback.ts`) and saved examples (`lib/spl-examples.ts`) are scoped the same way. For anyone else, a chat doesn't exist.
-- **The AI sees only what the viewer sees.** Its prompt is built from `lib/dal.ts`'s answer for that viewer.
+- **One rule.** `canView()` in `src/people/access.ts`: admins see everything. Anyone else sees a report when one of their groups is in its `allowedGroups`.
+- **`allowedGroups`** come from the `groups` on the report's card in `config/report-cards.yaml`, or else from its email recipients (`secops@example.com` → `secops`). See [report-access.md](report-access.md).
+- **Everything per person is scoped to them.** Chats (`src/ai/chats.ts`), votes (`src/ai/feedback.ts`) and saved examples (`src/ai/spl-examples.ts`) are scoped the same way. For anyone else, a chat doesn't exist.
+- **The AI sees only what the viewer sees.** Its prompt is built from `src/reports/dal.ts`'s answer for that viewer.
 
 ## Ask AI
 
@@ -189,9 +189,9 @@ flowchart LR
 sequenceDiagram
     participant V as ChatView (browser)
     participant R as /api/ai/chat
-    participant T as lib/ai/turn.ts
-    participant X as lib/ai/context.ts
-    participant L as lib/ai/llm.ts
+    participant T as src/ai/turn.ts
+    participant X as src/ai/context.ts
+    participant L as src/ai/llm.ts
     participant G as Gemini
     participant M as MongoDB
 
@@ -203,17 +203,17 @@ sequenceDiagram
     L->>G: generateContentStream
     G-->>L: text pieces
     L-->>V: NDJSON events: start, text…, done
-    R->>M: save the question and answer together (lib/chats.ts)
+    R->>M: save the question and answer together (src/ai/chats.ts)
     V->>V: CHAT_SAVED: the sidebar puts the chat first
 ```
 
-- **One file calls the AI.** `lib/ai/llm.ts` exposes `streamText`, `generateJson` and `embed`. To use another provider (Vertex AI, a company LLM), rewrite only this file. `AI_PROVIDER=fake` returns canned answers with no key.
+- **One file calls the AI.** `src/ai/llm.ts` exposes `streamText`, `generateJson` and `embed`. To use another provider (Vertex AI, a company LLM), rewrite only this file. `AI_PROVIDER=fake` returns canned answers with no key.
 - **Two modes.**
-  - **Ask about reports** streams Markdown back as NDJSON (`lib/ai/stream.ts`).
-  - **Write SPL** returns JSON checked against a schema (`lib/ai/spl.ts`). The page checks the search with a built-in SPL checker each time it shows the answer, without running it (`lib/ai/validate.ts`).
-- **Retrieval for Write SPL.** The request and the example searches become vectors (`lib/ai/retrieval.ts`, `lib/spl-examples.ts`). The examples are the viewer's reports plus saved answers. The 5 closest examples go into the prompt.
+  - **Ask about reports** streams Markdown back as NDJSON (`src/ai/stream.ts`).
+  - **Write SPL** returns JSON checked against a schema (`src/ai/spl.ts`). The page checks the search with a built-in SPL checker each time it shows the answer, without running it (`src/ai/validate.ts`).
+- **Retrieval for Write SPL.** The request and the example searches become vectors (`src/ai/retrieval.ts`, `src/ai/spl-examples.ts`). The examples are the viewer's reports plus saved answers. The 5 closest examples go into the prompt.
 - **Saving.** A question and its answer are saved together, once the answer is complete. An answer that is stopped or fails isn't saved.
-- **Limits.** Per account and site-wide, per UTC day (`lib/ai/usage.ts`). Summaries and briefings are written once per data key, shared, and counted once (`lib/ai/summaries.ts`, `lib/ai/keys.ts`).
+- **Limits.** Per account and site-wide, per UTC day (`src/ai/usage.ts`). Summaries and briefings are written once per data key, shared, and counted once (`src/ai/summaries.ts`, `src/ai/keys.ts`).
 - **Safety.**
   - Report rows are marked as data in the prompt.
   - Links in answers can only point at the viewer's reports, and images aren't shown.
@@ -223,14 +223,14 @@ More detail: [ai.md](ai.md).
 
 ## Statistics and the ML job
 
-- **Plain statistics, in the app** (`lib/insights.ts`).
+- **Plain statistics, in the app** (`src/reports/insights.ts`).
   - A newest run is unusual when it sits 3.5 or more robust spreads from the median of at least 4 earlier successful runs.
   - The briefing and Explain show this without any AI.
 - **The ML job** (`ml/score.py`, `ml/features.py`) runs after a sync.
   1. An Isolation Forest scores every run, from 0 (typical) to 1 (most unusual), and flags the 5% that differ most.
   2. Once there are 20 "Worth flagging?" votes of both kinds, a logistic regression learns which flags deserve attention.
   3. It writes `ml_run_scores` and `ml_report_scores`, then pings `/api/revalidate`.
-- **The app reads the scores with the reports** (`lib/dal.ts`, as `modelRun` and `attention`). The briefing, Explain and the AI context all use them.
+- **The app reads the scores with the reports** (`src/reports/dal.ts`, as `modelRun` and `attention`). The briefing, Explain and the AI context all use them.
 
 More detail: [ml.md](ml.md) and [ml/README.md](../ml/README.md).
 
@@ -262,8 +262,8 @@ Running it with a company's data: [running-inside-a-company.md](running-inside-a
 - **Secrets.** `.env*` files stay out of git, except `.env.example`.
   - The Splunk token lives only in the worker's environment.
   - The web app holds no Splunk token.
-- **Data access.** Every read checks the viewer (`lib/dal.ts`, `lib/chats.ts`, `lib/feedback.ts`, `lib/spl-examples.ts`). `allowedGroups` never leave the server.
+- **Data access.** Every read checks the viewer (`src/reports/dal.ts`, `src/ai/chats.ts`, `src/ai/feedback.ts`, `src/ai/spl-examples.ts`). `allowedGroups` never leave the server.
 - **Demo mode.** `DEMO_MODE=true` shows the shared demo password on the sign-in page. Use it only with dummy data.
 - **AI.** Free-tier Gemini keys may let Google use the prompts. Use them only with dummy data. For company data, use Vertex AI or the company's own LLM ([ai.md](ai.md#privacy-and-safety)).
 - **The app refresh.** `/api/revalidate` compares `REVALIDATE_SECRET` in constant time. Without the secret it answers 401.
-- **After signing out.** Back and Forward reload pages the browser kept (`app/layout.tsx`), so a signed-out tab can't show the previous person's reports.
+- **After signing out.** Back and Forward reload pages the browser kept (`src/app/layout.tsx`), so a signed-out tab can't show the previous person's reports.

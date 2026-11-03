@@ -21,7 +21,7 @@ MongoDB stores JSON-like **documents** in **collections** instead of rows in tab
 | primary key | `_id` (always there) | plus unique `slug` (reports) and `sid` (runs) |
 | table schema | **none on the server**. Mongoose checks it in our code. | `database/*.model.ts` |
 | JOIN | usually not needed: store related data together | each report stores its recent runs (`history`) inside it |
-| GROUP BY | aggregation pipeline | `loadRunCounts()` in `lib/dal.ts` |
+| GROUP BY | aggregation pipeline | `loadRunCounts()` in `src/reports/dal.ts` |
 | scheduled cleanup job | **TTL index**: MongoDB deletes old documents itself | runs older than `RUN_RETENTION_DAYS` (90) disappear |
 | INSERT … ON CONFLICT UPDATE | `updateOne(…, { upsert: true })` | how the sync and the seed script write |
 | migrations | none: documents just gain new fields | — |
@@ -30,8 +30,8 @@ MongoDB stores JSON-like **documents** in **collections** instead of rows in tab
 
 One setting, `MONGODB_URI=mongodb://127.0.0.1:27017/splunkevents`, used by two clients:
 
-- **Mongoose** (`lib/mongodb.ts`) for report data. It opens one connection and reuses it, even across dev hot reloads.
-- **The MongoDB driver** (`lib/auth-options.ts`) for logins, used by Better Auth.
+- **Mongoose** (`src/database/mongodb.ts`) for report data. It opens one connection and reuses it, even across dev hot reloads.
+- **The MongoDB driver** (`src/people/auth-options.ts`) for logins, used by Better Auth.
 
 In the web app, both give up after 5 seconds if the database doesn't answer, so pages show an error screen with **Try again** instead of hanging (see [caching-and-loading.md](caching-and-loading.md)). The sync worker and the seed script keep the driver's default of 30 seconds, so their writes ride out a brief Atlas primary election.
 
@@ -80,7 +80,7 @@ Splunk ──► sync worker ──► MongoDB ──► app ──► browser
    ```
 
 2. **After each sync**, the worker calls `POST /api/revalidate`, which clears the app's cached report data. This needs `APP_URL` and `REVALIDATE_SECRET` in `.env.local`.
-3. **Open pages refresh themselves** every minute, and as soon as you switch back to the tab (`components/AutoRefresh.tsx`). Filters and scroll position stay put.
+3. **Open pages refresh themselves** every minute, and as soon as you switch back to the tab (`src/shared/components/AutoRefresh.tsx`). Filters and scroll position stay put.
 
 **Fixture mode vs. live mode.** With `SPLUNK_MODE=fixture` (today), the worker loads the dummy reports, so after the first sync nothing new arrives. For real data, follow [Connecting live Splunk](connecting-live-splunk.md). Nothing else in the app changes.
 
@@ -88,14 +88,14 @@ Splunk ──► sync worker ──► MongoDB ──► app ──► browser
 
 ## Who sees which report
 
-Admins see every report. Anyone else sees a report when at least one of their groups (in `user_access`) is also one of the report's groups (from `lib/report-config.ts`, or else its email lists). [Report settings and access](report-access.md) explains the rule, every `report-config.ts` setting, and a worked example of setting up teams.
+Admins see every report. Anyone else sees a report when at least one of their groups (in `user_access`) is also one of the report's groups (from its card in `config/report-cards.yaml`, or else its email lists). [Report settings and access](report-access.md) explains the rule, the card's settings, and a worked example of setting up teams.
 
 ## Ideas for later: where users' groups could come from
 
 Today's rule (user groups ∩ report groups) stays the same in every option below. Only the source of the groups changes.
 
 1. **Edited by hand (today).** Admins update `user_access` in mongosh. Simplest, but doesn't scale and leaves no record of who changed what.
-2. **An admin page in the app.** Edit users' groups and each report's groups in the browser, and log every change in an `access_audit` collection. Report groups set here would override `report-config.ts`, so changing access wouldn't need a deploy.
+2. **An admin page in the app.** Edit users' groups and each report's groups in the browser, and log every change in an `access_audit` collection. Report groups set here would override the cards' `groups`, so changing access wouldn't need a deploy.
 3. **Your company login provider (Okta, Entra, Google Workspace).** At sign-in, copy the user's groups into `user_access` (the model already has `source: 'idp'` for this). HR and IT keep groups up to date, not you. This is the best long-term option and fits the Supabase/AWS move.
 4. **Splunk's own permissions.** The sync already stores each report's Splunk read roles (`splunk.readRoles`). You could also fetch users' Splunk roles, so someone sees exactly what Splunk lets them see. The catch: Splunk roles are usually too broad, often "everyone in the app".
 5. **Expand email lists.** If `secops@` is a real mailing list, look up its members through Google or Microsoft Graph. Then "receives the email" means "can see the report", which matches how people already think about it.
@@ -108,10 +108,10 @@ These are already installed. There's no need to add more for now.
 
 | Library | Used for | Where |
 |---|---|---|
-| **shadcn/ui charts** (built on **Recharts**) | bar, column, line and area charts with themed tooltips | `components/ui/chart.tsx`, `components/ReportChart.tsx`, `lib/chart-theme.ts` |
-| **TanStack Table** (`@tanstack/react-table`) | results table: click a header to sort, type to filter | `components/ResultsTable.tsx` |
-| **`lib/format.ts`** (our own) | numbers (`48,210`, `1.3K`), dates and durations, always in UTC so the server and the browser show the same text | everywhere |
+| **shadcn/ui charts** (built on **Recharts**) | bar, column, line and area charts with themed tooltips | `src/shared/ui/chart.tsx`, `src/reports/components/ReportChart.tsx`, `src/shared/chart-theme.ts` |
+| **TanStack Table** (`@tanstack/react-table`) | results table: click a header to sort, type to filter | `src/reports/components/ResultsTable.tsx` |
+| **`src/shared/format.ts`** (our own) | numbers (`48,210`, `1.3K`), dates and durations, always in UTC so the server and the browser show the same text | everywhere |
 | **lucide-react** | icons | everywhere |
-| **Tailwind CSS** | styling | `app/globals.css` |
+| **Tailwind CSS** | styling | `src/app/globals.css` |
 
 To add a component, the `shadcn` MCP server in `.mcp.json` can browse and install shadcn/ui components.
