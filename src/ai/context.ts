@@ -1,7 +1,7 @@
 import { formatDateTime, formatDuration } from '@/shared/format';
 import { findUnusualRun } from '@/reports/insights';
 import type { SplExample } from '@/ai/retrieval';
-import type { Cell, SplunkReport, SyncInfo } from '@/reports/reports';
+import { lateDue, type Cell, type SplunkReport, type SyncInfo } from '@/reports/reports';
 
 // What the model is told about the reports. Two rules:
 // - Only reports the person may see. Callers pass what src/reports/dal.ts returned for
@@ -49,7 +49,7 @@ function describeReport(report: SplunkReport): string {
         `Schedule: ${clean(report.schedule)}, time range ${clean(report.timeRange)}`,
         `Index: ${clean(report.index)}`,
         `Last run: ${formatDateTime(report.lastRun)}${report.resultsRunAt && report.resultsRunAt !== report.lastRun ? `; results are from ${formatDateTime(report.resultsRunAt)}` : ''}`,
-        ...(report.lateSince ? [`Late: the run due at ${formatDateTime(report.lateSince)} hasn't arrived, as of the last sync`] : []),
+        ...(report.lateSince ? [`Late: ${lateDue(report.lateSince)}, as of the last sync`] : []),
         ...(report.highlights.length > 0
             ? [`Highlights: ${report.highlights.map(({ label, value, note }) => `${clean(label)} ${clean(value)}${note ? ` (${clean(note)})` : ''}`).join('; ')}`]
             : []),

@@ -265,16 +265,23 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
         .slice(0, limit)
         .map(({ other }) => other);
 
-// A report needs attention when its latest run warns or failed, or a run is
-// late. The home page's count, the briefing and Ask AI's Reports button all
-// use this.
-export const needsAttention = (report: Pick<ReportListItem, 'status' | 'lateSince'>) =>
-    report.status === 'warning' || report.status === 'failed' || Boolean(report.lateSince);
+// Whether the newest run's status itself is a problem: it warns or failed.
+export const hasProblemStatus = (status: ReportHealth) => status === 'warning' || status === 'failed';
 
-// What a late report says, for its page, the briefing and the badge's tooltip.
+// A report needs attention when its status is a problem, or a run is late.
+// The home page's count, the briefing, the suggestions and Ask AI's Reports
+// button all use this.
+export const needsAttention = (report: Pick<ReportListItem, 'status' | 'lateSince'>) =>
+    hasProblemStatus(report.status) || Boolean(report.lateSince);
+
+// "The run due at Oct 2, 11:05 UTC hasn't arrived": the badge's tooltip, the
+// start of lateMessage, and what the AI is told.
+export const lateDue = (lateSince: string) => `The run due at ${formatDateTime(lateSince)} hasn't arrived`;
+
+// What a late report says on its page and in the briefing.
 export const lateMessage = ({ lateSince, lastRun }: Pick<ReportListItem, 'lateSince' | 'lastRun'>) =>
     lateSince
-        ? `The run due at ${formatDateTime(lateSince)} hasn't arrived. The newest run is from ${formatDateTime(lastRun)}. Splunk may have skipped it, or the app couldn't copy it: check the report's schedule in Splunk.`
+        ? `${lateDue(lateSince)}. The newest run is from ${formatDateTime(lastRun)}. Splunk may have skipped it, or the app couldn't copy it: check the report's schedule in Splunk.`
         : '';
 
 // A card's runbook as a link the page can draw: only an http(s) address. The

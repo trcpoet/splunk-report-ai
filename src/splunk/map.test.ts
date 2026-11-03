@@ -113,6 +113,15 @@ describe('lateSince', () => {
         assert.equal(hourly('10:05', '11:05', '12:00', { live: false }), null);
     });
 
+    test("no false alarm when Splunk runs the schedule in another time zone than SPLUNK_TZ", () => {
+        // Daily at 06:00 in the owner's zone (UTC); the app thinks New York.
+        const daily = { cron: '0 6 * * *', lastRun: new Date('2026-10-02T06:00:00Z'), nextRun: new Date('2026-10-03T06:00:00Z'), typicalSec: 30, live: true };
+        assert.equal(lateSince({ ...daily, timeZone: 'America/New_York', now: new Date('2026-10-02T12:00:00Z') }), null);
+        assert.equal(lateSince({ ...daily, timeZone: 'UTC', now: new Date('2026-10-02T12:00:00Z') }), null);
+        // In the right zone, a missed day still counts.
+        assert.equal(lateSince({ ...daily, timeZone: 'UTC', lastRun: new Date('2026-10-01T06:00:00Z'), now: new Date('2026-10-02T12:00:00Z') })?.toISOString(), '2026-10-02T06:00:00.000Z');
+    });
+
     test('never for a report without runs, or a schedule it cannot read', () => {
         assert.equal(lateSince({ cron: '5 * * * *', timeZone: 'UTC', lastRun: null, nextRun: at('11:05'), now: at('12:00'), typicalSec: 0, live: true }), null);
         assert.equal(lateSince({ cron: 'not a cron', timeZone: 'UTC', lastRun: at('09:05'), nextRun: at('11:05'), now: at('12:00'), typicalSec: 0, live: false }), null);

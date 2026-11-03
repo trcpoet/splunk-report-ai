@@ -163,10 +163,10 @@ Finding the example searches most like a request (RAG).
 ### `keys.ts` (pure)
 
 Names for cached AI text and for things people vote on.
-- **`reportSummaryKey(report)`** and **`briefingKey(reports)`** change when what the text was written from changes: a new run, a status, the prompt version.
+- **`reportSummaryKey(report)`** and **`briefingKey(reports)`** change when what the text was written from changes: a new run, a status, a report turning late (`lateSince`, which brings no new run), the prompt version.
 - **`reportAndSplKey(report)`** names Explain report and SPL's text. It also changes with the search, which someone may edit in Splunk before the report runs again.
 - **`summarySlug(key)`** is the report a saved summary is about (either kind), so a vote on it checks the voter can see that report (`src/ai/feedback.ts`).
-- **`flagId(slug, runAt, reason)`** names a briefing flag for its vote.
+- **`flagId(slug, runAt, reason)`** names a briefing flag for its vote: `status`, `unusual`, or `late` (then `runAt` is when the missing run was due). **`attentionFlagId(report)`** picks the one a "Needs attention" item is voted on: its status when that warns or fails, otherwise its lateness. `ml/score.py` learns only from `status` and `unusual` votes, since a `late` vote is about a run that never came.
 - **Tested.**
 
 ## Chats, votes and saved examples

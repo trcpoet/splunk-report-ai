@@ -39,7 +39,7 @@ Each report is compared with its own history first. That puts a report with 3 re
 Every flag in the briefing asks **Worth flagging?** with 👍 / 👎. Each vote is saved in `ai_feedback`, with what was flagged worked out on the server: the report, the run, why it was flagged (its status, or an unusual run, with the score), and the forest's score if it had one.
 
 Those votes are labels: examples of flags people found useful, or not. The job trains a **logistic regression** on them:
-- **Inputs:** the run's features, the forest's score, and whether the flag was for a status (warning or failed) or for an unusual run.
+- **Inputs:** the run's features, the forest's score, and whether the flag was for a status (warning or failed) or for an unusual run. Votes on a **Late** flag are left out: they're about a run that never came, so there are no features to learn from.
 - **Output:** for each report's newest run, the chance that a flag on it is worth someone's attention (`ml_report_scores`).
 - **It waits for 20 votes, with at least one 👍 and one 👎.** Until then it says how many it has, and the briefing keeps its usual order.
 - **It checks itself:** it holds back some votes, trains on the rest, and prints how often it predicts the held-back ones right (stratified k-fold cross-validation).

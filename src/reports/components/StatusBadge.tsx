@@ -1,6 +1,5 @@
 import { ClockAlert } from "lucide-react";
-import { formatDateTime } from "@/shared/format";
-import type { ReportHealth } from "@/reports/reports";
+import { lateDue, type ReportHealth } from "@/reports/reports";
 
 const LABELS: Record<ReportHealth, string> = {
     success: 'Healthy',
@@ -17,9 +16,10 @@ const StatusBadge = ({ status }: { status: ReportHealth }) => (
 )
 
 // Beside the status when a run that should be here hasn't arrived
-// (lateSince). The status is still the newest run's; this says it's old.
+// (lateSince). The status is still the newest run's; this says it's old. The
+// tooltip is extra: the report page and the briefing say the same in words.
 export const LateBadge = ({ since }: { since: string }) => (
-    <span className="status-badge status-late" title={`The run due at ${formatDateTime(since)} hasn't arrived`}>
+    <span className="status-badge status-late" title={lateDue(since)}>
         <ClockAlert aria-hidden="true" />
         Late
     </span>

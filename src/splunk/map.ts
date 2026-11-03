@@ -134,12 +134,19 @@ export function lateSince({ cron, timeZone, lastRun, nextRun, typicalSec, now, l
     const grace = Math.max(LATE_GRACE_MINUTES * 60_000, 2 * typicalSec * 1000);
     const bound = nextRun && nextRun < now ? nextRun : now;
 
-    let due: Date | undefined;
+    let job: Cron;
     try {
-        due = new Cron(cron, { timezone: timeZone, paused: true }).previousRuns(1, bound)[0];
+        job = new Cron(cron, { timezone: timeZone, paused: true });
     } catch {
         return null;
     }
+    // Splunk runs a search's schedule in its owner's time zone, which can
+    // differ from SPLUNK_TZ (and allow_skew shifts it a little). Then the
+    // schedule's times here aren't Splunk's, and judging by them would raise
+    // false alarms every day, so only judge when Splunk's next run is one of
+    // them. An hourly schedule fits any whole-hour zone.
+    const fits = !nextRun || job.previousRuns(1, new Date(nextRun.getTime() + 1000))[0]?.getTime() === nextRun.getTime();
+    const due = fits ? job.previousRuns(1, bound)[0] : undefined;
     if (due && lastRun < due && now.getTime() - due.getTime() >= grace) return due;
     if (live && nextRun && lastRun < nextRun && now.getTime() - nextRun.getTime() >= grace) return nextRun;
     return null;

@@ -6,6 +6,7 @@ import { summarySlug } from '@/ai/keys';
 import { isOwnAnswer } from '@/ai/chats';
 import { getVisibleReports } from '@/reports/dal';
 import { findUnusualRun } from '@/reports/insights';
+import { hasProblemStatus } from '@/reports/reports';
 import connectDB from '@/database/mongodb';
 
 // 👍 / 👎 votes. Each person has one vote per thing; voting the same way again
@@ -42,13 +43,19 @@ async function findTarget(kind: FeedbackKind, targetId: string): Promise<Target 
     }
 
     // A flag: "<slug>:<runAt>:<reason>" (flagId in src/ai/keys.ts).
-    const [, slug = '', runAt, reason] = targetId.match(/^([a-z0-9-]+):(.+):(status|unusual)$/) ?? [];
+    const [, slug = '', runAt, reason] = targetId.match(/^([a-z0-9-]+):(.+):(status|unusual|late)$/) ?? [];
     const report = visible(slug);
     if (!report) return null;
 
     if (reason === 'status') {
-        if ((report.status !== 'warning' && report.status !== 'failed') || report.lastRun !== runAt) return null;
+        if (!hasProblemStatus(report.status) || report.lastRun !== runAt) return null;
         return { reportSlug: slug, flag: { reason, status: report.status, runAt } };
+    }
+    // runAt is when the missing run was due. No run has that time, so the ML
+    // job, which learns from flags about runs, leaves these votes out.
+    if (reason === 'late') {
+        if (report.lateSince !== runAt) return null;
+        return { reportSlug: slug, flag: { reason, runAt } };
     }
     const unusual = findUnusualRun(report.history, report.modelRun);
     if (!unusual || unusual.runAt !== runAt) return null;
