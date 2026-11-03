@@ -100,6 +100,8 @@ The values that matter most:
 
 ## Before you go live
 
+The full list, from approval for the code to data handling, is in [running-inside-a-company.md](running-inside-a-company.md).
+
 - **Sign-in.** Today the app's only accounts are the demo accounts (`demo.enabled`), and those are for dummy data only. Signing in with your company's single sign-on (OIDC or SAML, against AD) is the next step to build.
 - **One web pod.**
   - Each pod keeps its own copy of the report data, and the connector refreshes one pod after each sync.

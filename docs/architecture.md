@@ -257,6 +257,8 @@ See [configuration.md](configuration.md#build-deploy-and-ci).
 
 ## Security at a glance
 
+Running it with a company's data: [running-inside-a-company.md](running-inside-a-company.md).
+
 - **Secrets.** `.env*` files stay out of git, except `.env.example`.
   - The Splunk token lives only in the worker's environment.
   - The web app holds no Splunk token.
