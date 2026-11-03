@@ -1,5 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { stringify } from 'yaml';
+import { iconFor } from '@/reports/icons';
+import type { ReportCategory } from '@/reports/reports';
 import type { SplunkEntry, SplunkFeed } from './types';
 import type { SplunkTransport } from './transport';
 
@@ -219,14 +221,17 @@ const isRed = (color: string) => {
     return red > 150 && red > green * 1.5 && red > blue * 1.5;
 };
 
-export function draftCard(tile: Tile, category = 'Other'): string {
+export function draftCard(tile: Tile, category: ReportCategory = 'Other'): string {
     const column = tile.kind === 'single value' ? guessColumn(tile.search) : '<column>';
     const lowIsBad = tile.colors.length > 0 && isRed(tile.colors[0] ?? '') && !isRed(tile.colors.at(-1) ?? '');
     const [first, second] = lowIsBad ? tile.thresholds : [...tile.thresholds].reverse();
     const compare = (limit: number) => (lowIsBad ? { column, below: limit } : { column, above: limit });
     const word = lowIsBad ? 'below' : 'above';
 
-    const card: Record<string, unknown> = { slug: slugify(tile.title), category, tags: [] };
+    // The app would guess the same icon from the title alone; the search
+    // often says more ("index=firewall"), so the draft writes its guess down.
+    const { icon } = iconFor({ title: tile.title, description: tile.search, category });
+    const card: Record<string, unknown> = { slug: slugify(tile.title), category, icon, tags: [] };
     if (tile.kind === 'single value') {
         card.chart = 'none';
         card.highlights = [{

@@ -1,4 +1,5 @@
 import { formatDateTime } from '@/shared/format';
+import type { IconName } from '@/reports/icons';
 
 // Report types and pure helpers shared by the app and the sync worker. Report
 // data comes from MongoDB through src/reports/dal.ts; the dummy data the sync loads in
@@ -90,6 +91,8 @@ export type SplunkReport = {
     title: string;
     description: string;
     category: ReportCategory;
+    // The card's icon, or the app's guess (src/reports/icons.ts).
+    icon: IconName;
     app: string;
     owner: string;
     schedule: string;
@@ -180,7 +183,7 @@ export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'> &
 
 export type ReportSummary = Pick<
     SplunkReport,
-    'slug' | 'title' | 'description' | 'category' | 'status' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
+    'slug' | 'title' | 'description' | 'category' | 'icon' | 'status' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
 > & {
     // null until the report has results.
     headline: ReportHeadline | null;
@@ -198,8 +201,8 @@ const headlineOf = ({ highlights, resultsRunAt, lastRun }: Pick<ReportListItem, 
 };
 
 export const toSummary = (report: ReportListItem): ReportSummary => {
-    const { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index } = report;
-    return { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index, headline: headlineOf(report) };
+    const { slug, title, description, category, icon, status, schedule, lastRun, recipients, history, tags, owner, index } = report;
+    return { slug, title, description, category, icon, status, schedule, lastRun, recipients, history, tags, owner, index, headline: headlineOf(report) };
 };
 
 // The newest last run first, reports with no run yet last, and reports that

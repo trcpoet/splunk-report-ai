@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ICON_NAMES } from '@/reports/icons';
 
 // What config/report-cards.yaml may hold: one entry per report, keyed by the
 // report's exact Splunk name. The descriptions here are also the help an editor
@@ -78,6 +79,9 @@ export const CATEGORIES = ['Security', 'Operations', 'Infrastructure', 'Business
 export const ReportCard = z.object({
     slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase words joined by hyphens').describe("The report's web address: /reports/<slug>."),
     category: z.enum(CATEGORIES),
+    icon: z.enum(ICON_NAMES, {
+        error: (issue) => `${JSON.stringify(issue.input)} isn't one of the app's icons. Use one of: ${ICON_NAMES.join(', ')}.`,
+    }).optional().describe("The icon on the report's card and page, by its name on lucide.dev/icons. Without it, the app picks one from the report's title, tags and category."),
     tags: z.array(z.string()).default([]),
     groups: z.array(z.string()).optional().describe('Who may see it. Default: the email lists it was sent to (secops@example.com is the group secops).'),
     index: z.string().optional().describe('What the report page says it searches, when the search\'s own index=… isn\'t clear.'),

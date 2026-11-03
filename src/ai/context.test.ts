@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { MAX_ROWS, reportsContext, splContext } from '@/ai/context';
 import { reportExample, savedExample } from '@/ai/retrieval';
+import { reportIcon } from '@/reports/icons';
 import type { SplunkReport } from '@/reports/reports';
 import { reports as fixtures, type FixtureReport } from '@/splunk/fixtures/reports';
 
@@ -9,6 +10,7 @@ import { reports as fixtures, type FixtureReport } from '@/splunk/fixtures/repor
 const toReport = (fixture: FixtureReport): SplunkReport => ({
     ...fixture,
     app: fixture.app,
+    icon: reportIcon(fixture),
     chart: null,
     resultsRunAt: fixture.lastRun,
 });

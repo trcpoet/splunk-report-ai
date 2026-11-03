@@ -168,6 +168,7 @@ export function toReportConfig(card: ReportCard, custom?: CustomRules): ReportCo
         slug: card.slug,
         category: card.category,
         tags: card.tags,
+        ...(card.icon ? { icon: card.icon } : {}),
         ...(card.groups ? { groups: card.groups } : {}),
         ...(card.chart ? { chart: card.chart } : {}),
         ...(card.index ? { index: card.index } : {}),

@@ -95,6 +95,7 @@ describe('splunk:tiles', () => {
         assert.deepEqual(card.fail?.when, { column: 'Used %', above: 95 });
         assert.deepEqual(card.warn?.when, { column: 'Used %', above: 85 });
         assert.deepEqual(card.highlights?.[0]?.value, { first: 'Used %' });
+        assert.equal(card.icon, 'hard-drive');
     });
 
     test('a tile whose first color is red warns on low values', () => {

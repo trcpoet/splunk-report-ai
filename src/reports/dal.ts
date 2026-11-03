@@ -8,6 +8,7 @@ import { MlReportScore, MlRunScore, Report, ReportRun, SyncState, SYNC_STATE_ID,
 import { canView, type Viewer } from '@/people/access';
 import { auth } from '@/people/auth';
 import connectDB from '@/database/mongodb';
+import { reportIcon } from '@/reports/icons';
 import { syncProblem, type Cell, type ChartThreshold, type ModelRun, type ReportChart, type ReportHighlight, type ReportListItem, type RunHealth, type RunOutcomeDay, type SplunkReport, type SyncInfo } from '@/reports/reports';
 import { lastDays, runHealthRows, totalsByDay, type RunCount } from '@/reports/run-health';
 import { scheduleLoad, type ScheduleLoad } from '@/reports/schedule-load';
@@ -130,6 +131,7 @@ function toListItem(doc: IReport, model: ModelScores): ReportListItem {
         title: doc.title,
         description: doc.description,
         category: doc.category,
+        icon: reportIcon(doc),
         app: doc.splunk.appLabel,
         owner: doc.splunk.owner,
         schedule: doc.schedule,

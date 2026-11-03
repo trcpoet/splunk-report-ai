@@ -7,6 +7,7 @@ import StatusBadge from "@/reports/components/StatusBadge";
 import ResultsTable from "@/reports/components/ResultsTable";
 import ReportActions from "@/reports/components/ReportActions";
 import ReportCard from "@/reports/components/ReportCard";
+import ReportIcon from "@/reports/components/ReportIcon";
 import ReportChartView from "@/reports/components/ReportChart";
 import ReportScatter from "@/reports/components/ReportScatter";
 import RunTrend from "@/reports/components/RunTrend";
@@ -87,6 +88,7 @@ async function ReportDetails({ params }: Props) {
         <>
             <div className="header">
                 <div className="flex flex-row flex-wrap items-center gap-2">
+                    <ReportIcon name={report.icon} size="large" />
                     <span className="pill">{report.category}</span>
                     <StatusBadge status={report.status} />
                 </div>

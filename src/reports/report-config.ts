@@ -1,6 +1,7 @@
 import { statSync } from 'node:fs';
 import { loadReportCards, reportCardsPath } from '@/reports/cards/load';
 import type { ReportCard } from '@/reports/cards/schema';
+import type { IconName } from '@/reports/icons';
 import type { Cell, ChartPanel, ChartScatter, ChartThreshold, ChartType, ReportCategory, ReportHighlight } from '@/reports/reports';
 
 // What Splunk doesn't know about each report, keyed by the saved search name:
@@ -28,6 +29,8 @@ export type ReportConfig = {
     slug: string;
     category: ReportCategory;
     tags: string[];
+    // The card's icon. Without it, the app guesses one (src/reports/icons.ts).
+    icon?: IconName;
     // Groups that may see the report. Defaults to the email lists in
     // action.email.to (secops@example.com → secops). Copy them here before
     // turning off a report's email action, or the defaults disappear with it.

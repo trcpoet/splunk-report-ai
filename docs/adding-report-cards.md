@@ -9,7 +9,7 @@ No code changes are needed: you edit one data file, and the checks tell you what
 | Who | Decides | Where |
 |---|---|---|
 | **Splunk** | What the report searches (its SPL), when it runs (its schedule), and its result columns | The scheduled report in Splunk |
-| **The card** | Its category and tags, who may see it, its chart, its headline numbers, and when it shows "Warning" or "Failed" | `config/report-cards.yaml`, under the report's exact Splunk name |
+| **The card** | Its category, icon and tags, who may see it, its chart, its headline numbers, and when it shows "Warning" or "Failed" | `config/report-cards.yaml`, under the report's exact Splunk name |
 | **The app** | Everything else, with sensible defaults | `src/splunk/map.ts` |
 
 - The app **never runs a search**. The sync copies the results of the runs Splunk already made (on the report's schedule) into MongoDB, and the pages read them from there.
@@ -30,6 +30,7 @@ No code changes are needed: you edit one data file, and the checks tell you what
    Web Server 5xx Error Rate  (/reports/web-5xx-error-rate)
      Card: config/report-cards.yaml
      Every hour, last 60 minutes
+     Icon: server-crash (guessed from "5xx" in the title; add icon: to the card to choose another)
 
    Newest run: Oct 2, 09:00 UTC, 6 results
    Columns: Host, Requests, 5xx errors, Error rate %
@@ -77,6 +78,7 @@ Use the dashboard's title, or its name from its address in Splunk (`…/app/sear
 **3. Paste the draft card** into `config/report-cards.yaml`, under the report's name, and fix what the draft can't know:
 - the column names (the draft guesses them from the search's last step: check them with `npm run card:preview`);
 - `category`, `tags` and `groups`;
+- `icon`, which the draft guesses from the tile's title and search (see [The icon](#the-icon));
 - whether high or low is bad (the draft guesses from the tile's colors: a red first range means low is bad).
 
 **4. Follow steps 4 to 6 above:** preview, check, sync, and describe it in the catalog.
@@ -97,6 +99,7 @@ Use the dashboard's title, or its name from its address in Splunk (`…/app/sear
 Failed sign-ins (24h):
   slug: failed-sign-ins-24h
   category: Other            # change: Security
+  icon: key-round            # guessed from "sign in" in the title
   tags: []
   chart: none
   highlights:
@@ -127,6 +130,7 @@ Every field is described in `config/report-cards.schema.json` too, which editors
 Web Server 5xx Error Rate:       # the report's exact name in Splunk
   slug: web-5xx-error-rate       # its address: /reports/web-5xx-error-rate
   category: Operations
+  icon: server-crash             # its icon (optional: the app picks one without it)
   tags: [web, availability, hourly]
   groups: [sre, it-director]     # who may see it (optional)
   index: web (access logs)       # the "Index" text on its page (optional)
@@ -137,9 +141,33 @@ Web Server 5xx Error Rate:       # the report's exact name in Splunk
 | the name | yes | The saved search's name, **exactly** as in Splunk. A name that doesn't match is a card for nothing (`npm run splunk:check` lists them). |
 | `slug` | yes | The report's address, `/reports/<slug>`: lowercase words joined by `-`, unique. Don't change it later: links break, and the old address keeps the old runs. |
 | `category` | yes | `Security`, `Operations`, `Infrastructure`, `Business`, `Compliance` or `Other`. The home page's filters use it. |
-| `tags` | no | Words for search and "similar reports", such as `[web, hourly]`. |
+| `icon` | no | The small picture beside the category on its card and page. One of the names in [The icon](#the-icon). Without it, the app picks one. |
+| `tags` | no | Words for search and "similar reports", such as `[web, hourly]`. They also help the app pick an icon. |
 | `groups` | no | Who may see it. Without it, the email lists Splunk sends it to (`secops@example.com` is the group `secops`). **Copy them here before turning off a report's email in Splunk**, or it becomes admin-only. See [report-access.md](report-access.md). |
 | `index` | no | Replaces the "Index" text the app works out from the search, for searches like `| rest` or `| metadata`. |
+
+### The icon
+
+Every report shows a small icon beside its category, on its card and its page, so it's easy to spot in a long list. **You usually don't need to set one.** Without `icon:`, the app picks one from words in the report's **title**, then its **tags**, then its **description**, and otherwise uses its category's icon. `npm run card:preview` shows which one it picked and why:
+
+```text
+  Icon: key-round (guessed from "login" in the title; add icon: to the card to choose another)
+```
+
+Set `icon:` when the guess doesn't fit. Use one of these names. They're [Lucide](https://lucide.dev/icons) icons, so you can look any of them up there:
+
+| For | Names |
+|---|---|
+| Security | `shield`, `shield-alert`, `shield-check`, `key-round` (sign-ins), `user-lock` (lockouts), `user-cog` (privileges), `brick-wall-fire` (firewall), `globe-lock` (VPN), `radar` (scans), `bug`, `mail-warning` (phishing), `file-lock` (data loss), `scan-search` |
+| Operations | `activity`, `server-crash` (errors), `globe` (web), `timer` (latency), `gauge` (usage), `route` (APIs), `workflow` (jobs), `siren` (incidents), `container`, `clock-alert`, `heart-pulse`, `webhook` |
+| Infrastructure | `server`, `hard-drive`, `cpu`, `memory-stick`, `radio-tower` (forwarders), `database`, `database-zap` (license, ingest), `network`, `cloud`, `cloud-alert`, `wifi-off`, `plug-zap`, `layers` |
+| Business | `trending-up`, `credit-card` (payments), `banknote`, `receipt-text`, `shopping-cart`, `users-round`, `chart-line`, `landmark` |
+| Compliance | `clipboard-check` (audits), `scale` (regulation), `scroll-text` |
+| Anything | `earth` (countries), `map-pin`, `mail`, `file-text`, `file-chart-column-increasing` |
+
+A name that isn't in the list stops the check and the sync, with the list in the message. The category icons, used when no word matches, are `shield` (Security), `activity` (Operations), `server` (Infrastructure), `trending-up` (Business), `clipboard-check` (Compliance) and `file-chart-column-increasing` (Other).
+
+The words the app looks for are in `src/reports/icons.ts`. To offer an icon that isn't in the list, a developer adds its name there and in `src/reports/components/ReportIcon.tsx`.
 
 ### The chart
 
@@ -257,6 +285,7 @@ The sync stops before changing any report, and admins see the same message on th
 | `Unrecognized key: "…"` | A misspelled field. The schema lists the right ones. |
 | `It isn't valid YAML: … at line 6, column 17.` | Usually a message that needs double quotes, or a name with `: ` in it. Look at that line. |
 | `"…" already uses the slug "…"` | Two cards share a slug. Each needs its own. |
+| `icon: "…" isn't one of the app's icons.` | Use a name from the list in the message (or [The icon](#the-icon)), or delete the line to let the app choose. |
 | `✗ The card names "Error rate%", which the results don't have.` (`card:preview`) | A column name that's spelled differently in the results. Copy it from the `Columns:` line. |
 | `cards in config/report-cards.yaml are for reports this token can't see` (`splunk:check`) | The name doesn't match Splunk's exactly, or the report isn't shared with the service account's role. |
 | `No finished run with results yet` (`card:preview`) | Splunk hasn't run the report since it was scheduled. Wait for its next run. |
@@ -273,10 +302,11 @@ When you're asked to add, change or move report cards:
 2. **Use only column names you have seen** in `npm run card:preview` output or in the report's search. Never guess one. If you can't run the preview, say which columns you assumed.
 3. **Key each card by the report's exact Splunk name**, and give it a new, unique `slug`. Never change an existing slug.
 4. **Keep a chart's `threshold` and its `warn` limit equal** when they watch the same column.
-5. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
-6. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
-7. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
-8. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
+5. **Leave `icon` out unless the preview's guess is wrong.** Then pick a name from [The icon](#the-icon), never one from elsewhere: only those are drawn.
+6. **Write messages for the people reading the report:** one or two plain sentences that name the row (`{Host}`) and the limit.
+7. **Check your work:** run `npm run card:preview "<name>"` for each card you touched, then `npm run check`. Show the output, and fix every `✗` before you finish.
+8. **Never add secrets or company data to the public repo:** no tokens, no company Splunk addresses, no real hostnames or results. Real report names and cards belong in the company's copy of this repo only.
+9. **Don't change Splunk.** Saving tiles as reports and sharing them is for a Splunk admin; write down what they need to do instead.
 
 ## Keep company cards out of the public repo
 

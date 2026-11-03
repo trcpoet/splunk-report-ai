@@ -36,7 +36,7 @@ async function main() {
         '',
         `${tiles.length} tiles. For each one:`,
         '1. In Splunk, save its search as a report, schedule it, and share it with the service account\'s role. Skip this for a tile that already shows a report.',
-        '2. Copy its draft card into config/report-cards.yaml, and fix what\'s marked to check: the column names, the category, who sees it.',
+        '2. Copy its draft card into config/report-cards.yaml, and fix what\'s marked to check: the column names, the category, who sees it. The icon is a guess from the title and search: keep it, pick another from the list in docs/adding-report-cards.md, or delete the line to let the app choose.',
         '3. Once the report has run: npm run card:preview "<the report\'s name>", which lists its real columns. Then npm run check and npm run sync.',
         '',
         'docs/adding-report-cards.md explains every part of a card.',
