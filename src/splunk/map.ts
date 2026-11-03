@@ -104,6 +104,54 @@ function nextRunFromCron(cron: string, timeZone: string, after: Date) {
     }
 }
 
+// How long after a scheduled time a run may still be on its way: Splunk can
+// start it late, it takes time to finish, and the sync only looks now and then.
+export const LATE_GRACE_MINUTES = 15;
+
+type LateInput = {
+    cron: string;
+    timeZone: string;
+    // The newest run the app has, and Splunk's next scheduled run.
+    lastRun: Date | null;
+    nextRun: Date | null;
+    // The report's usual run time: a slow search gets more grace.
+    typicalSec: number;
+    now: Date;
+    // Live mode only: the dummy data's dates are fixed, so the clock can't judge them.
+    live: boolean;
+};
+
+// The scheduled time of a run that should be here by now and isn't, or null.
+// The report is late when the schedule's last time before Splunk's next run
+// (and before now) has no run at or after it, once the grace has passed: say
+// an hourly report with runs up to 09:05, while Splunk's next run is 12:05,
+// missed 10:05 and 11:05, and this returns 11:05. That needs no clock, so it
+// works on the dummy data too. With a clock (live mode), a next run that
+// Splunk planned but hasn't started counts as well: its scheduler is stuck.
+// A report with no runs yet is never late; it shows "No runs yet".
+export function lateSince({ cron, timeZone, lastRun, nextRun, typicalSec, now, live }: LateInput): Date | null {
+    if (!lastRun) return null;
+    const grace = Math.max(LATE_GRACE_MINUTES * 60_000, 2 * typicalSec * 1000);
+    const bound = nextRun && nextRun < now ? nextRun : now;
+
+    let job: Cron;
+    try {
+        job = new Cron(cron, { timezone: timeZone, paused: true });
+    } catch {
+        return null;
+    }
+    // Splunk runs a search's schedule in its owner's time zone, which can
+    // differ from SPLUNK_TZ (and allow_skew shifts it a little). Then the
+    // schedule's times here aren't Splunk's, and judging by them would raise
+    // false alarms every day, so only judge when Splunk's next run is one of
+    // them. An hourly schedule fits any whole-hour zone.
+    const fits = !nextRun || job.previousRuns(1, new Date(nextRun.getTime() + 1000))[0]?.getTime() === nextRun.getTime();
+    const due = fits ? job.previousRuns(1, bound)[0] : undefined;
+    if (due && lastRun < due && now.getTime() - due.getTime() >= grace) return due;
+    if (live && nextRun && lastRun < nextRun && now.getTime() - nextRun.getTime() >= grace) return nextRun;
+    return null;
+}
+
 // Splunk formats times like "2026-10-03 06:00:00 UTC".
 export function parseSplunkTime(value: string | undefined): Date | null {
     if (!value) return null;

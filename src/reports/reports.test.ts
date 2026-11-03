@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { contactEmail, needsAttention, paginate, sortByLastRun, syncProblem, toSummary, webLink, type ReportListItem, type SyncInfo } from '@/reports/reports';
+import { contactEmail, lateMessage, needsAttention, paginate, sortByLastRun, syncProblem, toSummary, webLink, type ReportListItem, type SyncInfo } from '@/reports/reports';
+
+describe('late reports', () => {
+    test('need attention whatever their status, and say which run is missing', () => {
+        assert.equal(needsAttention({ status: 'success', lateSince: '2026-10-02T11:05:00.000Z' }), true);
+        assert.equal(needsAttention({ status: 'success' }), false);
+        assert.match(lateMessage({ lateSince: '2026-10-02T11:05:00.000Z', lastRun: '2026-10-02T09:05:00.000Z' }), /^The run due at Oct 2, 11:05 UTC hasn't arrived\. The newest run is from Oct 2, 09:05 UTC\./);
+        assert.equal(lateMessage({ lastRun: '2026-10-02T09:05:00.000Z' }), '');
+    });
+});
 
 describe('webLink', () => {
     test('keeps http(s) addresses, and drops anything else rather than draw it as a link', () => {

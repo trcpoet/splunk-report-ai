@@ -31,7 +31,8 @@ One report per Splunk scheduled search. The sync upserts it by slug and recomput
   - `latest`, the newest run with its status message;
   - `history`, the last 7 runs;
   - `results`, the run whose rows the page shows;
-  - `highlights`.
+  - `highlights`;
+  - `lateSince`, the scheduled time of a run that should have arrived and hasn't, as of the last sync, or `null`.
 - **Housekeeping:** `syncedAt`, `syncError`, `disabled`.
 - **Result rows aren't here.** They live in `report_runs`, so the report list stays small.
 

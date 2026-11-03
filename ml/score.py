@@ -88,6 +88,9 @@ def learn_from_votes(scored: pd.DataFrame, votes: list[dict]) -> dict | None:
     rows = []
     for vote in votes:
         flag = vote.get("flag") or {}
+        # Flags about runs only: a "late" flag is about a run that never came.
+        if flag.get("reason") not in ("status", "unusual"):
+            continue
         run_at = pd.Timestamp(flag["runAt"]) if flag.get("runAt") else None
         run = by_run.get((vote.get("reportSlug"), run_at))
         if run is None:

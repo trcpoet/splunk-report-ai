@@ -106,6 +106,9 @@ export type SplunkReport = {
     // Empty until the report's first run is synced.
     lastRun: string;
     nextRun: string;
+    // When a run was due that hasn't arrived, as of the last sync. Set only
+    // when the report is late, whatever its status.
+    lateSince?: string;
     status: ReportHealth;
     statusMessage?: string;
     // Results of the run whose rows are shown (it can be more than the rows).
@@ -186,7 +189,7 @@ export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'> &
 
 export type ReportSummary = Pick<
     SplunkReport,
-    'slug' | 'title' | 'description' | 'category' | 'icon' | 'status' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
+    'slug' | 'title' | 'description' | 'category' | 'icon' | 'status' | 'lateSince' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
 > & {
     // null until the report has results.
     headline: ReportHeadline | null;
@@ -204,8 +207,12 @@ const headlineOf = ({ highlights, resultsRunAt, lastRun }: Pick<ReportListItem, 
 };
 
 export const toSummary = (report: ReportListItem): ReportSummary => {
-    const { slug, title, description, category, icon, status, schedule, lastRun, recipients, history, tags, owner, index } = report;
-    return { slug, title, description, category, icon, status, schedule, lastRun, recipients, history, tags, owner, index, headline: headlineOf(report) };
+    const { slug, title, description, category, icon, status, lateSince, schedule, lastRun, recipients, history, tags, owner, index } = report;
+    return {
+        slug, title, description, category, icon, status, schedule, lastRun, recipients, history, tags, owner, index,
+        ...(lateSince ? { lateSince } : {}),
+        headline: headlineOf(report),
+    };
 };
 
 // The newest last run first, reports with no run yet last, and reports that
@@ -258,9 +265,24 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
         .slice(0, limit)
         .map(({ other }) => other);
 
-// A report needs attention when its latest run warns or failed. The home
-// page's count, the briefing and Ask AI's Reports button all use this.
-export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status === 'warning' || report.status === 'failed';
+// Whether the newest run's status itself is a problem: it warns or failed.
+export const hasProblemStatus = (status: ReportHealth) => status === 'warning' || status === 'failed';
+
+// A report needs attention when its status is a problem, or a run is late.
+// The home page's count, the briefing, the suggestions and Ask AI's Reports
+// button all use this.
+export const needsAttention = (report: Pick<ReportListItem, 'status' | 'lateSince'>) =>
+    hasProblemStatus(report.status) || Boolean(report.lateSince);
+
+// "The run due at Oct 2, 11:05 UTC hasn't arrived": the badge's tooltip, the
+// start of lateMessage, and what the AI is told.
+export const lateDue = (lateSince: string) => `The run due at ${formatDateTime(lateSince)} hasn't arrived`;
+
+// What a late report says on its page and in the briefing.
+export const lateMessage = ({ lateSince, lastRun }: Pick<ReportListItem, 'lateSince' | 'lastRun'>) =>
+    lateSince
+        ? `${lateDue(lateSince)}. The newest run is from ${formatDateTime(lastRun)}. Splunk may have skipped it, or the app couldn't copy it: check the report's schedule in Splunk.`
+        : '';
 
 // A card's runbook as a link the page can draw: only an http(s) address. The
 // cards schema already refuses anything else; this keeps a javascript: link

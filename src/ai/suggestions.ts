@@ -4,7 +4,10 @@ import { needsAttention, type ReportListItem } from '@/reports/reports';
 // so the first click already says something about their own data. Pure: no
 // AI call is needed to make them.
 
-type Report = Pick<ReportListItem, 'slug' | 'title' | 'status' | 'index'>;
+type Report = Pick<ReportListItem, 'slug' | 'title' | 'status' | 'lateSince' | 'index'>;
+
+// What's wrong, in a word: its status, or that a run is late.
+const problem = ({ status }: Report) => (status === 'failed' ? 'failing' : status === 'warning' ? 'warning' : 'late');
 
 // For Ask about reports.
 export function reportQuestions(reports: Report[]): string[] {
@@ -13,7 +16,7 @@ export function reportQuestions(reports: Report[]): string[] {
     const attention = reports.filter(needsAttention);
     const questions = attention
         .slice(0, 2)
-        .map((report) => `Why is ${report.title} ${report.status === 'failed' ? 'failing' : 'warning'}?`);
+        .map((report) => `Why is ${report.title} ${problem(report)}?`);
 
     if (attention.length === 0) questions.push('Is anything in my reports worth a closer look?');
     questions.push('Summarize my reports in three bullet points.');

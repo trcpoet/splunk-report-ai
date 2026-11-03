@@ -35,7 +35,7 @@ Copies Splunk scheduled reports and their runs into MongoDB.
 What `syncAll` does:
 1. It marks the sync as started in `sync_state`.
 2. It reads the report cards and lists the scheduled reports, then fetches each one's new runs into `report_runs`. A mistake in the cards file stops the sync here, before any report changes, and the problems are saved as its `lastError`.
-3. It recomputes each `reports` document: the latest run, the last `HISTORY_SIZE` (7) runs, highlights and the chart (`map.ts`).
+3. It recomputes each `reports` document: the latest run, the last `HISTORY_SIZE` (7) runs, highlights and the chart (`map.ts`), and `lateSince` (`lateSince` in `map.ts`, with the median run time of its recent runs).
 4. It marks reports that are no longer scheduled as `disabled`. If live Splunk lists no reports at all, it hides nothing and records an error instead: that's more likely a token that lost its access.
 5. It records the finish and the time zone (`SPLUNK_TZ`) in `sync_state`, then calls `POST /api/revalidate` twice, `SECOND_REFRESH_MS` (3 s) apart, when `APP_URL` and `REVALIDATE_SECRET` are set.
 
@@ -96,6 +96,7 @@ Turns Splunk's REST JSON into the app's models, with no I/O, so all of it is uni
 |---|---|
 | Values | `toBool`, `toCell` (keeps "007" and IPs as text), `mapResults` (drops Splunk's internal `_` fields except `_time`) |
 | Schedules and times | `describeCron` (short phrasing for common schedules, `cronstrue` for the rest), `runsPerWeek`, `nextRunFromCron`, `parseSplunkTime`, `describeTimeRange` ("Last 24 hours") |
+| Late runs | `lateSince({ cron, timeZone, lastRun, nextRun, typicalSec, now, live })`: the scheduled time of a run that should have arrived and hasn't, or `null`. It judges only when Splunk's next run is one of the schedule's times in `timeZone` (a search owner in another zone, or `allow_skew`, means no judgement rather than a false alarm). It takes the schedule's last time before Splunk's next run (and before now); if no run is at or after it once the grace has passed (`LATE_GRACE_MINUTES`, 15, or twice the usual run time), the report is late. That needs no clock, so it works on the dummy data. In live mode, a next run Splunk planned but hasn't started (by more than the grace) counts too: a stuck scheduler. A report without runs is never late. |
 | Searches | `describeIndexes` (`index=web sourcetype=access_combined` → "web (access_combined)"), `parseRecipients`, `groupsFromRecipients` (`secops@example.com` → `secops`), `chartTypeFromDisplay` |
 | Reports | `mapSavedSearch` (a saved search plus its config → `ReportMeta`). A private search with a configured name stays admin-only, so it can't take on the report's groups. |
 | Runs | `isFinished`, `isFailed`, `runStatus` (applies the report's status rule), `runTime`, `mapRun` (a job → `RunFacts`) |

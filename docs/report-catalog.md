@@ -243,6 +243,7 @@ Four layers, each filling in what the one before leaves open:
 - **Chart:** a line per host over time, in the chart colors' fixed order. With more hosts than colors, the largest four get a line each and the rest add up to one "Other" line.
 - **Headline numbers:** Results and the search time. A time series has no "top row". The card shows Results.
 - **Warns:** only when Splunk itself warns.
+- **In the demo it's Late:** Splunk's next run is 12:05, but the 10:05 and 11:05 runs never arrived, so it shows the **Late** badge and counts as needing attention. That's how a report that stopped running looks.
 
 ## What the ML job reads
 

@@ -582,6 +582,17 @@
         @apply border-light-200/30 bg-light-200/10 text-light-200;
     }
 
+    /* A run that should be here hasn't arrived (src/reports/components/StatusBadge.tsx).
+       Amber like Warning, but outlined and with a clock, since it's about
+       time, not about what the results say. */
+    .status-late {
+        @apply border-amber-400/50 bg-transparent text-amber-200;
+
+        svg {
+            @apply size-3.5;
+        }
+    }
+
     /* A report card's headline number from its newest results
        (src/reports/reports.ts, toSummary): the one bold thing on the card. */
     .card-headline {
@@ -1522,6 +1533,10 @@
 
             a {
                 @apply font-medium text-light-100 transition-colors hover:text-primary;
+            }
+
+            .briefing-badges {
+                @apply flex flex-row flex-wrap items-center gap-1.5;
             }
         }
 

@@ -11,6 +11,11 @@ describe('reportQuestions', () => {
         assert.equal(questions[1], 'Why is Disk Space Utilization Above 85% failing?');
     });
 
+    test('asks why a late report is late', () => {
+        const late = { slug: 'web-requests-by-host', title: 'Web Requests by Host', status: 'success' as const, lateSince: '2026-10-02T11:05:00.000Z', index: 'web' };
+        assert.equal(reportQuestions([late])[0], 'Why is Web Requests by Host late?');
+    });
+
     test('asks something general when every report is healthy, and nothing without reports', () => {
         const healthy = fixtures.filter((report) => report.status === 'success');
         assert.equal(reportQuestions(healthy)[0], 'Is anything in my reports worth a closer look?');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { briefingKey, flagId, reportAndSplKey, reportSummaryKey, summarySlug } from '@/ai/keys';
+import { attentionFlagId, briefingKey, flagId, reportAndSplKey, reportSummaryKey, summarySlug } from '@/ai/keys';
 import { PROMPT_VERSION } from '@/ai/prompts';
 
 const reports = [
@@ -20,6 +20,10 @@ describe('briefingKey', () => {
         assert.match(before, new RegExp(`^briefing:[0-9a-f]{24}:v${PROMPT_VERSION}$`));
     });
 
+    test('changes when a report turns late, which brings no new run', () => {
+        assert.notEqual(briefingKey([{ ...reports[0]!, lateSince: '2026-10-02T10:00:00.000Z' }, reports[1]!]), briefingKey(reports));
+    });
+
     test('changes when the ML job flags a run, or learns a different tenth of attention', () => {
         const before = briefingKey(reports);
         const flagged = { score: 0.9, unusual: true, reason: 'Results far above usual.', measure: 'results' as const };
@@ -36,7 +40,7 @@ describe('reportSummaryKey and flagId', () => {
     test('name the report, its run, its search and the prompt version', () => {
         assert.match(
             reportSummaryKey({ slug: 'web-5xx-error-rate', lastRun: '2026-10-02T09:00:00.000Z', resultsRunAt: '2026-10-02T09:00:00.000Z', spl }),
-            new RegExp(`^report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z::[0-9a-f]{12}:v${PROMPT_VERSION}$`),
+            new RegExp(`^report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z:::[0-9a-f]{12}:v${PROMPT_VERSION}$`),
         );
         // The ML job flagging the run asks for a new summary that can mention it.
         assert.match(
@@ -44,7 +48,7 @@ describe('reportSummaryKey and flagId', () => {
                 slug: 'web-5xx-error-rate', lastRun: '2026-10-02T09:00:00.000Z', resultsRunAt: '2026-10-02T09:00:00.000Z', spl,
                 modelRun: { score: 0.9, unusual: true, reason: 'Results far above usual.', measure: 'results' },
             }),
-            new RegExp(`^report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z:model:[0-9a-f]{12}:v${PROMPT_VERSION}$`),
+            new RegExp(`^report:web-5xx-error-rate:2026-10-02T09:00:00.000Z:2026-10-02T09:00:00.000Z:model::[0-9a-f]{12}:v${PROMPT_VERSION}$`),
         );
         assert.equal(flagId('failed-logins-by-user', '2026-10-03T06:00:00.000Z', 'unusual'), 'failed-logins-by-user:2026-10-03T06:00:00.000Z:unusual');
     });
@@ -67,6 +71,11 @@ describe('reportAndSplKey', () => {
     test('changes with a new run, like the Explain summary', () => {
         assert.notEqual(reportAndSplKey({ ...run, lastRun: '2026-10-02T10:00:00.000Z' }), reportAndSplKey(run));
     });
+
+    test('changes when the report turns late, as the Explain summary does', () => {
+        assert.notEqual(reportAndSplKey({ ...run, lateSince: '2026-10-02T11:00:00.000Z' }), reportAndSplKey(run));
+        assert.notEqual(reportSummaryKey({ ...run, lateSince: '2026-10-02T11:00:00.000Z' }), reportSummaryKey(run));
+    });
 });
 
 describe('summarySlug', () => {
@@ -82,5 +91,13 @@ describe('summarySlug', () => {
 
     test('a briefing is about no single report', () => {
         assert.equal(summarySlug(briefingKey(reports)), undefined);
+    });
+});
+
+describe('attentionFlagId', () => {
+    test('votes on the status when it warns or fails, and on the lateness when only that is wrong', () => {
+        const run = { slug: 'web-requests-by-host', lastRun: '2026-10-02T09:05:00.000Z' };
+        assert.equal(attentionFlagId({ ...run, status: 'warning', lateSince: '2026-10-02T11:05:00.000Z' }), 'web-requests-by-host:2026-10-02T09:05:00.000Z:status');
+        assert.equal(attentionFlagId({ ...run, status: 'success', lateSince: '2026-10-02T11:05:00.000Z' }), 'web-requests-by-host:2026-10-02T11:05:00.000Z:late');
     });
 });

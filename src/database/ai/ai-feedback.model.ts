@@ -9,8 +9,10 @@ export type FeedbackKind = 'answer' | 'summary' | 'flag';
 export type Vote = 'up' | 'down';
 
 // What a briefing flag was about, kept so a model can learn from the votes.
+// 'late' is about a run that never arrived: runAt is when it was due, and
+// the ML job leaves these out, since there's no run to learn from.
 export type FlagDetails = {
-    reason: 'status' | 'unusual';
+    reason: 'status' | 'unusual' | 'late';
     status?: ReportStatus;
     measure?: 'results' | 'duration';
     // The robust z-score from src/reports/insights.ts.
@@ -42,7 +44,7 @@ const AiFeedbackSchema = new Schema<IAiFeedback>(
         flag: {
             type: new Schema<FlagDetails>(
                 {
-                    reason: { type: String, enum: ['status', 'unusual'] },
+                    reason: { type: String, enum: ['status', 'unusual', 'late'] },
                     status: String,
                     measure: String,
                     score: Number,

@@ -40,7 +40,7 @@ What the model is told, in plain English: `REPORTS_PROMPT` (Ask about reports), 
 ### `context.ts` (pure)
 
 The reports as text for the AI.
-- **`reportsContext(reports, sync)`:** for each report, its status and message, highlights, the last 7 runs, its SPL, and up to `MAX_ROWS` (20) result rows.
+- **`reportsContext(reports, sync)`:** for each report, its status and message, whether a run is late, highlights, the last 7 runs, its SPL, and up to `MAX_ROWS` (20) result rows.
 - **SPL** goes in as it is, angle brackets included (`where count>5`), except that it can't close the tag around it (`safeSpl`).
 - **`splContext(reports, examples?)`:** for Write SPL.
   - With examples, the reports become a short catalog of indexes and columns, and only the examples are written out in full, closest first.
@@ -108,7 +108,7 @@ The window events between parts of the Ask AI page that don't share a parent:
 ### `suggestions.ts` (pure)
 
 Starter questions built from the viewer's own reports, with no AI call:
-- **`reportQuestions`:** "Why is X failing?" for reports needing attention, and a summary request.
+- **`reportQuestions`:** "Why is X failing?" (or warning, or late) for reports needing attention, and a summary request.
 - **`splRequests`:** searches that fit the reports' indexes.
 - **`aboutQuestion`, `explainRequest`:** the questions `?about=` and `?explain=` fill in.
 
@@ -163,10 +163,10 @@ Finding the example searches most like a request (RAG).
 ### `keys.ts` (pure)
 
 Names for cached AI text and for things people vote on.
-- **`reportSummaryKey(report)`** and **`briefingKey(reports)`** change when what the text was written from changes: a new run, a status, the prompt version.
+- **`reportSummaryKey(report)`** and **`briefingKey(reports)`** change when what the text was written from changes: a new run, a status, a report turning late (`lateSince`, which brings no new run), the prompt version.
 - **`reportAndSplKey(report)`** names Explain report and SPL's text. It also changes with the search, which someone may edit in Splunk before the report runs again.
 - **`summarySlug(key)`** is the report a saved summary is about (either kind), so a vote on it checks the voter can see that report (`src/ai/feedback.ts`).
-- **`flagId(slug, runAt, reason)`** names a briefing flag for its vote.
+- **`flagId(slug, runAt, reason)`** names a briefing flag for its vote: `status`, `unusual`, or `late` (then `runAt` is when the missing run was due). **`attentionFlagId(report)`** picks the one a "Needs attention" item is voted on: its status when that warns or fails, otherwise its lateness. `ml/score.py` learns only from `status` and `unusual` votes, since a `late` vote is about a run that never came.
 - **Tested.**
 
 ## Chats, votes and saved examples
@@ -224,7 +224,7 @@ Write SPL's examples, used for retrieval: the viewer's reports' searches, plus s
 
 What needs attention across the viewer's reports.
 - **What it lists:**
-  - reports that warn or fail (`needsAttention`), each with a **Runbook** link when its card has one;
+  - reports that warn, fail or are late (`needsAttention`), each with a **Runbook** link when its card has one. A late report shows **Late** and which run is missing; it shows its status too only when that's Warning or Failed, since "Healthy" would contradict the list;
   - newest runs that stand out (`findUnusualRun`, or the ML job's flag), with a sparkline.
 - **Votes:** each flag has a "Worth flagging?" vote.
 - **AI summary:** when AI is on, it adds `BriefingSummary`.

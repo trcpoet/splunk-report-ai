@@ -9,6 +9,7 @@ import {
     describeTimeRange,
     deriveReportFields,
     groupsFromRecipients,
+    lateSince,
     mapResults,
     parseRecipients,
     parseSplunkTime,
@@ -83,6 +84,55 @@ describe('schedules, time ranges and indexes', () => {
     test('parses Splunk timestamps', () => {
         assert.equal(parseSplunkTime('2026-10-03 06:00:00 UTC')?.toISOString(), '2026-10-03T06:00:00.000Z');
         assert.equal(parseSplunkTime('not a time'), null);
+    });
+});
+
+describe('lateSince', () => {
+    // An hourly report at :05, as Splunk would describe it at `now`.
+    const at = (iso: string) => new Date(`2026-10-02T${iso}:00Z`);
+    const hourly = (lastRun: string, nextRun: string, now: string, more: { typicalSec?: number; live?: boolean } = {}) =>
+        lateSince({ cron: '5 * * * *', timeZone: 'UTC', lastRun: at(lastRun), nextRun: at(nextRun), now: at(now), typicalSec: more.typicalSec ?? 30, live: more.live ?? true })?.toISOString() ?? null;
+
+    test('is null while every run that was due has arrived', () => {
+        assert.equal(hourly('10:05', '11:05', '10:40'), null);
+    });
+
+    test('names the newest run that was due and never arrived', () => {
+        assert.equal(hourly('09:05', '12:05', '11:40'), at('11:05').toISOString());
+    });
+
+    test('waits out the grace first: 15 minutes, or twice a slow search', () => {
+        assert.equal(hourly('09:05', '11:05', '10:15'), null);
+        assert.equal(hourly('09:05', '11:05', '10:20'), at('10:05').toISOString());
+        assert.equal(hourly('09:05', '11:05', '10:20', { typicalSec: 900 }), null);
+        assert.equal(hourly('09:05', '11:05', '10:35', { typicalSec: 900 }), at('10:05').toISOString());
+    });
+
+    test("in live mode, a next run Splunk planned but hasn't started means a stuck scheduler", () => {
+        assert.equal(hourly('10:05', '11:05', '12:00'), at('11:05').toISOString());
+        assert.equal(hourly('10:05', '11:05', '12:00', { live: false }), null);
+    });
+
+    test("no false alarm when Splunk runs the schedule in another time zone than SPLUNK_TZ", () => {
+        // Daily at 06:00 in the owner's zone (UTC); the app thinks New York.
+        const daily = { cron: '0 6 * * *', lastRun: new Date('2026-10-02T06:00:00Z'), nextRun: new Date('2026-10-03T06:00:00Z'), typicalSec: 30, live: true };
+        assert.equal(lateSince({ ...daily, timeZone: 'America/New_York', now: new Date('2026-10-02T12:00:00Z') }), null);
+        assert.equal(lateSince({ ...daily, timeZone: 'UTC', now: new Date('2026-10-02T12:00:00Z') }), null);
+        // In the right zone, a missed day still counts.
+        assert.equal(lateSince({ ...daily, timeZone: 'UTC', lastRun: new Date('2026-10-01T06:00:00Z'), now: new Date('2026-10-02T12:00:00Z') })?.toISOString(), '2026-10-02T06:00:00.000Z');
+    });
+
+    test('never for a report without runs, or a schedule it cannot read', () => {
+        assert.equal(lateSince({ cron: '5 * * * *', timeZone: 'UTC', lastRun: null, nextRun: at('11:05'), now: at('12:00'), typicalSec: 0, live: true }), null);
+        assert.equal(lateSince({ cron: 'not a cron', timeZone: 'UTC', lastRun: at('09:05'), nextRun: at('11:05'), now: at('12:00'), typicalSec: 0, live: false }), null);
+    });
+
+    test("the dummy data, judged weeks later: only Web Requests by Host, whose 10:05 and 11:05 runs didn't arrive", () => {
+        const late = fixtures.flatMap((fixture) => {
+            const since = lateSince({ cron: fixture.cron, timeZone: 'UTC', lastRun: new Date(fixture.lastRun), nextRun: new Date(fixture.nextRun), now: new Date('2026-11-03T12:00:00Z'), typicalSec: 30, live: false });
+            return since ? [[fixture.slug, since.toISOString()]] : [];
+        });
+        assert.deepEqual(late, [['web-requests-by-host', '2026-10-02T11:05:00.000Z']]);
     });
 });
 

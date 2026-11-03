@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChartBoundary from "@/shared/components/ChartBoundary";
 import ExplainButton from "@/ai/components/ExplainButton";
-import StatusBadge from "@/reports/components/StatusBadge";
+import StatusBadge, { LateBadge } from "@/reports/components/StatusBadge";
 import ResultsTable from "@/reports/components/ResultsTable";
 import ReportActions from "@/reports/components/ReportActions";
 import ReportCard from "@/reports/components/ReportCard";
@@ -18,7 +18,7 @@ import { ReportSkeleton } from "@/shared/components/Skeletons";
 import { PAGE_TRANSITION, PageTransition, Reveal } from "@/shared/components/Transitions";
 import { getReportSyncError, getVisibleReport, getVisibleReports } from "@/reports/dal";
 import { Contact, RunbookLink, WhatToDo } from "@/reports/components/WhatToDo";
-import { getSimilarReports, needsAttention, toSummary, type ReportChart } from "@/reports/reports";
+import { getSimilarReports, lateMessage, needsAttention, toSummary, type ReportChart } from "@/reports/reports";
 import { columnLabel, formatDateTime, formatDuration, formatList, formatNumber } from "@/shared/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -64,6 +64,9 @@ async function ReportDetails({ params }: Props) {
     // Summaries only: the cards are client components, so this is what the browser gets.
     const similarReports = getSimilarReports(report, await getVisibleReports()).map(toSummary);
     const syncError = await getReportSyncError(slug);
+    const late = lateMessage(report);
+    // A late report that was healthy still needs looking at: warning colors.
+    const calloutTone = late && (report.status === 'success' || report.status === 'none') ? 'warning' : report.status;
     const details: { label: string; value: ReactNode; code?: string }[] = [
         { label: 'Schedule', value: report.schedule, code: report.cron },
         { label: 'Time range', value: report.timeRange },
@@ -95,16 +98,18 @@ async function ReportDetails({ params }: Props) {
                     <ReportIcon name={report.icon} size="large" />
                     <span className="pill">{report.category}</span>
                     <StatusBadge status={report.status} />
+                    {report.lateSince && <LateBadge since={report.lateSince} />}
                 </div>
                 <h1 className="text-4xl max-sm:text-3xl">{report.title}</h1>
                 <p>{report.description}</p>
                 <ExplainButton slug={report.slug} title={report.title} report={report} className="btn-secondary btn-small" />
             </div>
 
-            {/* Only the message is a live region: the links after it aren't news. */}
-            {(report.statusMessage || (needsAttention(report) && (report.runbook || report.contact))) && (
-                <div className={`status-callout status-${report.status}`}>
+            {/* Only the messages are live regions: the links after them aren't news. */}
+            {(report.statusMessage || late || (needsAttention(report) && (report.runbook || report.contact))) && (
+                <div className={`status-callout status-${calloutTone}`}>
                     {report.statusMessage && <p role="status">{report.statusMessage}</p>}
+                    {late && <p role="status">{late}</p>}
                     {needsAttention(report) && <WhatToDo runbook={report.runbook} contact={report.contact} />}
                 </div>
             )}
