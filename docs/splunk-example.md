@@ -48,10 +48,32 @@ You need **an Intel/AMD (x86) machine** with Docker and about 6 GB of free memor
 
 Splunk's image is x86 only. Under emulation it's slow, and parts of it fail. Instead:
 
-- **GitHub Codespaces (easiest).**
-  1. On the repo's page, open **Code → Codespaces → Create codespace**. The repo's `.devcontainer/` asks for a 4-core, 16 GB machine, and the free monthly hours cover about 30 hours of it.
-  2. In the codespace's terminal, do steps 1 and 2 above.
-  3. Open the forwarded port 3000. Sign-in works there, because the dev container sets `BETTER_AUTH_URL` to the codespace's address.
+- **GitHub Codespaces, with the app on your Mac (easiest).** Splunk runs on a cloud machine, and the app on your Mac reads it through a tunnel, just as it would reach a company Splunk on port 8089. The repo's `.devcontainer/` asks for a 4-core, 16 GB machine, and the free monthly hours cover about 30 hours of it. Replace `OWNER/REPO` with this repo, and `NAME` with the codespace's name.
+  1. Once: let the GitHub CLI manage codespaces with `gh auth refresh -h github.com -s codespace`.
+  2. Create the codespace: `gh codespace create -R OWNER/REPO -b main --machine standardLinux32gb --idle-timeout 60m`. It prints its name.
+  3. Read [Splunk's General Terms](https://www.splunk.com/en_us/legal/splunk-general-terms.html), then start Splunk, its reports and the logs in the codespace:
+     ```bash
+     gh codespace ssh -c NAME -- 'cd /workspaces/REPO && echo SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com >> .env && docker compose -f docker-compose.splunk.yml up -d splunk splunk-setup feeder'
+     ```
+     Splunk takes about 5 minutes to start. Its reports then run every 5 minutes.
+  4. Copy the connector's read-only token to your Mac. Git ignores `.splunk-example/`.
+     ```bash
+     mkdir -p .splunk-example
+     gh codespace ssh -c NAME -- 'docker run --rm -v splunk-events-live_splunk-token:/t:ro busybox cat /t/token' > .splunk-example/token
+     ```
+  5. Forward Splunk's REST API to your Mac, and leave it running: `gh codespace ports forward 8089:8089 -c NAME`. Add `8000:8000` to open Splunk Web too (user `admin`, password `splunk-example-2026`).
+  6. On your Mac, in a separate database so your dummy reports stay as they are:
+     ```bash
+     export MONGODB_URI=mongodb://127.0.0.1:27017/splunkevents-live
+     export SPLUNK_MODE=live SPLUNK_BASE_URL=http://localhost:8089 SPLUNK_TOKEN_FILE=.splunk-example/token SPLUNK_TZ=UTC
+     npm run seed            # the demo users, in the new database
+     npm run splunk:check    # every line should say ✓
+     SYNC_INTERVAL_MINUTES=2 npm run sync:watch
+     ```
+     Then `npm run dev` in a second terminal, with the same `MONGODB_URI`, and open http://localhost:3000.
+  7. **When you're done:** `gh codespace stop -c NAME`, and later `gh codespace delete -c NAME`. A codespace also stops by itself after 60 minutes with nobody working in it; forwarded ports don't count. `gh codespace ssh` starts it again; then repeat step 3's `docker compose ... up -d` and step 5.
+
+  You can also use the codespace on its own: open **Code → Codespaces** on the repo's page, do steps 1 and 2 of "Run it" in its terminal, and open the forwarded port 3000. Sign-in works there, because the dev container sets `BETTER_AUTH_URL` to the codespace's address.
 - **Install Splunk Enterprise on the Mac.** Splunk 10 supports Apple Silicon.
   1. Download the trial from splunk.com and install it.
   2. For this test Splunk only, turn off HTTPS on its management port: in `$SPLUNK_HOME/etc/system/local/server.conf`, under `[sslConfig]`, set `enableSplunkdSSL = false`. Then restart Splunk.

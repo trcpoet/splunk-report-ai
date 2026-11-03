@@ -8,13 +8,18 @@ The sync worker's entry point, a plain Node process run with `tsx`, not part of 
 - **Runs:**
   - `npm run sync` syncs once and exits, with exit code 1 if any report failed;
   - `npm run sync:watch` syncs every `SYNC_INTERVAL_MINUTES` (default 15) until Ctrl+C or SIGTERM.
+- **Settings first:** `readSyncSettings` (`lib/splunk/settings.ts`) checks them all, and stops with every problem listed.
 - **Transport:** it picks one from `SPLUNK_MODE`.
   - `fixture`, the default, uses the dummy reports.
-  - `live` uses `httpTransport` with `SPLUNK_BASE_URL` and `SPLUNK_TOKEN`, or the token in the file `SPLUNK_TOKEN_FILE` names. A missing address or token is an error.
-- **Then** it calls `syncAll` (`lib/splunk/sync.ts`), prints a one-line summary, and disconnects.
+  - `live` uses `httpTransport` with `SPLUNK_BASE_URL` and `SPLUNK_TOKEN`, or the token in the file `SPLUNK_TOKEN_FILE` names.
+- **Then** it calls `syncAll` (`lib/splunk/sync.ts`) with `SYNC_REPORTS`, prints a one-line summary, and disconnects. Errors print with a hint for common setup mistakes (`describeError`).
 - **Only this process holds `SPLUNK_TOKEN`.** Run it beside the web app, never inside it.
 
 ## `scripts/`
+
+### `splunk-check.ts`
+
+`npm run splunk:check`: runs `checkSplunk` (`lib/splunk/check.ts`) with the sync worker's own settings and prints ✓, ⚠ or ✗ for each step, with what to fix. It only reads, needs no database, and exits with code 1 when a check fails. In fixture mode it checks the dummy data.
 
 ### `seed-demo-users.ts`
 
@@ -87,14 +92,22 @@ What `score.py` does:
 | `Dockerfile` | Multi-stage build on `node:24-slim`:<br>• `deps` runs `npm ci`;<br>• `tools` has all the code, for seed and sync;<br>• `build` runs `next build` with placeholders, with `DEMO_MODE` and `DEMO_PASSWORD` as build arguments (off unless set), and gives group 0 the owner's rights on what `app` copies;<br>• `worker` is `tools` as user 1000 (`HOME=/tmp`), for the chart's connector and demo-accounts Job;<br>• `app` runs the standalone server as user 1000 on :3000, with a health check on `/login`. It comes last, so a plain `docker build` builds it. |
 | `docker-compose.yml` | `docker compose up --build`:<br>• `mongo` (7.0, with a health check);<br>• `setup` (seed, then sync, once);<br>• `app`;<br>• `ml`, under `--profile ml`, as root so `--plot` can write `ml/out`.<br>Every setting has a default ([docker.md](../docker.md)). |
 | `docker-compose.splunk.yml` | The real-Splunk example:<br>• `splunk` (10.0, pinned: from 10.2 the KV store can't start on Linux kernels 6.19+);<br>• `splunk-setup`, `feeder` and `seed`;<br>• `app`;<br>• `connector`, the worker in live mode with the token file;<br>• `mongo`.<br>([splunk-example.md](../splunk-example.md)) |
-| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) with Docker inside, for the Splunk example. `BETTER_AUTH_URL` is set to the codespace's address. |
+| `.devcontainer/devcontainer.json` | A GitHub Codespaces machine (x86, 4 cores, 16 GB) with Docker inside, for the Splunk example. `BETTER_AUTH_URL` is set to the codespace's address. Its SSH server lets you run commands from your own terminal with `gh codespace ssh`. |
 | `deploy/helm/splunk-events/` | The Helm chart ([kubernetes.md](../kubernetes.md)):<br>• `templates/`: the web Deployment and Service, a Route (`route.enabled`) or an Ingress, the connector CronJob, the ML CronJob (`ml.enabled`), the demo-accounts Job (`demo.enabled`), the Secret (unless `secrets.existingSecret`);<br>• `_helpers.tpl`: names, labels, images, secret variables, and security contexts that fit OpenShift's restricted policy;<br>• `values.yaml`: every value, commented;<br>• `values-openshift-example.yaml`: a live setup with placeholders.<br>The Splunk token's Secret goes to the connector only. |
 | `deploy/helm/ci/` | The chart's CI install: `values.yaml` (fixture mode, demo accounts, placeholder secrets) and `mongo.yaml` (a throwaway MongoDB). |
 | `.dockerignore` | Keeps secrets (`.env*` except `.env.example`, `.splunk-example`), `.git`, `.next`, `node_modules`, `ml/.venv`, `ml/out`, `.claude` and logs out of the build context. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. |
-| `.github/workflows/ci.yml` | On every PR and push to `main`, with newer pushes cancelling older runs:<br>• **"Lint, test and build"**, required by the `main` ruleset: the type check, ESLint, the tests and `next build`;<br>• **"ML (Python)"**, which runs pytest on Python 3.14;<br>• **"Docker"**, which builds, starts, signs in, reads `/api/reports`, then runs the ML job. |
-| `.github/workflows/splunk-example.yml` | "Splunk example" (not required). It runs `docker-compose.splunk.yml` with the reports and sync every minute, then checks:<br>• the seven reports arrive with Splunk's results and columns, including a real `timechart`;<br>• the status rules fire;<br>• the sync ran in live mode.<br>It runs when the connector or the example change, on Mondays, and by hand. |
+| `.github/workflows/ci.yml` | On every PR and push to `main`, with newer pushes cancelling older runs:<br>• **"Lint, test and build"**, required by the `main` ruleset: the type check, ESLint, the tests and `next build`;<br>• **"ML (Python)"**, which runs pytest on Python 3.14;<br>• **"Docker"**, which builds, starts, signs in, reads `/api/reports`, runs the browser tests (`npm run e2e`) against the demo data, then runs the ML job. |
+| `.github/workflows/splunk-example.yml` | "Splunk example" (not required). It runs `docker-compose.splunk.yml` with the reports and sync every minute, then checks:<br>• the seven reports arrive with Splunk's results and columns, including a real `timechart`;<br>• the status rules fire;<br>• the sync ran in live mode.<br>• `npm run splunk:check` passes, and explains a wrong token and port 8000;<br>• the browser tests pass against Splunk's reports, and their screenshots are kept as the run's "screenshots-from-splunk" artifact.<br>It runs when the connector, the app or the example change, on Mondays, and by hand. |
 | `.github/workflows/helm.yml` | "Helm" (not required):<br>• `helm lint` and `helm template` with both value files;<br>• a check that the web app never gets `SPLUNK_TOKEN`;<br>• the three images built and installed on a kind cluster, with the connector and the ML job run once, then a sign-in.<br>It runs when the chart, the Dockerfiles or `worker/` change. |
+
+## Browser tests
+
+| File | What it does |
+|---|---|
+| `playwright.config.ts` | `npm run e2e`: Playwright against an app that's already running (`E2E_BASE_URL`, default `http://localhost:3000`), in the Chrome installed on the machine (`channel: 'chrome'`), so nothing is downloaded. One worker, because Better Auth limits sign-ins. It reads `.env.local` for `DEMO_PASSWORD`. |
+| `e2e/auth.setup.ts` | Signs in as the admin through the login form once, and saves the session in `e2e/.auth/` (git ignores it) for the other tests. |
+| `e2e/reports.spec.ts` | The home page lists at most 20 reports, newest run first, and each one that has run shows its headline number; a report page shows its chart and its results table; no console errors. It works against the demo data and a real Splunk. `E2E_SCREENSHOTS=<folder>` saves screenshots. |
 
 ## Settings and git
 

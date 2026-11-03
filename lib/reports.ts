@@ -172,14 +172,65 @@ export type SyncInfo = {
     timeZone: string;
 };
 
+// A report card's headline: the report's first highlight from its newest
+// results, such as "Overall error rate 0.93%, Budget: 2%". `from` is set when
+// those results are older than the last run (it failed, or its results
+// expired), so the card can say the number is from an earlier run.
+export type ReportHeadline = Pick<ReportHighlight, 'label' | 'value' | 'note'> & { from?: string };
+
 export type ReportSummary = Pick<
     SplunkReport,
     'slug' | 'title' | 'description' | 'category' | 'status' | 'schedule' | 'lastRun' | 'recipients' | 'history' | 'tags' | 'owner' | 'index'
->;
+> & {
+    // null until the report has results.
+    headline: ReportHeadline | null;
+};
 
-export const toSummary = ({ slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index }: ReportListItem): ReportSummary => ({
-    slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index,
-});
+const headlineOf = ({ highlights, resultsRunAt, lastRun }: Pick<ReportListItem, 'highlights' | 'resultsRunAt' | 'lastRun'>): ReportHeadline | null => {
+    const [first] = highlights;
+    if (!first) return null;
+    return {
+        label: first.label,
+        value: first.value,
+        ...(first.note ? { note: first.note } : {}),
+        ...(resultsRunAt && resultsRunAt !== lastRun ? { from: resultsRunAt } : {}),
+    };
+};
+
+export const toSummary = (report: ReportListItem): ReportSummary => {
+    const { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index } = report;
+    return { slug, title, description, category, status, schedule, lastRun, recipients, history, tags, owner, index, headline: headlineOf(report) };
+};
+
+// The newest last run first, reports with no run yet last, and reports that
+// ran at the same time by title. This is the order of the report list.
+export function sortByLastRun<T extends Pick<ReportListItem, 'lastRun' | 'title'>>(reports: T[]): T[] {
+    const time = ({ lastRun }: T) => {
+        const at = Date.parse(lastRun);
+        return Number.isNaN(at) ? Number.NEGATIVE_INFINITY : at;
+    };
+    return reports.toSorted((a, b) => (time(a) === time(b) ? a.title.localeCompare(b.title) : time(b) - time(a)));
+}
+
+// How many report cards a page of the list shows.
+export const REPORTS_PER_PAGE = 20;
+
+// One page of a list, where page 0 is the first. A page past the end shows the
+// last one, so a filter that shortens the list never leaves an empty page.
+// first and last count from 1, for "Showing 21 to 40 of 312".
+export function paginate<T>(items: T[], page: number, size = REPORTS_PER_PAGE) {
+    const pages = Math.max(1, Math.ceil(items.length / size));
+    const index = Math.min(Math.max(0, Math.floor(page) || 0), pages - 1);
+    const start = index * size;
+    return {
+        items: items.slice(start, start + size),
+        page: index,
+        pages,
+        first: start + 1,
+        last: Math.min(start + size, items.length),
+        total: items.length,
+    };
+}
 
 const CATEGORY_ORDER: ReportCategory[] = ['Security', 'Operations', 'Infrastructure', 'Business', 'Compliance', 'Other'];
 

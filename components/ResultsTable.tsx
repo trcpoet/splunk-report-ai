@@ -16,6 +16,7 @@ import {
     type FilterFn,
     type SortFn,
 } from "@tanstack/react-table";
+import Pager from "@/components/Pager";
 import { columnLabel, formatCell, formatNumber, parseNumber } from "@/lib/format";
 
 type Cell = string | number;
@@ -107,14 +108,6 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
     const matches = table.getFilteredRowModel().rows.length;
     const firstRow = table.state.pagination.pageIndex * PAGE_SIZE + 1;
 
-    // aria-disabled, not disabled: a disabled button loses the keyboard focus,
-    // which would drop someone paging through the table at its last page.
-    const pageButton = (label: string, canGo: boolean, go: () => void) => (
-        <button type="button" className="btn-secondary btn-small" aria-disabled={!canGo} onClick={() => { if (canGo) go(); }}>
-            {label}
-        </button>
-    );
-
     return (
         <>
             {filterable && (
@@ -178,13 +171,14 @@ const ResultsTable = ({ columns, rows, filterable = false, sortValues }: Props) 
             </div>
 
             {matches > PAGE_SIZE && (
-                <div className="table-pages" role="group" aria-label="Table pages">
-                    <span aria-live="polite">
-                        Rows {formatNumber(firstRow)} to {formatNumber(firstRow + shown.length - 1)} of {formatNumber(matches)}
-                    </span>
-                    {pageButton('Previous', table.getCanPreviousPage(), () => table.previousPage())}
-                    {pageButton('Next', table.getCanNextPage(), () => table.nextPage())}
-                </div>
+                <Pager
+                    label="Table pages"
+                    status={`Rows ${formatNumber(firstRow)} to ${formatNumber(firstRow + shown.length - 1)} of ${formatNumber(matches)}`}
+                    canPrevious={table.getCanPreviousPage()}
+                    canNext={table.getCanNextPage()}
+                    onPrevious={() => table.previousPage()}
+                    onNext={() => table.nextPage()}
+                />
             )}
         </>
     )

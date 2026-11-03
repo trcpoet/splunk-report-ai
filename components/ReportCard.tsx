@@ -50,6 +50,16 @@ const ReportCard = ({ report }: { report: ReportSummary }) => {
                 <p className="description">{report.description}</p>
             </div>
 
+            {/* What the newest results say, such as "Overall error rate 0.93%". */}
+            {report.headline && (
+                <p className="card-headline">
+                    <span className="label">{report.headline.label}</span>
+                    <span className="value">{report.headline.value}</span>
+                    {report.headline.note && <span className="note">{report.headline.note}</span>}
+                    {report.headline.from && <span className="from">From the run at {formatDateTime(report.headline.from)}</span>}
+                </p>
+            )}
+
             <div className="meta">
                 <div>
                     <Image src="/icons/clock.svg" alt="" width={14} height={14} />

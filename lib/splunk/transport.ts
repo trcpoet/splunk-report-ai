@@ -17,6 +17,16 @@ export class SplunkHttpError extends Error {
     }
 }
 
+// A reply that isn't JSON, with its status. `html` is true for a web page:
+// the address is Splunk Web (usually port 8000) or a proxy, not the REST API.
+// It's an HTTP error too, so a proxy's 404 page still counts as "not found".
+export class SplunkNotJsonError extends SplunkHttpError {
+    constructor(status: number, readonly html: boolean, message: string) {
+        super(status, message);
+        this.name = 'SplunkNotJsonError';
+    }
+}
+
 export const isNotFound = (error: unknown) => error instanceof SplunkHttpError && error.status === 404;
 
 // The worker's Splunk token: SPLUNK_TOKEN, or else the file SPLUNK_TOKEN_FILE
@@ -51,6 +61,11 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // Exponential backoff with a little jitter: ~0.5s, 1s, 2s.
 const backoff = (attempt: number) => 500 * 2 ** attempt + Math.random() * 250;
 
+// Splunk's REST API answers in JSON, errors included. A web page comes from
+// Splunk Web (usually port 8000) or a proxy in front of Splunk.
+const isWebPage = (response: Response, body: string) =>
+    /^\s*<(!doctype|html)/i.test(body) || (response.headers.get('content-type') ?? '').includes('html');
+
 const retryAfter = (response: Response) => {
     const seconds = Number(response.headers.get('retry-after'));
     return seconds > 0 ? Math.min(seconds, 60) * 1000 : undefined;
@@ -82,7 +97,15 @@ export function httpTransport({ baseUrl, token, timeoutMs = 30_000, retries = 3,
                     throw error;
                 }
 
-                if (response.ok) return (await response.json()) as T;
+                if (response.ok) {
+                    const text = await response.text();
+                    try {
+                        return JSON.parse(text) as T;
+                    } catch {
+                        const html = isWebPage(response, text);
+                        throw new SplunkNotJsonError(response.status, html, `GET ${url.pathname} answered with ${html ? 'a web page' : 'something'} that isn't JSON.`);
+                    }
+                }
 
                 if (RETRYABLE_STATUSES.has(response.status) && attempt < retries) {
                     await response.body?.cancel();
@@ -91,6 +114,7 @@ export function httpTransport({ baseUrl, token, timeoutMs = 30_000, retries = 3,
                 }
 
                 const body = await response.text().catch(() => '');
+                if (isWebPage(response, body)) throw new SplunkNotJsonError(response.status, true, `GET ${url.pathname} answered ${response.status} with a web page.`);
                 throw new SplunkHttpError(response.status, `GET ${url.pathname} returned ${response.status}: ${body.slice(0, 200)}`);
             }
         },

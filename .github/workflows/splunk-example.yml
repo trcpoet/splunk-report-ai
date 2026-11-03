@@ -1,7 +1,9 @@
 # Runs the Splunk example (docs/splunk-example.md) on a fresh machine: a real
 # Splunk Enterprise trial with its dummy logs and scheduled reports, and the
 # connector copying their runs into MongoDB through Splunk's REST API. It checks
-# that the six reports reach the app with Splunk's results.
+# that the seven reports reach the app with Splunk's results, that
+# `npm run splunk:check` passes (and explains a wrong token and the wrong port),
+# and runs the browser tests (e2e/) against them, keeping their screenshots.
 # Not required for merging. It runs when the connector or the example changes,
 # every Monday (to catch changes in Splunk's image), and by hand.
 name: Splunk example
@@ -12,6 +14,10 @@ on:
       - lib/splunk/**
       - worker/**
       - scripts/splunk-example/**
+      - scripts/splunk-check.ts
+      - app/**
+      - components/**
+      - e2e/**
       - docker-compose.splunk.yml
       - Dockerfile
       - .github/workflows/splunk-example.yml
@@ -21,6 +27,10 @@ on:
       - lib/splunk/**
       - worker/**
       - scripts/splunk-example/**
+      - scripts/splunk-check.ts
+      - app/**
+      - components/**
+      - e2e/**
       - docker-compose.splunk.yml
       - Dockerfile
       - .github/workflows/splunk-example.yml
@@ -102,6 +112,38 @@ jobs:
           for report in reports/*.json; do slug=${report#reports/}; check "${slug%.json}" '.report.status != "failed"' "didn't fail"; done
       - name: Check the connector read Splunk, not the dummy data
         run: docker compose exec -T mongo mongosh --quiet splunkevents --eval 'db.sync_state.findOne().mode' | grep -qx live
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: npm run splunk:check passes, and explains a wrong token and the wrong port
+        env:
+          SPLUNK_MODE: live
+          SPLUNK_BASE_URL: http://localhost:8089
+        run: |
+          docker compose exec -T connector cat /run/splunk-example/token > token
+          SPLUNK_TOKEN_FILE=token npm run splunk:check
+          if SPLUNK_TOKEN=not-a-real-token npm run splunk:check > wrong-token.txt; then echo "A wrong token passed the check."; exit 1; fi
+          cat wrong-token.txt
+          grep -q 'turned the token down' wrong-token.txt
+          if SPLUNK_TOKEN_FILE=token SPLUNK_BASE_URL=http://localhost:8000 npm run splunk:check > wrong-port.txt; then echo "Splunk Web's port passed the check."; exit 1; fi
+          cat wrong-port.txt
+          grep -q 'answered .*with a web page' wrong-port.txt
+      - name: Browser tests against the reports from Splunk (e2e/)
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          E2E_PASSWORD: splunk-demo-2026
+          E2E_SCREENSHOTS: e2e/screenshots
+        run: npm run e2e
+      - name: Keep the screenshots of the app showing Splunk's reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-from-splunk
+          path: e2e/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Show the logs
         if: failure()
         run: |

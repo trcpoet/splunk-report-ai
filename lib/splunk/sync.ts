@@ -1,7 +1,9 @@
 import connectDB from '@/lib/mongodb';
 import { Report, ReportRun, SyncState, SYNC_STATE_ID } from '@/database';
 import { reportConfig, type ReportConfig } from '@/lib/report-config';
+import { describeError, errorMessage } from './errors';
 import { deriveReportFields, isFailed, isFinished, mapResults, mapRun, mapSavedSearch, toBool, type ReportMeta, type ResultTable, type RunFacts } from './map';
+import type { SyncReports } from './settings';
 import { isNotFound, type SplunkTransport } from './transport';
 import type { AppContent, HistoryContent, JobContent, ResultsResponse, SavedSearchContent, SplunkEntry, SplunkFeed } from './types';
 
@@ -20,7 +22,7 @@ const HISTORY_LOOKBACK = 50;
 const HISTORY_SIZE = 7;
 const MAX_ROWS = Number(process.env.SYNC_MAX_ROWS) || 5_000;
 
-type ScheduledReport = {
+export type ScheduledReport = {
     entry: SplunkEntry<SavedSearchContent>;
     meta: ReportMeta;
     config?: ReportConfig;
@@ -45,8 +47,16 @@ function oneReportPerSlug(reports: ScheduledReport[], log: Log) {
     return [...kept.values()];
 }
 
-// Scheduled searches that email their results, plus any listed in report-config.
-export async function listScheduledReports(transport: SplunkTransport, timeZone: string, now: Date, log: Log = () => {}): Promise<ScheduledReport[]> {
+// Whether a saved search becomes a report: it must be scheduled, and listed in
+// report-config, or (with SYNC_REPORTS=emailed, the default) email its results.
+export function isSyncedSearch(entry: SplunkEntry<SavedSearchContent>, which: SyncReports = 'emailed') {
+    if (!toBool(entry.content.is_scheduled) || !entry.content.cron_schedule) return false;
+    if (reportConfig[entry.name]) return true;
+    return which === 'emailed' && toBool(entry.content['action.email']);
+}
+
+// The scheduled searches the sync turns into reports (see isSyncedSearch).
+export async function listScheduledReports(transport: SplunkTransport, timeZone: string, now: Date, log: Log = () => {}, which: SyncReports = 'emailed'): Promise<ScheduledReport[]> {
     const [apps, searches] = await Promise.all([
         transport.get<SplunkFeed<AppContent>>('/services/apps/local', { count: 0 }),
         transport.get<SplunkFeed<SavedSearchContent>>('/servicesNS/-/-/saved/searches', { count: 0, search: 'is_scheduled=1' }),
@@ -54,8 +64,7 @@ export async function listScheduledReports(transport: SplunkTransport, timeZone:
     const appLabels = Object.fromEntries(apps.entry.map((app) => [app.name, app.content.label ?? app.name]));
 
     const reports = searches.entry
-        .filter((entry) => toBool(entry.content.is_scheduled) && entry.content.cron_schedule)
-        .filter((entry) => reportConfig[entry.name] || toBool(entry.content['action.email']))
+        .filter((entry) => isSyncedSearch(entry, which))
         .map((entry) => {
             const config = reportConfig[entry.name];
             return { entry, config, meta: mapSavedSearch(entry, { config, appLabels, timeZone, now }) };
@@ -73,7 +82,7 @@ type NewRuns = {
 };
 
 // One job's facts and results, or null while it's still running.
-async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledReport, sid: string): Promise<RunFacts | null> {
+export async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledReport, sid: string): Promise<RunFacts | null> {
     const job = (await transport.get<SplunkFeed<JobContent>>(`/services/search/jobs/${encodeURIComponent(sid)}`)).entry[0];
     if (!job || !isFinished(job.content)) return null;
 
@@ -96,21 +105,26 @@ async function fetchRun(transport: SplunkTransport, { meta, config }: ScheduledR
     return mapRun({ reportSlug: meta.slug, job, results, resultsExpired, rule: config?.statusRule });
 }
 
-// Runs in the report's Splunk history that aren't in `knownSids` yet. Jobs still
-// running are skipped; the next sync picks them up.
-export async function fetchNewRuns(transport: SplunkTransport, report: ScheduledReport, knownSids: Set<string>): Promise<NewRuns> {
-    const { entry } = report;
+// The sids of a report's scheduled runs in Splunk's history, newest first.
+// Runs someone started by hand don't count.
+export async function scheduledRunSids(transport: SplunkTransport, { entry }: ScheduledReport, count = HISTORY_LOOKBACK): Promise<string[]> {
     const owner = encodeURIComponent(entry.acl?.owner ?? 'nobody');
     const app = encodeURIComponent(entry.acl?.app ?? 'search');
     const history = await transport.get<SplunkFeed<HistoryContent>>(
         `/servicesNS/${owner}/${app}/saved/searches/${encodeURIComponent(entry.name)}/history`,
-        { count: HISTORY_LOOKBACK },
+        { count },
     );
 
-    const sids = history.entry
+    return history.entry
         .filter((job) => job.content.isScheduled === undefined || toBool(job.content.isScheduled))
-        .map((job) => job.name)
-        .filter((sid) => !knownSids.has(sid));
+        .toSorted((a, b) => (b.published ?? '').localeCompare(a.published ?? ''))
+        .map((job) => job.name);
+}
+
+// Runs in the report's Splunk history that aren't in `knownSids` yet. Jobs still
+// running are skipped; the next sync picks them up.
+export async function fetchNewRuns(transport: SplunkTransport, report: ScheduledReport, knownSids: Set<string>): Promise<NewRuns> {
+    const sids = (await scheduledRunSids(transport, report)).filter((sid) => !knownSids.has(sid));
 
     const runs: RunFacts[] = [];
     let unreadable = 0;
@@ -202,20 +216,10 @@ async function refreshAppCache(log: (message: string) => void) {
     }
 }
 
-// fetch itself only says "fetch failed". The reason, such as a certificate it
-// couldn't verify or a refused connection, is in its cause.
-export function errorMessage(error: unknown) {
-    if (!(error instanceof Error)) return String(error);
-
-    // For a refused connection, Node's cause has a code and an empty message.
-    const { cause } = error;
-    const reason = cause instanceof Error ? cause.message || (cause as NodeJS.ErrnoException).code : undefined;
-    return reason ? `${error.message}: ${reason}` : error.message;
-}
-
 type SyncOptions = {
     transport: SplunkTransport;
     mode: 'fixture' | 'live';
+    syncReports?: SyncReports;
     timeZone?: string;
     now?: Date;
     refreshApp?: boolean;
@@ -228,14 +232,14 @@ type SyncSummary = {
     errors: number;
 };
 
-export async function syncAll({ transport, mode, timeZone = 'UTC', now = new Date(), refreshApp = true, log = console.log }: SyncOptions): Promise<SyncSummary> {
+export async function syncAll({ transport, mode, syncReports = 'emailed', timeZone = 'UTC', now = new Date(), refreshApp = true, log = console.log }: SyncOptions): Promise<SyncSummary> {
     await connectDB();
     await SyncState.updateOne({ _id: SYNC_STATE_ID }, { $set: { mode, lastStartedAt: now } }, { upsert: true });
 
     const summary: SyncSummary = { reports: 0, newRuns: 0, errors: 0 };
 
     try {
-        const scheduled = await listScheduledReports(transport, timeZone, now, log);
+        const scheduled = await listScheduledReports(transport, timeZone, now, log, syncReports);
 
         for (const report of scheduled) {
             try {
@@ -246,7 +250,7 @@ export async function syncAll({ transport, mode, timeZone = 'UTC', now = new Dat
             } catch (error) {
                 summary.errors++;
                 await Report.updateOne({ slug: report.meta.slug }, { $set: { syncError: errorMessage(error) } });
-                log(`✗ ${report.meta.slug}: ${errorMessage(error)}`);
+                log(`✗ ${report.meta.slug}: ${describeError(error)}`);
             }
         }
 

@@ -103,9 +103,32 @@ Treat the token like a password. It goes only in `.env.local`, never in code, ch
 >
 > It calls `saved/searches`, `saved/searches/{name}/history`, `search/jobs/{sid}` and `search/v2/jobs/{sid}/results`.
 
-## Step 4: Test the connection by hand
+## Step 4: Test the connection
 
-Before touching the app, check the address and token work. In a terminal (replace the two values):
+Before syncing anything, check the address and token work. Put them in `.env.local` as in Step 5, then run:
+
+```bash
+SPLUNK_MODE=live npm run splunk:check
+```
+
+It only reads, and checks one thing at a time:
+1. Splunk answers at that address.
+2. The token works, and whose it is (the user and its roles).
+3. How many scheduled searches the token can see, and how many the sync takes (`SYNC_REPORTS`).
+4. Which reports in `lib/report-config.ts` Splunk doesn't have: a typo, or a report not shared with the token's role.
+5. A run's results can be read.
+
+Each problem comes with what to fix, for example:
+
+```text
+✓ Splunk answers at https://splunk.example.com:8089.
+✗ The token doesn't work: GET /services/authentication/current-context returned 401: ...
+  → Splunk turned the token down: it is wrong, or it has expired. Make a new token for the service account.
+```
+
+It exits with code 1 when a check fails, so scripts can use it. The sync worker prints the same hints.
+
+To check by hand instead, with curl (replace the two values):
 
 ```bash
 SPLUNK_BASE_URL="https://acme.splunkcloud.com:8089"
@@ -146,10 +169,12 @@ npm run dev
 
 Sign in as `admin@example.com`. Admins see every report, so you should see your real reports. The dummy reports disappear on the first live sync: the sync hides any report that's no longer scheduled in Splunk.
 
-Which reports come in:
+Which reports come in, with `SYNC_REPORTS=emailed` (the default):
 
 - every scheduled report that **emails its results**, and
 - every scheduled report **listed in `lib/report-config.ts`**, even if it doesn't email.
+
+With `SYNC_REPORTS=configured`, only the ones in `lib/report-config.ts` come in. Use it when the token can see hundreds of emailed searches and the app should show a chosen few. The home page lists 20 reports a page, newest run first, either way.
 
 To keep the data fresh, run the worker on a timer next to the app:
 
@@ -180,7 +205,8 @@ Don't turn off certificate checks (`NODE_TLS_REJECT_UNAUTHORIZED=0`): that would
 
 | Problem | Fix |
 |---|---|
-| `SPLUNK_MODE=live needs SPLUNK_BASE_URL and SPLUNK_TOKEN` | One of them is empty in `.env.local`. |
+| "The sync worker's settings need fixing", with a list | Each line names a setting to fix: an empty `SPLUNK_BASE_URL` or token, an address without `https://`, an unknown `SPLUNK_MODE` or `SYNC_REPORTS`, or a time zone the runtime doesn't know. |
+| A line starting with `→` in the sync log | What to check for a common mistake: a wrong or expired token, port 8000 (Splunk Web) instead of 8089, a certificate Node doesn't trust. `npm run splunk:check` gives the same advice. |
 | The sync finishes but no reports appear | The admin view shows only reports that email their results or are in `report-config.ts`. Add the report's exact name to `report-config.ts`. |
 | A report's results are older than its last run | The worker ran after Splunk deleted the newest results. Run `sync:watch` more often. |
 | A report says "No runs yet" | No run of it is stored. It may simply not have run, or the sync log says why: look for `Splunk answered 404`, which means its jobs expired or the token can't read them. |

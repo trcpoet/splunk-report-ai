@@ -554,6 +554,29 @@
         @apply border-light-200/30 bg-light-200/10 text-light-200;
     }
 
+    /* A report card's headline number from its newest results
+       (lib/reports.ts, toSummary): the one bold thing on the card. */
+    .card-headline {
+        @apply flex flex-row flex-wrap items-baseline gap-x-2 gap-y-0.5;
+
+        .label {
+            @apply w-full text-light-200 text-xs;
+        }
+
+        .value {
+            @apply text-2xl font-semibold leading-tight tabular-nums break-words;
+        }
+
+        .note {
+            @apply text-light-200 text-xs;
+        }
+
+        /* The newest run had no results, so the number is an older run's. */
+        .from {
+            @apply w-full text-amber-300 text-xs;
+        }
+    }
+
     .run-history {
         @apply flex flex-row items-center gap-1 mt-auto;
 
@@ -666,7 +689,9 @@
         @apply overflow-x-auto rounded-[10px] border border-dark-200;
     }
 
-    .table-pages {
+    /* Previous / Next with where you are (components/Pager.tsx): under the
+       results table and under the report list. */
+    .pager {
         @apply flex flex-row flex-wrap items-center justify-end gap-2 text-sm text-light-200;
 
         span {

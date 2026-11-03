@@ -186,6 +186,8 @@ export function fixtureTransport(source: FixtureReport[] = reports): SplunkTrans
     };
 
     const routes: [RegExp, (match: string[], params: QueryParams) => unknown][] = [
+        // Who the token belongs to, for `npm run splunk:check`.
+        [/^\/services\/authentication\/current-context$/, () => feed([{ name: 'tokens', content: { username: 'splunk-events-sync', roles: ['splunk_events_reader'] } }])],
         [/^\/services\/apps\/local$/, () => apps()],
         [/^\/servicesNS\/[^/]+\/[^/]+\/saved\/searches$/, () => feed(source.map(savedSearch))],
         [/^\/servicesNS\/[^/]+\/[^/]+\/saved\/searches\/([^/]+)\/history$/, ([name = ''], params) => history(name, params)],
