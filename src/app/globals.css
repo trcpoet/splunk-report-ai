@@ -529,6 +529,15 @@
         @apply bg-dark-200 text-light-100 text-xs rounded-[6px] px-3 py-1;
     }
 
+    /* A link out to a report's runbook, which opens in a new tab. */
+    .runbook-link {
+        @apply inline-flex items-center gap-1;
+
+        svg {
+            @apply size-3.5 shrink-0;
+        }
+    }
+
     /* What a report is about (src/reports/components/ReportIcon.tsx), beside its
        category pill and in the same quiet colors, so it helps scanning without
        competing with the status badge or the headline number. */
@@ -632,7 +641,17 @@
         }
 
         .status-callout {
-            @apply rounded-[10px] border px-5 py-4 text-sm;
+            @apply flex flex-col gap-2 rounded-[10px] border px-5 py-4 text-sm;
+
+            /* The card's runbook and contact, in the callout's own color so
+               they read as part of it (src/reports/components/WhatToDo.tsx). */
+            .what-to-do a {
+                @apply font-medium underline underline-offset-2 hover:no-underline;
+            }
+        }
+
+        .side-card dd a {
+            @apply text-primary hover:underline;
         }
 
         .details {
@@ -1504,8 +1523,12 @@
         .briefing-item-actions {
             @apply flex flex-row flex-wrap items-center justify-between gap-3;
 
-            > a {
+            > a, .briefing-links a {
                 @apply text-sm text-primary hover:underline;
+            }
+
+            .briefing-links {
+                @apply flex flex-row flex-wrap items-center gap-4;
             }
         }
 

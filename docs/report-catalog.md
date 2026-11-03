@@ -86,6 +86,10 @@ Four layers, each filling in what the one before leaves open:
 - **Chart:** columns of Error rate % by Host, with a dashed line at the **2% error budget**. Columns above it take the warning color.
 - **Headline numbers:** the overall error rate (all hosts together) with a meter against the 2% budget, the requests in the hour, and the worst host. The card shows the overall error rate.
 - **Warns:** when any host is above 2%, naming it, or listing them all. The chart's line and the warning use the same number (`ERROR_BUDGET_PCT`).
+- **What to do** (the card's demo runbook; contact `web-oncall@example.com`):
+  1. Open the worst host's errors in Splunk: `index=web sourcetype=access_combined host=<host> status>=500 | stats count BY uri_path, status`.
+  2. One path failing: tell the team that owns it, with the path and the count. Every path failing: take the host out of the load balancer and restart its app server.
+  3. Several hosts at once usually means a bad deploy or a failing dependency (database, upstream API): check what changed in the last hour.
 
 ### Firewall Denied Connections: Top Sources
 
@@ -159,6 +163,10 @@ Four layers, each filling in what the one before leaves open:
 - **Chart:** bars of Used % by Host that fill a track up to 100%, like meters, with a dashed line at **95% critical**.
 - **Headline numbers:** Results (mounts over 85%), the top host by Used %, and the search time. The card shows Results.
 - **Warns:** when any mount is above 95%, naming each one. The line and the warning use the same number (`DISK_CRITICAL_PCT`).
+- **What to do** (the card's demo runbook; contact `infra-oncall@example.com`):
+  1. Find what grew: on the host, `du -xh <mount> | sort -h | tail` shows the largest folders.
+  2. Old logs or temporary files: clean them up, and check the log rotation that should have removed them. A database or data volume: ask its owners before deleting anything.
+  3. If it can't be freed today, grow the volume, and note it for the next capacity review.
 
 ### Privileged Group Membership Changes
 
@@ -215,6 +223,10 @@ Four layers, each filling in what the one before leaves open:
 - **Chart:** bars of Minutes silent by Host.
 - **Headline numbers:** Results (silent hosts), the top host by Minutes silent, and the search time. The card shows Results.
 - **Warns:** whenever there's a result, naming the host that has been silent longest.
+- **What to do** (the card's demo runbook; contact `splunk-admins@example.com`):
+  1. Check the host is up. A host that was retired or rebuilt on purpose: remove it from monitoring, and the warning goes.
+  2. If it's up, check its forwarder: `splunk status` on the host, and its `splunkd.log` for connection errors to the indexers.
+  3. Many hosts silent at once points at the indexers or the network between them, not the hosts: tell the Splunk admins.
 
 ### Web Requests by Host
 

@@ -52,13 +52,15 @@ Helpers:
 - **`getCategories(reports)`:** in a fixed order.
 - **`getSimilarReports(report, reports, limit = 3)`:** same category or shared tags.
 - **`needsAttention(report)`:** warning or failed. One rule for the home page's count, the briefing, the suggestions and the Reports button.
+- **`webLink(url)`:** a card's runbook only when it's an http(s) address, so nothing else becomes a link even if it reached the database. `dal.ts` uses it.
+- **`contactEmail(contact)`:** the contact when it's just an email address, for a mail link.
 - **`getReportStats(reports)`:** the headline numbers.
 - **`syncProblem(sync, now, staleHours = 2)`:** why the reports may be out of date, or `null`. Dummy data never counts as stale.
 
 ### `report-config.ts`
 
 Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts, and holds the types they become: `ReportConfig`, `StatusRule`, `HighlightRule`, `ResultSet`.
-- **`reportConfig()`:** the settings the sync uses, keyed by each report's Splunk name: slug, category, tags, `icon`, `groups`, `chart`, `index`, `statusRule`, `highlights`. **`reportCards()`:** the cards as written, for `card:preview` and `splunk:check`.
+- **`reportConfig()`:** the settings the sync uses, keyed by each report's Splunk name: slug, category, tags, `icon`, `groups`, `chart`, `index`, `runbook`, `contact`, `statusRule`, `highlights`. **`reportCards()`:** the cards as written, for `card:preview` and `splunk:check`.
 - **Read again when the file changes,** so `npm run sync:watch` picks up an edit at its next sync. A mistake throws a `ReportCardsError` that lists every problem.
 - **Who loads it:** the sync worker (`src/splunk/sync.ts`) and the scripts; the web app only reads the results. No `server-only` or `next/*` imports.
 - **Change it when:** a card needs a setting the sync doesn't have yet. To add or change a report's card, edit `config/report-cards.yaml` instead: [adding-report-cards.md](../adding-report-cards.md), and every field in [configuration.md](../configuration.md#report-cards-configreport-cardsyaml). Access in practice: [report-access.md](../report-access.md).
@@ -140,6 +142,10 @@ One report as a card: icon, category, title, status, its headline number from th
 ### `ReportIcon.tsx` (server or client)
 
 A report's icon (`report.icon`) in a small tile, in the category pill's colors: `size="large"` in a report page's header. Decorative (`aria-hidden`), since the title beside it says the same. Each listed name is imported from `lucide-react` by itself, so the browser gets only these icons, not all of Lucide. A name that isn't listed shows the default icon rather than breaking the list.
+
+### `WhatToDo.tsx` (server)
+
+A card's `runbook` and `contact`: `RunbookLink` (opens in a new tab, says so to screen readers), `Contact` (a mail link for an email address, text otherwise), and `WhatToDo`, the sentence under a warning ("What to do: open the runbook, or ask …"). Used by the report page and `Briefing`.
 
 ### `StatusBadge.tsx` (server)
 

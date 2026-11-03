@@ -1,6 +1,26 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { needsAttention, paginate, sortByLastRun, syncProblem, toSummary, type ReportListItem, type SyncInfo } from '@/reports/reports';
+import { contactEmail, needsAttention, paginate, sortByLastRun, syncProblem, toSummary, webLink, type ReportListItem, type SyncInfo } from '@/reports/reports';
+
+describe('webLink', () => {
+    test('keeps http(s) addresses, and drops anything else rather than draw it as a link', () => {
+        assert.equal(webLink('https://wiki.example.com/runbooks/disk#steps'), 'https://wiki.example.com/runbooks/disk#steps');
+        assert.equal(webLink('http://wiki.internal/disk'), 'http://wiki.internal/disk');
+        assert.equal(webLink('javascript:alert(1)'), undefined);
+        assert.equal(webLink('wiki/runbooks/disk'), undefined);
+        assert.equal(webLink(''), undefined);
+        assert.equal(webLink(undefined), undefined);
+    });
+});
+
+describe('contactEmail', () => {
+    test('is the contact when it is just an email address', () => {
+        assert.equal(contactEmail('infra-oncall@example.com'), 'infra-oncall@example.com');
+        assert.equal(contactEmail('SRE on-call, #sre-alerts'), undefined);
+        assert.equal(contactEmail('Ask sre@example.com'), undefined);
+        assert.equal(contactEmail(undefined), undefined);
+    });
+});
 
 describe('needsAttention', () => {
     test('is for warnings and failures, not for a report that has yet to run', () => {

@@ -100,6 +100,9 @@ export type SplunkReport = {
     runsPerWeek: number;
     timeRange: string;
     index: string;
+    // From the card: a link to what to do when it warns or fails, and who to ask.
+    runbook?: string;
+    contact?: string;
     // Empty until the report's first run is synced.
     lastRun: string;
     nextRun: string;
@@ -258,6 +261,24 @@ export const getSimilarReports = (report: ReportListItem, reports: ReportListIte
 // A report needs attention when its latest run warns or failed. The home
 // page's count, the briefing and Ask AI's Reports button all use this.
 export const needsAttention = (report: Pick<ReportListItem, 'status'>) => report.status === 'warning' || report.status === 'failed';
+
+// A card's runbook as a link the page can draw: only an http(s) address. The
+// cards schema already refuses anything else; this keeps a javascript: link
+// that reached the database some other way from becoming a link.
+export function webLink(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+    try {
+        const { protocol, href } = new URL(url);
+        return protocol === 'https:' || protocol === 'http:' ? href : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+// A contact that is just an email address, which the page turns into a mail
+// link. Anything else ("SRE on-call, #sre-alerts") is shown as text.
+export const contactEmail = (contact: string | undefined): string | undefined =>
+    contact && /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(contact) ? contact : undefined;
 
 const HOUR_MS = 3_600_000;
 

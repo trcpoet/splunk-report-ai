@@ -85,6 +85,9 @@ export const ReportCard = z.object({
     tags: z.array(z.string()).default([]),
     groups: z.array(z.string()).optional().describe('Who may see it. Default: the email lists it was sent to (secops@example.com is the group secops).'),
     index: z.string().optional().describe('What the report page says it searches, when the search\'s own index=… isn\'t clear.'),
+    runbook: z.url({ protocol: /^https?$/, error: 'Use a web address that starts with https:// (or http://), such as https://wiki.example.com/runbooks/disk-space.' })
+        .optional().describe('A link to what to do when the report warns or fails: a runbook or wiki page. The report page and the briefing show it.'),
+    contact: z.string().min(1).max(200).optional().describe('Who to ask about the report: a team, an on-call rota or an email address, such as "sre-oncall@example.com". An email address becomes a link.'),
     chart: z.union([z.literal('none'), Chart]).optional().describe('"none" for a table only.'),
     highlights: z.array(Highlight).min(1).optional().describe('The headline numbers. The first one is on the report\'s card. Default: the result count, the top row and the search time.'),
     warn: Rule.optional().describe('When the report shows "Warning", and what it says.'),

@@ -207,6 +207,14 @@ describe('fixture pipeline', () => {
         }
     });
 
+    test("the demo reports that warn or fail carry their card's runbook and contact", async () => {
+        for (const { report: { meta }, fixture } of await synced()) {
+            if (fixture.status === 'success') continue;
+            assert.match(meta.runbook, /^https:\/\/github\.com\/.+\/docs\/report-catalog\.md#/, fixture.slug);
+            assert.ok(fixture.recipients.includes(meta.contact), `${fixture.slug}: contact ${meta.contact} isn't one of its recipients`);
+        }
+    });
+
     test('reproduces each report status, message and run history', async () => {
         for (const { derived, fixture } of await synced()) {
             assert.equal(derived.latest?.status, fixture.status, fixture.slug);

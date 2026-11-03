@@ -1,12 +1,11 @@
 # Ideas not built yet
 
-Ideas for making the app more useful, with the smallest version of each that would work. **None of these are built.** Each one is a separate change, and gets agreed before it starts. The list is ranked: quick wins first.
+Ideas for making the app more useful, with the smallest version of each that would work. **None of these are built**; what has been built moves to [Built from this list](#built-from-this-list). Each one is a separate change, and gets agreed before it starts. The list is ranked: quick wins first.
 
 ## Quick wins
 
 | Idea | What it gives people | The smallest version |
 |---|---|---|
-| **Runbook and owner on each card** | When a report shows Warning or Failed, the person on call sees what to do and who to ask. | Two optional card fields, `runbook:` (a link) and `contact:`, shown as a "What to do" link on the card and report page when the report isn't healthy. |
 | **A "Late" badge** | A report that stopped running doesn't look Healthy forever. Today a dead search or a stalled sync keeps its last good status. | The sync already stores each report's `nextRun`. When it's more than a grace period in the past (say twice the usual run time) with no new run, the card shows *Late*. |
 | **Filters in the address** | A filtered view can be shared or bookmarked ("Security reports with warnings"), and Back works. | The home page's category, status and search go into the URL, as in `?category=Security&status=warning`. |
 | **Jump to a report with ⌘K** | Open any report, or start an Ask AI question, from anywhere without scrolling. | shadcn's `Command` (cmdk) over the report titles and tags the page already has. |
@@ -37,3 +36,8 @@ Report icons are built (see [The icon](adding-report-cards.md#the-icon)). These 
 - **For bigger pictures,** such as an empty page or the sign-in page, IBM's Carbon pictograms (Apache 2.0) suit security and infrastructure.
 - **Logos of data sources** (Simple Icons, or the AWS, Azure and Google Cloud icon packs) could one day mark which system a report reads from. Logos come with trademark rules.
 - **AI image generators** draw icons with uneven styles, as files someone has to review and store, and a company network usually can't reach them. That's why the app **picks** an icon from a fixed list (by the report's words, or the card's `icon:`) instead of drawing one. A later option is an AI that picks from the same list. It isn't needed while the word rules work.
+
+## Built from this list
+
+- **Report icons:** an icon beside each report's category, picked from its words or set with `icon:` ([The icon](adding-report-cards.md#the-icon)).
+- **Runbook and contact on each card:** `runbook:` and `contact:` in a card. When the report warns or fails, its page says what to do and who to ask, and the briefing links the runbook ([the fields](adding-report-cards.md#the-basics)). A card can't hold a second link (the whole card is one), so the card itself doesn't show them.

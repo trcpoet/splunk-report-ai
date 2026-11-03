@@ -76,4 +76,17 @@ describe('parseReportCards', () => {
         const { configs } = parseReportCards(`${card}  custom: disk-rule\n`, 'test.yaml', registry);
         assert.deepEqual(configs['Disk check']?.statusRule?.({ columns: [], rows: [], resultCount: 0 }), { status: 'warning', message: 'custom' });
     });
+
+    test('passes a runbook link and a contact on to the sync', () => {
+        const { configs } = parseReportCards(`${card}  runbook: https://wiki.example.com/runbooks/disk\n  contact: infra-oncall@example.com\n`, 'test.yaml', {});
+        const { runbook, contact } = configs['Disk check'] ?? {};
+        assert.equal(runbook, 'https://wiki.example.com/runbooks/disk');
+        assert.equal(contact, 'infra-oncall@example.com');
+    });
+
+    test('a runbook must be a web address', () => {
+        for (const runbook of ['javascript:alert(1)', 'ftp://files.example.com/runbook', 'wiki/runbooks/disk']) {
+            assert.match(problems(`${card}  runbook: "${runbook}"\n`), /runbook: Use a web address that starts with https:\/\//, runbook);
+        }
+    });
 });

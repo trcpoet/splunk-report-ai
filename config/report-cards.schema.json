@@ -102,6 +102,17 @@
         "description": "What the report page says it searches, when the search's own index=… isn't clear.",
         "type": "string"
       },
+      "runbook": {
+        "description": "A link to what to do when the report warns or fails: a runbook or wiki page. The report page and the briefing show it.",
+        "type": "string",
+        "format": "uri"
+      },
+      "contact": {
+        "description": "Who to ask about the report: a team, an on-call rota or an email address, such as \"sre-oncall@example.com\". An email address becomes a link.",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
       "chart": {
         "description": "\"none\" for a table only.",
         "anyOf": [

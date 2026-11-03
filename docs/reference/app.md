@@ -101,12 +101,12 @@ Sign-in.
 
 One report.
 - **What it shows, in order:**
-  1. **Header:** the status badge and status message, then Explain. Admins also see why the last sync couldn't refresh the report (`getReportSyncError`).
+  1. **Header:** the report's icon, category and status badge, the status message, then Explain. When the report warns or fails and its card has a `runbook` or `contact`, the message adds "What to do: open the runbook, or ask …" (`WhatToDo`). Admins also see why the last sync couldn't refresh the report (`getReportSyncError`).
   2. **Highlights:** headline tiles, with `Meter` and `Sparkline` where set.
   3. **Latest results:** the chart (`ReportChart`, small multiples, or `ReportScatter`, inside `ChartBoundary`), then the sortable, filterable results table (`ResultsTable`).
   4. **Search query (SPL):** with **Explain it step by step**, which opens Write SPL.
   5. **Run history:** `RunTrend` and the run table, then the report's tags.
-  6. **Report details:** schedule, time range, index, Splunk app, owner, last run, next run.
+  6. **Report details:** schedule, time range, index, Splunk app, owner, the card's runbook and contact (when set), last run, next run.
   7. **Delivery:** the email lists it used to go to, and about how many emails a week that was.
   8. **Actions and related:** Download CSV and Copy SPL (`ReportActions`), then related reports (`getSimilarReports`, as `ReportCard`s).
 - **Missing or hidden:** `getVisibleReport` returns `null` for both, and the page calls `notFound()`. `generateMetadata` titles them both "Report not found".

@@ -172,6 +172,8 @@ export function toReportConfig(card: ReportCard, custom?: CustomRules): ReportCo
         ...(card.groups ? { groups: card.groups } : {}),
         ...(card.chart ? { chart: card.chart } : {}),
         ...(card.index ? { index: card.index } : {}),
+        ...(card.runbook ? { runbook: card.runbook } : {}),
+        ...(card.contact ? { contact: card.contact } : {}),
         ...(statusRule ? { statusRule } : {}),
         ...(highlights ? { highlights } : {}),
     };

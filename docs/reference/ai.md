@@ -224,7 +224,7 @@ Write SPL's examples, used for retrieval: the viewer's reports' searches, plus s
 
 What needs attention across the viewer's reports.
 - **What it lists:**
-  - reports that warn or fail (`needsAttention`);
+  - reports that warn or fail (`needsAttention`), each with a **Runbook** link when its card has one;
   - newest runs that stand out (`findUnusualRun`, or the ML job's flag), with a sparkline.
 - **Votes:** each flag has a "Worth flagging?" vote.
 - **AI summary:** when AI is on, it adds `BriefingSummary`.
