@@ -2,7 +2,7 @@
 
 Everything an engineer can set or change, where it lives, and what reads it:
 - **Environment variables** come first, grouped by the program that reads them.
-- **Settings in code** follow: report rules, people and access, the sync, AI, statistics and ML, caching, look and feel, build and deploy, and developer tools.
+- **Settings in files** follow: the report cards, people and access, the sync and how often reports update, AI, statistics and ML, caching, look and feel, build and deploy, and developer tools.
 
 How the pieces fit together: [architecture.md](architecture.md). What each file does: the [file reference](reference/README.md).
 
@@ -16,7 +16,8 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | A `.env` next to `docker-compose.yml` | `docker compose` | Every value has a default ([docker.md](docker.md)). |
 | Your copy of `deploy/helm/splunk-events/values.yaml` | The Helm chart, on Kubernetes or OpenShift | Keep it with your platform's configuration, not in this repo. Secrets come from Kubernetes Secrets ([kubernetes.md](kubernetes.md)). |
 | `.github/workflows/ci.yml` | CI | Placeholders only. The build never connects to the database, so GitHub holds no secrets. |
-| `lib/*.ts` and other code files | Everyone | Settings that are rules, not values: reports, access, limits. Change them in a PR. |
+| `config/report-cards.yaml` | The sync worker and the scripts | How each report looks in the app: its category, who sees it, its chart, its headline numbers and when it warns. Data, not code ([adding-report-cards.md](adding-report-cards.md)). Change it in a PR. |
+| `src/**/*.ts` and other code files | Everyone | Settings that are rules, not values: access, limits. Change them in a PR. |
 
 **Build-time values.**
 - The sign-in page is prerendered, so `DEMO_MODE` and `DEMO_PASSWORD` are read when the app is **built**. After changing them, rebuild or redeploy.
@@ -62,8 +63,9 @@ How the pieces fit together: [architecture.md](architecture.md). What each file 
 | `SPLUNK_TOKEN` | none | `src/splunk/settings.ts` → `src/splunk/transport.ts` | Required for `live` (or `SPLUNK_TOKEN_FILE`): a service account's authentication token. **Only the worker's environment may hold it.** |
 | `SPLUNK_TOKEN_FILE` | none | `src/splunk/settings.ts` → `src/splunk/transport.ts` (`splunkTokenFromEnv`) | Instead of `SPLUNK_TOKEN`: the path of a file holding the token, such as a mounted Docker or Kubernetes secret. `SPLUNK_TOKEN` wins when both are set. |
 | `SPLUNK_TZ` | `UTC` | `src/splunk/settings.ts` | The search head's timezone, for the schedule text ("Every day at 06:00") and runs per week. It must be a time zone name the runtime knows, such as `America/New_York`. The sync saves it in `sync_state`, and the home page's "When searches run" chart uses it. |
-| `SYNC_INTERVAL_MINUTES` | `15` | `src/splunk/settings.ts` | How often `npm run sync:watch` syncs: a number of minutes above 0 and at most 1440 (a day; longer overflows Node's timers). Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied. |
-| `SYNC_REPORTS` | `emailed` | `src/splunk/settings.ts` → `src/splunk/sync.ts` (`isSyncedSearch`) | Which scheduled searches become reports. `emailed`: every one that emails its results, plus the ones in `src/reports/report-config.ts`. `configured`: only the ones in `src/reports/report-config.ts`, for a Splunk with more emailed searches than the app should show. |
+| `SYNC_INTERVAL_MINUTES` | `15` | `src/splunk/settings.ts` | How often `npm run sync:watch` syncs: a number of minutes above 0 and at most 1440 (a day; longer overflows Node's timers). Keep it shorter than the shortest `dispatch.ttl`, or results expire before they're copied ([how often reports update](#how-often-reports-update)). |
+| `SYNC_REPORTS` | `emailed` | `src/splunk/settings.ts` → `src/splunk/sync.ts` (`isSyncedSearch`) | Which scheduled searches become reports. `emailed`: every one that emails its results, plus every one with a card in `config/report-cards.yaml`. `configured`: only the ones with a card, for a Splunk with more emailed searches than the app should show. |
+| `REPORT_CARDS_FILE` | `config/report-cards.yaml` | `src/reports/cards/load.ts` (`reportCardsPath`) | The report cards file, for a copy kept outside the repo, such as a file mounted into the worker's container. The sync reads it again whenever it changes. |
 | `SYNC_MAX_ROWS` | `5000` | `src/splunk/sync.ts` | Result rows kept per run. Runs with more are stored cut off, marked `truncated`. |
 | `NODE_EXTRA_CA_CERTS` | none | Node.js itself | A company CA certificate, for a search head with an internal certificate. Never turn certificate checks off instead. |
 
@@ -103,28 +105,31 @@ Only for `docker-compose.splunk.yml` and `npm run splunk:setup` / `splunk:feed` 
 | `E2E_PASSWORD` | `e2e/auth.setup.ts` | The demo accounts' password for the browser tests. Default: `DEMO_PASSWORD`. |
 | `E2E_SCREENSHOTS` | `e2e/reports.spec.ts` | A folder: the browser tests save a screenshot of each page they check there. CI keeps them from the Splunk example. |
 
-## Reports: `src/reports/report-config.ts`
+## Report cards: `config/report-cards.yaml`
 
-This file holds what Splunk doesn't know about each report, keyed by the saved search's exact name. The sync worker applies it, and the web app reads the results. It must not import `server-only` or `next/*`, because plain Node loads it too.
+What Splunk doesn't know about each report, one entry (a **card**) per report, under the saved search's exact name. It's data, not code: [adding-report-cards.md](adding-report-cards.md) is the step-by-step guide, with every building block and examples.
+- **Who reads it:** the sync worker (`src/reports/report-config.ts` loads it, and `src/reports/cards/` checks it and turns it into rules), `npm run card:preview` and `npm run splunk:check`. The web app only reads the results.
+- **Checked as it's read:** a mistake stops the sync and the scripts with every problem listed ("Web Server 5xx Error Rate → warn → when: …").
+- **Editors check it as you type:** through `config/report-cards.schema.json`, which `npm run cards:schema` writes from `src/reports/cards/schema.ts`. A test fails when it's out of date.
 
 | Field | Required | What it does |
 |---|---|---|
 | `slug` | yes | The report's id in URLs (`/reports/<slug>`) and in AI answers (`[[slug]]`). Changing it starts a new report: the sync marks the old one `disabled`, and its stored runs stay under the old slug. |
 | `category` | yes | One of `Security`, `Operations`, `Infrastructure`, `Business`, `Compliance`, `Other`. Drives the filter chips. |
-| `tags` | yes | Free words for search and "similar reports". |
+| `tags` | no | Free words for search and "similar reports". |
 | `groups` | no | Who may see it. **Without it, the email lists** in `action.email.to` decide (`secops@example.com` → `secops`). Copy them here before turning off a report's email action in Splunk, or the access goes with it. |
-| `chart` | no | `'none'` shows only the table. Otherwise:<br>• `type`: `bar`, `column`, `line` or `area`. Overrides the chart saved in Splunk.<br>• `y`: the measure to plot (default: the first numeric column). Results over time (first column `_time`) with several measures draw a line for each instead, up to 5, with the smallest folded into "Other"; setting `y` keeps one measure.<br>• `threshold`: `{ value, label }`, a dashed limit line. Values past it take the warning color.<br>• `max`: turns bars into meters that fill up to it (100 for a percentage).<br>• `panels`: one small chart per measure.<br>• `scatter`: `{ x, log?, caption }`, adds a chart of dots placing `y` against `x`. |
+| `chart` | no | `none` shows only the table. Otherwise:<br>• `type`: `bar`, `column`, `line` or `area`. Overrides the chart saved in Splunk.<br>• `y`: the measure to plot (default: the first numeric column). Results over time (first column `_time`) with several measures draw a line for each instead, up to 5, with the smallest folded into "Other"; setting `y` keeps one measure.<br>• `threshold`: `{ value, label }`, a dashed limit line. Values past it take the warning color.<br>• `max`: turns bars into meters that fill up to it (100 for a percentage).<br>• `panels`: one small chart per measure.<br>• `scatter`: `{ x, log?, caption }`, adds a chart of dots placing `y` against `x`. |
 | `index` | no | Overrides the index text parsed from the SPL, for searches like `| rest` or `metadata`. |
-| `statusRule` | no | `(results) => { status: 'warning' \| 'failed', message } \| null`. Turns a run's results into a warning, such as "a host is above 2% errors". `null` means fine. |
-| `highlights` | no | `(results) => ReportHighlight[]`. The headline numbers: `{ label, value, note?, meter?, trend? }`. `meter` is the share of a limit used (0.6 is 60%). Without it, `defaultHighlights` in `src/splunk/map.ts` shows the results (with the change since the previous run), the chart's top row, and the search time. |
+| `highlights` | no | The headline numbers: a `label`, a `value` (`first`, `sum`, `max`, `min`, `average`, `count: results`, `ratio` or `top` … `by`), and optionally `format`, `note` and `meter`. Without them, `defaultHighlights` in `src/splunk/map.ts` shows the results (with the change since the previous run), the chart's top row, and the search time. |
+| `warn`, `fail` | no | When the report shows "Warning" or "Failed": a condition on a column (`above`, `below`, `atLeast`, `atMost`, `equals`) or on the result count, and a message with `{Column}` placeholders. `fail` is checked first. |
+| `custom` | no | The name of a TypeScript rule in `src/reports/cards/custom.ts`, for what the rest can't say. |
 
 **Adding a report:**
-1. Add an entry under the saved search's exact name. Copy an existing one: `'Web Server 5xx Error Rate'` has a status rule, highlights and a threshold chart.
-2. Keep limits in named constants at the top (`ERROR_BUDGET_PCT`), so the rule and the chart use the same number.
-3. Use `formatNumber` from `src/shared/format.ts` in messages, so numbers read the same everywhere.
-4. In fixture mode, add the dummy report to `src/splunk/fixtures/reports.ts` as well. Use `example.com` addresses and documentation IP ranges only.
-5. Run `npm test`. `src/splunk/map.test.ts` runs the whole pipeline over the fixtures.
-6. Run `npm run sync`. Status, highlights and charts are worked out by the sync, so a change shows only after one. For the hosted demo, also sync Atlas after the deploy.
+1. Add a card under the saved search's exact name. Copy an existing one: `Web Server 5xx Error Rate` has a warn rule, headline numbers and a limit line.
+2. Run `npm run card:preview "<name>"`. It shows what the card will look like from the newest run, and flags any column name the results don't have.
+3. In fixture mode, add the dummy report to `src/splunk/fixtures/reports.ts` as well. Use `example.com` addresses and documentation IP ranges only.
+4. Run `npm run check`. `src/splunk/map.test.ts` runs the whole pipeline over the fixtures, and `src/reports/report-catalog.test.ts` asks for the report's section in [report-catalog.md](report-catalog.md).
+5. Run `npm run sync`. Status, highlights and charts are worked out by the sync, so a change shows only after one. For the hosted demo, also sync Atlas after the deploy.
 
 Worked examples, and how access works in practice: [report-access.md](report-access.md).
 
@@ -150,6 +155,23 @@ Settings in `src/splunk/sync.ts`:
 | `SECOND_REFRESH_MS` | 3000 | The gap between the two cache refreshes after a sync. |
 
 Splunk REST calls retry on 429 and 5xx, with backoff of about 0.5, 1 and 2 s (`src/splunk/transport.ts`). To connect real Splunk, follow [connecting-live-splunk.md](connecting-live-splunk.md).
+
+## How often reports update
+
+Three schedules decide how fresh a report is in the app:
+
+| What | Who sets it | Where |
+|---|---|---|
+| **When Splunk runs the report** | The report's owner | In Splunk: **Settings → Searches, reports, and alerts → Edit Schedule**. In the Splunk example: `SPLUNK_EXAMPLE_CRON` (such as `0 * * * *`, every hour), then `npm run splunk:setup` again. |
+| **How often the app copies new runs** | Whoever runs the sync | `SYNC_INTERVAL_MINUTES` for `npm run sync:watch` and Docker (`60` is every hour). On Kubernetes or OpenShift: `connector.schedule` in the Helm values, such as `"0 * * * *"` ([kubernetes.md](kubernetes.md)). |
+| **How often an open page refreshes** | Fixed | Every minute (`EVERY_MS` in `src/shared/components/AutoRefresh.tsx`). It's cheap: it reads the app's cache, never Splunk. |
+
+**The rule:** copy at least as often as Splunk keeps a run's results. By default that's two schedule periods (`dispatch.ttl`), so an hourly report keeps its results for about 2 hours.
+- **Hourly reports, hourly sync:** fine, and a good start.
+- **A sync slower than the reports' period:** you see fewer runs, and a sync slower than two periods misses results: those runs are stored without rows.
+- **A sync much faster than the reports:** harmless. A sync with nothing new adds nothing, but each one still asks Splunk for every report's history.
+
+The home page warns when no sync has finished for `SYNC_STALE_HOURS` (default 2). Keep it above the sync interval.
 
 ## Ask AI
 
@@ -249,4 +271,4 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
   - AntV charts, which renders through AntV's public service, so don't send it real report data;
   - MongoDB, read-only.
 - **`plugins/splunk-events/` and `.claude-plugin/`** are a Claude Code plugin. It bundles the Splunk Cloud MCP server and the `splunk-reports` skill, which `.claude/settings.json` turns on for this repo. Installing it: [README](../README.md#claude-code-tools).
-- **`AGENTS.md` and `CLAUDE.md`** are notes for coding agents: read the Next.js 16 docs in `node_modules/next/dist/docs/` before writing code.
+- **`AGENTS.md` and `CLAUDE.md`** are notes for coding agents: read the Next.js 16 docs in `node_modules/next/dist/docs/` before writing code, and follow [adding-report-cards.md](adding-report-cards.md) for report cards. `.github/copilot-instructions.md` says the same for GitHub Copilot and assistants like it.

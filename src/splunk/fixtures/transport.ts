@@ -66,8 +66,8 @@ function buildRuns(report: FixtureReport): FixtureRun[] {
         const hasResults = index === resultsIndex;
         const epoch = Math.floor(new Date(run.runAt).getTime() / 1000);
 
-        // Warnings on the run that still has results come from the status rules in
-        // report-config. Older runs have lost their results, so their warnings are
+        // Warnings on the run that still has results come from the cards' warn rules
+        // (config/report-cards.yaml). Older runs have lost their results, so their warnings are
         // job messages instead.
         let message: JobMessage | undefined;
         if (failed) message = { type: 'FATAL', text: (index === latestIndex && report.statusMessage) || SKIPPED };

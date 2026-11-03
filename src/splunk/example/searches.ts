@@ -1,7 +1,7 @@
 // The example Splunk's scheduled reports (docs/splunk-example.md): seven of the
 // dummy reports, which Splunk really runs against the logs in ./events.ts.
 // Each one is the dummy report's SPL plus a last step that names the columns
-// the way src/reports/report-config.ts expects, as a real report's search would.
+// the way their cards in config/report-cards.yaml expect, as a real report's search would.
 
 import { reports } from '@/splunk/fixtures/reports';
 import { CHARTS, TIME_RANGES } from '@/splunk/fixtures/transport';

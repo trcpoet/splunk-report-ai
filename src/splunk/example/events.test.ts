@@ -74,11 +74,11 @@ describe('example events', () => {
 });
 
 describe('example searches', () => {
-    test('are seven dummy reports the sync picks up, with their columns named as report-config expects', () => {
+    test('are seven dummy reports the sync picks up, with their columns named as their cards expect', () => {
         const searches = exampleSearches();
         assert.equal(searches.length, 7);
         for (const search of searches) {
-            assert.ok(reportConfig[search.name], `${search.name} is in report-config`);
+            assert.ok(reportConfig()[search.name], `${search.name} has a card in config/report-cards.yaml`);
             assert.ok(search.recipients.length > 0);
 
             const fixture = fixtures.find(({ title }) => title === search.name)!;

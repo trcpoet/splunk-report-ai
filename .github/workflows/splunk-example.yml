@@ -96,7 +96,7 @@ jobs:
             jq -c '{status: .report.status, statusMessage: .report.statusMessage, columns: .report.columns, rows: (.report.rows | length), first: .report.rows[0]}' "reports/$1.json"
             exit 1
           }
-          check failed-logins-by-user '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"]' "the columns report-config expects"
+          check failed-logins-by-user '.report.columns == ["User", "Failures", "Distinct sources", "Last attempt (UTC)"]' "the columns its card expects"
           check failed-logins-by-user '(.report.rows | length) > 10' "many accounts over the threshold"
           check web-5xx-error-rate '.report.status == "warning"' "web-03 is above the error budget"
           check disk-space-over-85 '.report.status == "warning"' "db-02's /data is above 95%"

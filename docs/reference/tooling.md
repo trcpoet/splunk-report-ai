@@ -21,6 +21,18 @@ The sync worker's entry point, a plain Node process run with `tsx`, not part of 
 
 `npm run splunk:check`: runs `checkSplunk` (`src/splunk/check.ts`) with the sync worker's own settings and prints ✓, ⚠ or ✗ for each step, with what to fix. It only reads, needs no database, and exits with code 1 when a check fails. In fixture mode it checks the dummy data.
 
+### `card-preview.ts`
+
+`npm run card:preview "<report name or slug>"`: shows a report's card as the app will, from its newest finished run (`previewReport`, `src/splunk/preview.ts`): the status and its message, the headline numbers, the chart and the first rows. It works before the report has a card, to list its columns. It only reads, needs no database, and exits with code 1 when the card names a column the results don't have, or there's no finished run yet.
+
+### `splunk-tiles.ts`
+
+`npm run --silent splunk:tiles "<dashboard name or title>" > tiles.md`: a Markdown worksheet for moving a dashboard's tiles into the app (`src/splunk/tiles.ts`). For each tile: its whole search, time range, units and color ranges, a warning for dashboard inputs, and a draft card. It needs `SPLUNK_MODE=live`, and only reads. The steps that follow: [adding-report-cards.md](../adding-report-cards.md#move-a-dashboards-tiles).
+
+### `cards-schema.ts`
+
+`npm run cards:schema`: writes `config/report-cards.schema.json` from the cards' zod schema (`src/reports/cards/schema.ts`). Run it after changing the schema; `load.test.ts` fails while the file is out of date.
+
 ### `seed-demo-users.ts`
 
 `npm run seed`: creates the demo users from `src/people/demo-users.ts` and their `user_access` records.
@@ -114,9 +126,11 @@ What `score.py` does:
 | File | What it does |
 |---|---|
 | `.env.example` | Every setting, explained. Copy it to `.env.local`. |
+| `config/report-cards.yaml` | The report cards: how each Splunk report looks in the app ([adding-report-cards.md](../adding-report-cards.md)). Its first line points editors at `config/report-cards.schema.json`, which checks it as you type. |
+| `.github/copilot-instructions.md` | Points GitHub Copilot, and assistants that read it, at the card guide and the repo's rules. |
 | `.gitignore` | Ignores `.env*` (except `.env.example`), `.next/`, `node_modules/`, `ml/.venv/`, `ml/out/`, `.splunk-example/` (the example's token), `*.tsbuildinfo` and editor folders. |
 | `README.md` | What the app is, how to run it, the scripts, hosting, connecting Splunk, and the docs. |
-| `AGENTS.md`, `CLAUDE.md` | Notes for coding agents: this Next.js is version 16, so read its bundled docs in `node_modules/next/dist/docs/` before writing code. `next dev` re-adds the block in `AGENTS.md`. |
+| `AGENTS.md`, `CLAUDE.md` | Notes for coding agents: this Next.js is version 16, so read its bundled docs in `node_modules/next/dist/docs/` before writing code; and for report cards, follow `docs/adding-report-cards.md`. `next dev` re-adds the block in `AGENTS.md` between its markers, and leaves the rest alone. |
 
 ## Claude Code and 21st
 

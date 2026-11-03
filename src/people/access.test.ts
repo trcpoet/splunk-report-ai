@@ -29,7 +29,7 @@ describe('canView', () => {
 
 describe('demo users', () => {
     // allowedGroups the way the sync works them out for the dummy reports.
-    const allowedGroups = (title: string, recipients: string[]) => reportConfig[title]?.groups ?? groupsFromRecipients(recipients);
+    const allowedGroups = (title: string, recipients: string[]) => reportConfig()[title]?.groups ?? groupsFromRecipients(recipients);
 
     const visibleTo = (email: string) => {
         const user = DEMO_USERS.find((candidate) => candidate.email === email);

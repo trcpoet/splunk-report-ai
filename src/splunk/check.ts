@@ -1,8 +1,10 @@
 import { formatList, formatNumber, plural } from '@/shared/format';
-import { reportConfig } from '@/reports/report-config';
+import { columnsUsed } from '@/reports/cards/columns';
+import { reportCards, reportConfig } from '@/reports/report-config';
 import { errorMessage, setupHint } from './errors';
 import { toBool } from './map';
 import type { SyncReports } from './settings';
+import { newestFinishedRun } from './preview';
 import { fetchRun, listScheduledReports, scheduledRunSids, type ScheduledReport } from './sync';
 import { isNotFound, SplunkHttpError, SplunkNotJsonError, type SplunkTransport } from './transport';
 import type { SavedSearchContent, SplunkFeed } from './types';
@@ -71,20 +73,20 @@ export async function checkSplunk(transport: SplunkTransport, { where, syncRepor
     const seen = `The token can see ${plural(names.length, 'scheduled search', 'scheduled searches')}`;
     if (taken.length === 0) {
         add('fail', `${seen}, and the sync takes none of them (SYNC_REPORTS=${syncReports}).`, syncReports === 'emailed'
-            ? "Share the scheduled reports with the service account's role, or add their names to src/reports/report-config.ts."
-            : 'Add the reports to src/reports/report-config.ts under their exact Splunk names, or use SYNC_REPORTS=emailed.');
+            ? "Share the scheduled reports with the service account's role, or give them cards in config/report-cards.yaml."
+            : 'Give the reports cards in config/report-cards.yaml, under their exact Splunk names, or use SYNC_REPORTS=emailed.');
         return results;
     }
     add('pass', `${seen}. The sync takes ${taken.length} of them (SYNC_REPORTS=${syncReports}).`);
 
-    // 4. Reports in report-config that this Splunk doesn't have: a typo, or a report not shared with the token.
-    const configured = Object.keys(reportConfig);
+    // 4. Cards for reports this Splunk doesn't have: a typo, or a report not shared with the token.
+    const configured = Object.keys(reportConfig());
     const missing = configured.filter((name) => !names.includes(name));
     if (missing.length > 0) {
-        add('warn', `${missing.length} of the ${configured.length} reports in src/reports/report-config.ts aren't scheduled searches this token can see: ${formatList(missing)}.`,
+        add('warn', `${missing.length} of the ${configured.length} cards in config/report-cards.yaml are for reports this token can't see as scheduled searches: ${formatList(missing)}.`,
             "Names must match Splunk's exactly. If they do, share those reports with the service account's role.");
     } else {
-        add('pass', `All ${configured.length} reports in src/reports/report-config.ts are in Splunk.`);
+        add('pass', `All ${configured.length} cards in config/report-cards.yaml are for reports in Splunk.`);
     }
 
     // 5. A run's results can be read: the newest finished run, read the way the
@@ -96,7 +98,7 @@ export async function checkSplunk(transport: SplunkTransport, { where, syncRepor
                 // Still running, failed, or its results already expired: try an older one.
                 if (!run || run.status === 'failed' || run.resultsExpired) continue;
                 add('pass', `Read the newest finished run of "${report.entry.name}": ${plural(run.rows.length, 'row', 'rows')}, of ${formatNumber(run.resultCount)} results.`);
-                return results;
+                return [...results, ...(await checkCardColumns(transport, taken))];
             }
         } catch (error) {
             if (isNotFound(error)) continue;
@@ -107,6 +109,34 @@ export async function checkSplunk(transport: SplunkTransport, { where, syncRepor
     add('warn', `None of the first ${plural(Math.min(taken.length, RUNS_TO_TRY), 'report', 'reports')} has a finished run whose results can still be read.`,
         "Splunk runs reports on their schedules, and keeps each run's results for two schedule periods. Check again after the next run.");
     return results;
+}
+
+// How many reports with a card to check against their newest run.
+const CARDS_TO_CHECK = 50;
+
+// 6. Every column a card names is in its report's newest results: a card
+// written for a tile, before its report had run, may guess a column's name.
+async function checkCardColumns(transport: SplunkTransport, taken: ScheduledReport[]): Promise<CheckResult[]> {
+    const cards = reportCards();
+    const carded = taken.filter(({ entry }) => entry.name in cards).slice(0, CARDS_TO_CHECK);
+    const found: CheckResult[] = [];
+    let checked = 0;
+    for (const report of carded) {
+        const card = cards[report.entry.name];
+        const run = card ? await newestFinishedRun(transport, report).catch(() => null) : null;
+        if (!card || !run) continue;
+        checked++;
+        const unknown = columnsUsed(card).filter((column) => !run.columns.includes(column));
+        if (unknown.length > 0) {
+            found.push({
+                outcome: 'fail',
+                text: `"${report.entry.name}"'s card names ${unknown.map((column) => `"${column}"`).join(', ')}, which its results don't have. They have: ${run.columns.join(', ')}.`,
+                hint: 'Fix the names in config/report-cards.yaml, then try npm run card:preview on the report.',
+            });
+        }
+    }
+    if (checked > 0 && found.length === 0) found.push({ outcome: 'pass', text: `The ${plural(checked, 'card', 'cards')} checked name only columns their reports' results have.` });
+    return found;
 }
 
 // Whether every check passed (warnings are fine).

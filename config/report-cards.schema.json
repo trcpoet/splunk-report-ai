@@ -1,0 +1,885 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "propertyNames": {
+    "type": "string",
+    "minLength": 1
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+        "description": "The report's web address: /reports/<slug>."
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "Security",
+          "Operations",
+          "Infrastructure",
+          "Business",
+          "Compliance",
+          "Other"
+        ]
+      },
+      "tags": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "groups": {
+        "description": "Who may see it. Default: the email lists it was sent to (secops@example.com is the group secops).",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "index": {
+        "description": "What the report page says it searches, when the search's own index=… isn't clear.",
+        "type": "string"
+      },
+      "chart": {
+        "description": "\"none\" for a table only.",
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "none"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "Overrides the chart saved with the search in Splunk.",
+                "type": "string",
+                "enum": [
+                  "bar",
+                  "column",
+                  "line",
+                  "area"
+                ]
+              },
+              "y": {
+                "description": "The column to plot. Default: the first column of numbers.",
+                "type": "string",
+                "minLength": 1
+              },
+              "threshold": {
+                "description": "A dashed limit line, such as an error budget. Values past it take the warning color.",
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "number"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              },
+              "max": {
+                "description": "The most the value can be (100 for a percentage): bars become meters.",
+                "type": "number"
+              },
+              "panels": {
+                "description": "One small chart per column, for measures with different units.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "y": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                    },
+                    "threshold": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "label"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "y"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "scatter": {
+                "description": "A second chart: a dot per row, the chart's column up and `x` across.",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "log": {
+                    "type": "boolean"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "x",
+                  "caption"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "highlights": {
+        "description": "The headline numbers. The first one is on the report's card. Default: the result count, the top row and the search time.",
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What the number is, in a few words: \"Overall error rate\"."
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "string",
+                          "const": "results"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false,
+                      "description": "How many results the run had."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "sum": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A column of the report's results, spelled exactly as in its search's last step."
+                        }
+                      },
+                      "required": [
+                        "sum"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The total of a column."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "max": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A column of the report's results, spelled exactly as in its search's last step."
+                        }
+                      },
+                      "required": [
+                        "max"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The largest value in a column."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "min": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A column of the report's results, spelled exactly as in its search's last step."
+                        }
+                      },
+                      "required": [
+                        "min"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The smallest value in a column."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "average": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A column of the report's results, spelled exactly as in its search's last step."
+                        }
+                      },
+                      "required": [
+                        "average"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The average of a column."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A column of the report's results, spelled exactly as in its search's last step."
+                        }
+                      },
+                      "required": [
+                        "first"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The value in the first row, as a single-value tile shows."
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "ratio": {
+                      "type": "array",
+                      "prefixItems": [
+                        {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "count": {
+                                      "type": "string",
+                                      "const": "results"
+                                    }
+                                  },
+                                  "required": [
+                                    "count"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "How many results the run had."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "sum": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "sum"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The total of a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "max": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "max"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The largest value in a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "min"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The smallest value in a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "average": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "average"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The average of a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "first": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "first"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The value in the first row, as a single-value tile shows."
+                                }
+                              ]
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "count": {
+                                      "type": "string",
+                                      "const": "results"
+                                    }
+                                  },
+                                  "required": [
+                                    "count"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "How many results the run had."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "sum": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "sum"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The total of a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "max": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "max"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The largest value in a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "min"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The smallest value in a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "average": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "average"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The average of a column."
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "first": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                                    }
+                                  },
+                                  "required": [
+                                    "first"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "The value in the first row, as a single-value tile shows."
+                                }
+                              ]
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      ],
+                      "items": false,
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  },
+                  "required": [
+                    "ratio"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The first number divided by the second, such as [sum: 5xx errors, sum: Requests]. 0 when the second is 0."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "top": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                    },
+                    "by": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A column of the report's results, spelled exactly as in its search's last step."
+                    }
+                  },
+                  "required": [
+                    "top",
+                    "by"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The row with the largest `by`, shown by its `top` column (a name, such as the worst host). The note's {placeholders} read that row."
+                }
+              ]
+            },
+            "format": {
+              "type": "object",
+              "properties": {
+                "decimals": {
+                  "description": "Digits after the point. Without it, numbers get thousands separators.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 6
+                },
+                "percent": {
+                  "description": "Multiply by 100 and add \"%\" (for a ratio).",
+                  "type": "boolean"
+                },
+                "suffix": {
+                  "description": "Text after the number, as written: \" GB\", \"%\", \" ms\".",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "note": {
+              "description": "A short line under the number: \"Budget: 2%\". With `top`, it can use {placeholders} from that row.",
+              "type": "string",
+              "minLength": 1
+            },
+            "meter": {
+              "description": "Draws a meter under the number: how much of this limit it uses.",
+              "type": "object",
+              "properties": {
+                "of": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "of"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "label",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "warn": {
+        "description": "When the report shows \"Warning\", and what it says.",
+        "type": "object",
+        "properties": {
+          "when": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "above": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "above"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "below": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "below"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "atLeast": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "atLeast"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "atMost": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "atMost"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "equals": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "column",
+                  "equals"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "type": "object",
+                    "properties": {
+                      "above": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "above"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "results"
+                ],
+                "additionalProperties": false,
+                "description": "The run had more than this many results (every row counts)."
+              }
+            ],
+            "description": "Which rows make the report warn or fail."
+          },
+          "one": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The message when one row matches."
+          },
+          "many": {
+            "description": "The message when several match. Defaults to `one`.",
+            "type": "string",
+            "minLength": 1
+          },
+          "item": {
+            "description": "How each matching row reads in {list}: \"{Host} ({Error rate %}%)\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "row": {
+            "description": "Which row fills the {placeholders}: the one with the largest value in this column. Default: the first that matches.",
+            "type": "object",
+            "properties": {
+              "top": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A column of the report's results, spelled exactly as in its search's last step."
+              }
+            },
+            "required": [
+              "top"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "when",
+          "one"
+        ],
+        "additionalProperties": false
+      },
+      "fail": {
+        "description": "When the report shows \"Failed\", and what it says. Checked before `warn`.",
+        "type": "object",
+        "properties": {
+          "when": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "above": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "above"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "below": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "below"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "atLeast": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "atLeast"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "atMost": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "column",
+                  "atMost"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A column of the report's results, spelled exactly as in its search's last step."
+                  },
+                  "equals": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "column",
+                  "equals"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "type": "object",
+                    "properties": {
+                      "above": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "above"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "results"
+                ],
+                "additionalProperties": false,
+                "description": "The run had more than this many results (every row counts)."
+              }
+            ],
+            "description": "Which rows make the report warn or fail."
+          },
+          "one": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The message when one row matches."
+          },
+          "many": {
+            "description": "The message when several match. Defaults to `one`.",
+            "type": "string",
+            "minLength": 1
+          },
+          "item": {
+            "description": "How each matching row reads in {list}: \"{Host} ({Error rate %}%)\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "row": {
+            "description": "Which row fills the {placeholders}: the one with the largest value in this column. Default: the first that matches.",
+            "type": "object",
+            "properties": {
+              "top": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A column of the report's results, spelled exactly as in its search's last step."
+              }
+            },
+            "required": [
+              "top"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "when",
+          "one"
+        ],
+        "additionalProperties": false
+      },
+      "custom": {
+        "description": "The name of a TypeScript rule in src/reports/cards/custom.ts, for what the rest can't say.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug",
+      "category"
+    ],
+    "additionalProperties": false
+  },
+  "title": "SplunkEvents report cards (config/report-cards.yaml)",
+  "description": "One entry per report, under its exact Splunk name: how the report's card and page show it. See docs/adding-report-cards.md."
+}

@@ -1,6 +1,6 @@
 # `src/reports/`: the report list, report pages, charts and statistics
 
-Everything about reports: reading them (with the access check), the report types, the statistics behind unusual runs and the home page's charts, and the components that show them. The settings for each report are in `report-config.ts`; what each report shows is in the [report catalog](../report-catalog.md).
+Everything about reports: reading them (with the access check), the report types, the statistics behind unusual runs and the home page's charts, and the components that show them. The settings for each report are its card in `config/report-cards.yaml`, which `report-config.ts` and `cards/` load; what each report shows is in the [report catalog](../report-catalog.md).
 
 Files marked **server-only** start with `import 'server-only'`, so importing them into browser code fails the build. Files marked **pure** do no I/O and are unit-tested in the `*.test.ts` next to them. In `components/`, **client** files start with `'use client'` and run in the browser too; **server** components run only on the server.
 
@@ -57,10 +57,22 @@ Helpers:
 
 ### `report-config.ts`
 
-What Splunk doesn't know about each report, keyed by the saved search's name: slug, category, tags, `groups`, `chart`, `index`, `statusRule`, `highlights`.
-- **Who loads it:** the sync worker applies it (`src/splunk/map.ts`, `src/splunk/sync.ts`); the web app only reads the results. No `server-only` or `next/*` imports.
-- **Shared limits:** named constants (`ERROR_BUDGET_PCT`, `DISK_CRITICAL_PCT`, …) keep a status rule and its chart in agreement.
-- **Change it when:** you add a report or change its rules. Every field, and the steps: [configuration.md](../configuration.md#reports-srcreportsreport-configts). Access in practice: [report-access.md](../report-access.md).
+Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts, and holds the types they become: `ReportConfig`, `StatusRule`, `HighlightRule`, `ResultSet`.
+- **`reportConfig()`:** the settings the sync uses, keyed by each report's Splunk name: slug, category, tags, `groups`, `chart`, `index`, `statusRule`, `highlights`. **`reportCards()`:** the cards as written, for `card:preview` and `splunk:check`.
+- **Read again when the file changes,** so `npm run sync:watch` picks up an edit at its next sync. A mistake throws a `ReportCardsError` that lists every problem.
+- **Who loads it:** the sync worker (`src/splunk/sync.ts`) and the scripts; the web app only reads the results. No `server-only` or `next/*` imports.
+- **Change it when:** a card needs a setting the sync doesn't have yet. To add or change a report's card, edit `config/report-cards.yaml` instead: [adding-report-cards.md](../adding-report-cards.md), and every field in [configuration.md](../configuration.md#report-cards-configreport-cardsyaml). Access in practice: [report-access.md](../report-access.md).
+- **Tests:** `report-config.test.ts` (the file is read again after a change).
+
+### `cards/`: the cards file, checked and turned into rules
+
+- **`schema.ts`:** what a card may hold, as zod schemas (`ReportCard`, `ReportCardsFile`), with a description on each field. Unknown fields are refused, and two cards can't share a slug. Its error messages say what a field can be.
+- **`json-schema.ts`:** `cardsJsonSchema()`, the same rules as JSON Schema. `npm run cards:schema` writes it to `config/report-cards.schema.json`, which editors use to check the file as you type.
+- **`load.ts`:** `loadReportCards(file)` and `parseReportCards(text)` read the YAML, check it, and turn each card into a `ReportConfig`. `reportCardsPath()` is `REPORT_CARDS_FILE` or `config/report-cards.yaml`. Problems come as one `ReportCardsError`, each with where it is ("Web Server 5xx Error Rate → warn → when: …").
+- **`rules.ts` (pure):** turns a card's `highlights`, `warn` and `fail` into the functions the sync runs (`compileHighlights`, `compileStatusRule`, `toReportConfig`), and fills message placeholders (`fill`: `{Column}`, `{Column|number}`, `{Column|2}`, `{Column|hours}`, `{count}`, `{list}`).
+- **`columns.ts` (pure):** `columnsUsed(card)`, every results column a card names, so `card:preview` and `splunk:check` can catch a misspelled one.
+- **`custom.ts`:** TypeScript rules a card can name with `custom:`, for what the file can't say. Empty for now.
+- **Tests:** `rules.test.ts` covers every building block. `load.test.ts` checks the real file (a card for every dummy report, limits that agree, the JSON Schema up to date) and the error messages.
 
 ### `insights.ts` (pure)
 
@@ -150,7 +162,7 @@ All charts use Recharts through shadcn's wrapper (`src/shared/ui/chart.tsx`) and
 ### `ReportChart.tsx` (client)
 
 The results chart: one measure, in one color, as bars, columns, lines or areas.
-- **Options from `report-config`:**
+- **Options from the report's card:**
   - a `threshold` line, with the values past it in the warning color;
   - `max`, which turns bars into meters;
   - `panels`, which draws small multiples.

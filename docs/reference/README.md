@@ -5,9 +5,9 @@ What every file in SplunkEvents does, in detail, folder by folder. Start with [a
 | Page | Covers |
 |---|---|
 | [app.md](app.md) | `src/app/`: pages, layouts, Server Actions, API routes, the error screens and the global styles |
-| [reports.md](reports.md) | `src/reports/`: reading reports (the access check), report settings, statistics, the list, the cards, the report page and the charts |
+| [reports.md](reports.md) | `src/reports/`: reading reports (the access check), the report cards file and its rules, statistics, the list, the cards, the report page and the charts |
 | [ai.md](ai.md) | `src/ai/`: Ask AI, Write SPL, Explain, the briefing, summaries, limits, retrieval, chats and votes |
-| [splunk.md](splunk.md) | `src/splunk/`: the sync, Splunk's REST API, the mapping, `splunk:check` and the dummy data |
+| [splunk.md](splunk.md) | `src/splunk/`: the sync, Splunk's REST API, the mapping, `splunk:check`, `card:preview`, `splunk:tiles` and the dummy data |
 | [people.md](people.md) | `src/people/`: sign-in, sessions, the demo accounts, and who may see which report |
 | [shared.md](shared.md) | `src/shared/`: the layout, small pieces, formatting and shadcn's `ui/` |
 | [database.md](database.md) | `src/database/`: the Mongoose models, one per collection, and the connection |

@@ -6,7 +6,7 @@ Where to start as an engineer on SplunkEvents, and what to know before you chang
 
 1. **[report-catalog.md](report-catalog.md):** what each report shows and where its numbers come from, without any code.
 2. **[architecture.md](architecture.md):** the programs, where data lives and how it moves, how a page is built, who sees what, Ask AI, the ML job, and where it all runs.
-3. **[configuration.md](configuration.md):** every setting. That's each environment variable (with the file that reads it), `src/reports/report-config.ts`, access, AI, the sync, statistics, caching, the look, build, deploy and CI.
+3. **[configuration.md](configuration.md):** every setting. That's each environment variable (with the file that reads it), the report cards (`config/report-cards.yaml`), access, AI, the sync and how often reports update, statistics, caching, the look, build, deploy and CI. Adding a report's card has its own guide: [adding-report-cards.md](adding-report-cards.md).
 4. **[The file reference](reference/README.md):** what each file does, in detail, folder by folder: [src/app/](reference/app.md), [src/reports/](reference/reports.md), [src/ai/](reference/ai.md), [src/splunk/](reference/splunk.md), [src/people/](reference/people.md), [src/shared/](reference/shared.md), [src/database/](reference/database.md), and [the rest](reference/tooling.md). Each `src/` folder also has a short `README.md`.
 5. **This page:** the rules that are easy to break, and the words the code uses.
 
@@ -57,7 +57,7 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
 
 **The sync.**
 - It never starts searches.
-- After changing `src/reports/report-config.ts` or the dummy data, run `npm run sync` (and sync Atlas for the hosted demo).
+- After changing `config/report-cards.yaml` or the dummy data, run `npm run sync` (and sync Atlas for the hosted demo).
 
 **AI.**
 - Only `src/ai/llm.ts` calls the AI.
@@ -91,7 +91,8 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
 | Sync | Copying reports and new runs from Splunk or the fixtures into MongoDB. |
 | Viewer | The signed-in person a page or route is answering. |
 | Visible | A report the viewer may see (`canView`). |
-| Status rule | A function in `report-config` that turns results into a warning, such as "a host above 2% errors". |
+| Card | A report's entry in `config/report-cards.yaml`: its category, who sees it, its chart, its headline numbers, and its `warn` and `fail` rules. Also the box for each report on the home page, which shows its first headline number. |
+| Status rule | What turns results into a warning, such as "a host above 2% errors": a card's `warn` or `fail` rule, which `src/reports/cards/rules.ts` turns into a function. |
 | Highlight | A headline number on a report, such as results with their change since the previous run. |
 | Unusual run | A newest run that stands out from its earlier runs (`src/reports/insights.ts`), or that the ML job flags. |
 | Flag | An entry in the briefing, either "Needs attention" or "Unusual runs", with a "Worth flagging?" vote. |

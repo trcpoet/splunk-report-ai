@@ -9,7 +9,7 @@ export type ReportStatus = 'success' | 'warning' | 'failed';
 // What a report shows: its newest run's status, or 'none' until a run is stored.
 export type ReportHealth = ReportStatus | 'none';
 
-// 'Other' is for scheduled searches found in Splunk that src/reports/report-config.ts doesn't list yet.
+// 'Other' is for scheduled searches found in Splunk that have no card in config/report-cards.yaml yet.
 export type ReportCategory = 'Security' | 'Operations' | 'Infrastructure' | 'Business' | 'Compliance' | 'Other';
 
 export type RunRecord = {
