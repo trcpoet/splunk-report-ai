@@ -35,22 +35,24 @@ export function parseFilters(params: Pick<URLSearchParams, 'get'>, categories: r
     const status = STATUS_FILTERS.find(({ param }) => param && param === params.get('status')?.toLowerCase())?.value ?? 'all';
     const wanted = params.get('category')?.toLowerCase();
     const category = categories.find((name) => name.toLowerCase() === wanted) ?? 'all';
-    const page = Number(params.get('page'));
+    // Digits only: Number() would also take "1e3", "0x10" or " 2 ".
+    const pageText = params.get('page') ?? '';
+    const page = /^\d{1,6}$/.test(pageText) ? Number(pageText) : 0;
     return {
         query: params.get('q') ?? '',
         status,
         category,
-        page: Number.isInteger(page) && page >= 1 ? page - 1 : 0,
+        page: page >= 1 ? page - 1 : 0,
     };
 }
 
 // The address's query string for these filters ('' for none), keeping any
 // other parameters it already has. Defaults are left out, so a plain list is
-// a plain address.
+// a plain address, and so is a search of spaces, which the list ignores too.
 export function filtersToSearch(current: string, { query, status, category, page }: Filters): string {
     const params = new URLSearchParams(current);
     const set = (name: string, value: string) => (value ? params.set(name, value) : params.delete(name));
-    set('q', query);
+    set('q', query.trim());
     set('status', STATUS_FILTERS.find(({ value }) => value === status)?.param ?? '');
     set('category', category === 'all' ? '' : category.toLowerCase());
     set('page', page > 0 ? String(page + 1) : '');

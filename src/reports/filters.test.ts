@@ -18,6 +18,7 @@ describe('parseFilters', () => {
         assert.deepEqual(parse('?status=success&category=Finance&page=0'), NO_FILTERS);
         assert.deepEqual(parse('?page=1.5'), NO_FILTERS);
         assert.deepEqual(parse('?page=-3'), NO_FILTERS);
+        for (const page of ['1e3', '0x10', '%202%20', '9999999']) assert.deepEqual(parse(`?page=${page}`), NO_FILTERS, page);
         assert.deepEqual(parse(''), NO_FILTERS);
     });
 
@@ -29,6 +30,8 @@ describe('parseFilters', () => {
 describe('filtersToSearch', () => {
     test('writes only what differs from no filters', () => {
         assert.equal(filtersToSearch('', NO_FILTERS), '');
+        assert.equal(filtersToSearch('', { ...NO_FILTERS, query: '   ' }), '');
+        assert.equal(filtersToSearch('', { ...NO_FILTERS, query: ' disk ' }), '?q=disk');
         assert.equal(filtersToSearch('', { query: 'disk', status: 'success', category: 'Infrastructure', page: 2 }), '?q=disk&status=healthy&category=infrastructure&page=3');
     });
 

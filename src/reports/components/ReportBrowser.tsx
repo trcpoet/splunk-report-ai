@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Pager from "@/reports/components/Pager";
@@ -14,14 +14,41 @@ import { paginate, sortByLastRun, type ReportCategory, type ReportSummary } from
 // (src/reports/filters.ts), so a filtered list can be shared, and coming back
 // from a report finds it as it was.
 
+// How long typing pauses before the address catches up. Browsers limit how
+// often a page may change its address (Safari: 100 times in 10 seconds).
+const TYPING_DELAY_MS = 300;
+
+// The filters as their part of the address, to tell whether two agree.
+const keyOf = (filters: Filters) => filtersToSearch('', filters);
+
 const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; categories: ReportCategory[] }) => {
-    // Read from the address once, when the list appears. After that the list
-    // keeps its own state and writes it back, so a slow address update can't
-    // undo a keystroke.
+    // The list keeps the filters in its own state, so a keystroke shows at
+    // once, and writes them to the address (apply, below).
     const searchParams = useSearchParams();
     const [filters, setFilters] = useState(() => parseFilters(searchParams, categories));
     const { query, status, category, page } = filters;
     const list = useRef<HTMLUListElement>(null);
+    const pendingWrite = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    // When something else changes the address (a link to /#reports, say),
+    // the list follows it. What the list wrote itself (`written`) isn't
+    // followed, so an address update arriving late can't undo a keystroke.
+    // Only on the list's own page: Next keeps this page, hidden, while a
+    // report is open, and its address (with no filters) mustn't clear the
+    // list that Back will show again.
+    const pathname = usePathname();
+    const [ownPath] = useState(pathname);
+    const fromAddress = parseFilters(searchParams, categories);
+    const addressKey = keyOf(fromAddress);
+    const [seen, setSeen] = useState(addressKey);
+    const [written, setWritten] = useState(addressKey);
+    if (pathname === ownPath && addressKey !== seen) {
+        setSeen(addressKey);
+        if (addressKey !== written && addressKey !== keyOf(filters)) setFilters(fromAddress);
+    }
+
+    // No address change after the list is gone: it would land on the next page.
+    useEffect(() => () => clearTimeout(pendingWrite.current), []);
     // Sorted once, not on every keystroke in the search box.
     const sorted = useMemo(() => sortByLastRun(reports), [reports]);
 
@@ -41,18 +68,35 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
         list.scrollIntoView({ behavior: 'instant' });
     }, []);
 
-    // The state and the address together. Replaced, not pushed: typing a
-    // search shouldn't fill the history, and Back from a report still comes
-    // back to this list as it was. Next keeps useSearchParams in step.
-    const apply = (next: Filters) => {
-        setFilters(next);
+    // The address, replaced rather than pushed: typing a search shouldn't fill
+    // the history, and Back from a report still comes back to this list as it
+    // was. Next keeps useSearchParams in step. If the browser refuses (too
+    // many changes too fast), the address catches up at the next change.
+    const writeAddress = (next: Filters) => {
         const { pathname, search, hash } = window.location;
+        // A write that waited for typing to pause, after a report was opened.
+        if (pathname !== ownPath) return;
         const wanted = filtersToSearch(search, next);
-        if (wanted !== search) window.history.replaceState(null, '', `${pathname}${wanted}${hash}`);
+        if (wanted === search) return;
+        try {
+            window.history.replaceState(null, '', `${pathname}${wanted}${hash}`);
+            setWritten(keyOf(next));
+        } catch {
+            // Keep the list as it is; only the address lags.
+        }
+    };
+
+    // The state at once; the address at once too, or after a pause in typing.
+    const apply = (next: Filters, { typing = false } = {}) => {
+        setFilters(next);
+        clearTimeout(pendingWrite.current);
+        if (typing) pendingWrite.current = setTimeout(() => writeAddress(next), TYPING_DELAY_MS);
+        else writeAddress(next);
     };
 
     // A new search or filter starts again at the first page.
-    const filterBy = (change: Partial<Omit<Filters, 'page'>>) => apply({ ...filters, ...change, page: 0 });
+    const filterBy = (change: Partial<Omit<Filters, 'page'>>, options?: { typing?: boolean }) =>
+        apply({ ...filters, ...change, page: 0 }, options);
 
     // Another page starts at the top of the list, with the keyboard focus on
     // its first card. "Showing 21 to 40 of 312 reports" is read out by itself
@@ -86,7 +130,7 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
                 <input
                     type="search"
                     value={query}
-                    onChange={(e) => filterBy({ query: e.target.value })}
+                    onChange={(e) => filterBy({ query: e.target.value }, { typing: true })}
                     placeholder="Search by report, owner, index or tag"
                     aria-label="Search reports"
                 />
