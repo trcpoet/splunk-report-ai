@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
     partialPrefetching: true,
   async rewrites() {
     return [
+      // Browsers still ask for /favicon.ico now and then (during client-side
+      // navigations, say); the app's icon is src/app/icon.svg.
+      { source: "/favicon.ico", destination: "/icon.svg" },
       {
         source: "/ingest/static/:path*",
         destination: "https://us-assets.i.posthog.com/static/:path*",

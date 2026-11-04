@@ -86,7 +86,7 @@ What `score.py` does:
 
 | File | What it does |
 |---|---|
-| `next.config.ts` | Turns on `cacheComponents` and `partialPrefetching`. Sets `output: 'standalone'` when `NEXT_OUTPUT=standalone`, as Docker does. Adds the PostHog `/ingest` rewrites and `skipTrailingSlashRedirect`. |
+| `next.config.ts` | Turns on `cacheComponents` and `partialPrefetching`. Sets `output: 'standalone'` when `NEXT_OUTPUT=standalone`, as Docker does. Serves `/favicon.ico` from `src/app/icon.svg`, since browsers still ask for it during client-side navigations (a 404 there failed the e2e console check). Adds the PostHog `/ingest` rewrites and `skipTrailingSlashRedirect`. |
 | `src/proxy.ts` | Next 16's name for middleware. It sends visitors without a session cookie to `/login?next=…`. Its `matcher` skips `/login`, API routes, `_next`, the PostHog proxy and static files. It's a quick redirect, not the security check. |
 | `src/instrumentation-client.ts` | Starts PostHog in the browser when `NEXT_PUBLIC_POSTHOG_KEY` is set, with exception capture and debug logging in development. |
 | `tsconfig.json` | TypeScript settings. `@/*` maps to `src/`, so imports read `@/reports/dal`. On top of `strict`, it treats every `list[i]` and `record[key]` as possibly missing (`noUncheckedIndexedAccess`) and fails on unused code. `npm run typecheck` runs it. |
@@ -119,7 +119,8 @@ What `score.py` does:
 |---|---|
 | `playwright.config.ts` | `npm run e2e`: Playwright against an app that's already running (`E2E_BASE_URL`, default `http://localhost:3000`), in the Chrome installed on the machine (`channel: 'chrome'`), so nothing is downloaded. One worker, because Better Auth limits sign-ins. It reads `.env.local` for `DEMO_PASSWORD`. |
 | `e2e/auth.setup.ts` | Signs in as the admin through the login form once, and saves the session in `e2e/.auth/` (git ignores it) for the other tests. |
-| `e2e/reports.spec.ts` | The home page lists at most 20 reports, newest run first, and each one that has run shows its headline number; a report page shows its chart and its results table; no console errors. It works against the demo data and a real Splunk. `E2E_SCREENSHOTS=<folder>` saves screenshots. |
+| `e2e/reports.spec.ts` | The home page lists at most 20 reports, newest run first, and each one that has run shows its headline number; the filters are in the address, and Back brings them back (after a report, and after a link cleared them); a report page shows its chart and its results table; no console errors. It works against the demo data and a real Splunk. `E2E_SCREENSHOTS=<folder>` saves screenshots. |
+| `e2e/access.spec.ts` | Who may read what, over HTTP: signed out gets 401, the finance analyst gets 404 for every report the admin sees and they don't, and an auth endpoint the app doesn't use (change password) answers 404. It signs in once more, as the finance analyst. |
 
 ## Settings and git
 

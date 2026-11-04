@@ -27,7 +27,7 @@ So on the work laptop:
 
 - **Don't push company edits to the public repo.** If you want to save them in git, push to a private repo your company approves (for example, one in your company's GitHub organization). Fixes to the app itself (not company details) can still go to the public repo.
 - **Check your company's rules** on running your own code against Splunk and storing report data on your laptop.
-- **Keep the app on your laptop** (`localhost`) until it has company sign-in (SSO). The demo logins aren't safe for real data on a shared server.
+- **Keep the app on your laptop** (`localhost`) until it has company sign-in (SSO). The demo logins aren't safe for real data on a shared server. `npm run dev` also answers other computers on the same network, so once the data is real, start it with `-H 127.0.0.1` (Step 5).
 
 ## Step 1: Set up the app on the work laptop
 
@@ -59,7 +59,7 @@ cp .env.example .env.local
 |---|---|
 | `BETTER_AUTH_SECRET` | a new random secret |
 | `REVALIDATE_SECRET` | another new random secret |
-| `DEMO_PASSWORD` | any password, 8+ characters, for the demo logins |
+| `DEMO_PASSWORD` | a password of your own, 8+ characters, for the demo logins. Not the README's `splunk-demo-2026`: with live data, `admin@example.com` sees every real report |
 
 ## Step 2: Check it works with the dummy data first
 
@@ -165,7 +165,7 @@ Then sync and look:
 
 ```bash
 npm run sync
-npm run dev
+npm run dev -- -H 127.0.0.1     # only this laptop can open it, not the office network
 ```
 
 Sign in as `admin@example.com`. Admins see every report, so you should see your real reports. The dummy reports disappear on the first live sync: the sync hides any report that's no longer scheduled in Splunk.

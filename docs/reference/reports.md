@@ -72,7 +72,7 @@ Loads the report cards (`config/report-cards.yaml`) for the sync and the scripts
 - **`schema.ts`:** what a card may hold, as zod schemas (`ReportCard`, `ReportCardsFile`), with a description on each field. Unknown fields are refused, and two cards can't share a slug. Its error messages say what a field can be.
 - **`json-schema.ts`:** `cardsJsonSchema()`, the same rules as JSON Schema. `npm run cards:schema` writes it to `config/report-cards.schema.json`, which editors use to check the file as you type.
 - **`load.ts`:** `loadReportCards(file)` and `parseReportCards(text)` read the YAML, check it, and turn each card into a `ReportConfig`. `reportCardsPath()` is `REPORT_CARDS_FILE` or `config/report-cards.yaml`. Problems come as one `ReportCardsError`, each with where it is ("Web Server 5xx Error Rate → warn → when: …").
-- **`rules.ts` (pure):** turns a card's `highlights`, `warn` and `fail` into the functions the sync runs (`compileHighlights`, `compileStatusRule`, `toReportConfig`), and fills message placeholders (`fill`: `{Column}`, `{Column|number}`, `{Column|2}`, `{Column|hours}`, `{count}`, `{list}`).
+- **`rules.ts` (pure):** turns a card's `highlights`, `warn` and `fail` into the functions the sync runs (`compileHighlights`, `compileStatusRule`, `toReportConfig`), and fills message placeholders (`fill`: `{Column}`, `{Column|number}`, `{Column|2}`, `{Column|hours}`, `{count}`, `{list}`). The number filters read formatted text such as "1,500" with `parseNumber`; text that isn't a number is shown as it is. `topRow` (the row with the largest value) is also used by the default highlights in `src/splunk/map.ts`.
 - **`columns.ts` (pure):** `columnsUsed(card)`, every results column a card names, so `card:preview` and `splunk:check` can catch a misspelled one.
 - **`custom.ts`:** TypeScript rules a card can name with `custom:`, for what the file can't say. Empty for now.
 - **Tests:** `rules.test.ts` covers every building block. `load.test.ts` checks the real file (a card for every dummy report, limits that agree, the JSON Schema up to date) and the error messages.
@@ -140,9 +140,9 @@ The report list on the home page.
 - **In the address:** the search, filters and page are read from the address when the list appears (`useSearchParams`, then `parseFilters`), and written back with `history.replaceState` (`filtersToSearch`), keeping `#reports`.
   - **Replaced, not pushed,** so typing doesn't fill the history, and Back from a report comes back to the list as it was.
   - **Chips and pages write at once; typing writes after a 300 ms pause** (`TYPING_DELAY_MS`): browsers limit how often a page may change its address (Safari: 100 times in 10 seconds). A refused write leaves the list as it is.
-  - **The list follows the address when something else changes it,** such as the navbar's link to `/#reports`, which clears the filters. It doesn't follow its own writes (`written`), so an address update arriving late can't undo a keystroke.
+  - **The list follows the address when something else changes it,** such as the navbar's link to `/#reports`, which clears the filters, or Back, which brings them back. It ignores each of its own writes once, when the address shows it (`written`), so an address update arriving late can't undo a keystroke.
   - **Only on its own page:** Next keeps the home page, hidden, while a report is open, and updates its `useSearchParams` to the report's address. The list ignores that, and a write that was waiting for typing to pause is dropped, so it can't land on the report's address.
-  - Checked in a browser (filters, history length, Back, the navbar link, `router.refresh()` keeping focus): the scripts aren't in the repo; `e2e/` covers the list itself.
+  - **Tests:** `e2e/reports.spec.ts` checks that Back brings the filters back after a link cleared them, and that Back from a report keeps them. History length and `router.refresh()` keeping focus were checked by hand.
 - **Props:** `reports` (summaries), `categories`.
 - **`/#reports` links** ("All Reports") land on the list even when it streams in late, or comes back from the page cache.
 
@@ -188,7 +188,7 @@ Previous and Next with where you are ("Rows 1 to 50 of 312", "Page 2 of 16"), fo
 
 ### `ReportActions.tsx` (client)
 
-**Download CSV** (built in the browser from the rows) and **Copy SPL**. Each confirms for a moment; a failed copy says so. `explain` goes under Copy SPL: the report page puts **Explain report and SPL** there.
+**Download CSV** (built in the browser from the rows by `toCsv` in `src/shared/format.ts`) and **Copy SPL**. Each confirms for a moment; a failed copy says so. `explain` goes under Copy SPL: the report page puts **Explain report and SPL** there.
 
 ## `components/`: charts
 

@@ -105,4 +105,9 @@ describe('fill', () => {
     test("an unknown placeholder is left empty rather than showing a column's name", () => {
         assert.equal(fill('{Nope} and {count}', results, results.rows[0], { count: 2 }), ' and 2');
     });
+
+    test('reads numbers Splunk sent as formatted text, and leaves other text as it is', () => {
+        const table = { columns: ['Host', 'Minutes', 'Rate'], rows: [['web-01', '1,500', '1.84%']] };
+        assert.equal(fill('{Minutes|hours}, {Rate|1}%, {Host|number}', table, table.rows[0]), '25 hours, 1.8%, web-01');
+    });
 });

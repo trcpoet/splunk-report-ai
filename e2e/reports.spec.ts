@@ -12,7 +12,8 @@ const MAX_CARDS = 20;
 function watchForErrors(page: Page) {
     const errors: string[] = [];
     page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text());
+        // With the address, so a failure says which request it was.
+        if (message.type() === 'error') errors.push(`${message.text()} @ ${message.location().url}`);
     });
     page.on('pageerror', (error) => errors.push(error.message));
     return errors;
@@ -53,6 +54,33 @@ test('the home page lists at most 20 reports, newest run first, each with its la
     if (reports.length > MAX_CARDS) await expect(page.getByRole('group', { name: 'Report pages' })).toBeVisible();
 
     await screenshot(page, 'home');
+    expect(errors).toEqual([]);
+});
+
+test('the filters are in the address, and Back brings them back', async ({ page }) => {
+    const errors = watchForErrors(page);
+    const { reports } = (await (await page.request.get('/api/reports')).json()) as { reports: ReportSummary[] };
+    const [first] = sortByLastRun(reports);
+    expect(first, 'the admin should see at least one report').toBeDefined();
+    if (!first) return;
+    const status = page.getByRole('group', { name: 'Filter by status' });
+
+    // A link that clears the filters, then Back.
+    await page.goto('/?status=warning');
+    await expect(status.getByRole('button', { name: 'Warning' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('navigation').getByRole('link', { name: 'All Reports' }).click();
+    await expect(status.getByRole('button', { name: 'All statuses' })).toHaveAttribute('aria-pressed', 'true');
+    await page.goBack();
+    await expect(page).toHaveURL(/status=warning/);
+    await expect(status.getByRole('button', { name: 'Warning' })).toHaveAttribute('aria-pressed', 'true');
+
+    // A report, then Back.
+    await page.goto(`/?category=${first.category.toLowerCase()}`);
+    await page.locator('#reports .report-card').filter({ visible: true }).first().click();
+    await expect(page).toHaveURL(/\/reports\//);
+    await page.goBack();
+    await expect(page.getByRole('group', { name: 'Filter by category' }).getByRole('button', { name: first.category })).toHaveAttribute('aria-pressed', 'true');
+
     expect(errors).toEqual([]);
 });
 

@@ -42,7 +42,7 @@ All the guides are in [`docs/`](docs/README.md). For engineers:
 
 | Guide | Read it to |
 |---|---|
-| [Codebase guide](docs/codebase-guide.md) | Start here: the reading order, the rules that are easy to break, and the glossary |
+| [Codebase guide](docs/codebase-guide.md) | Start here: the reading order, where to change what, the rules that are easy to break, and the glossary |
 | [Architecture](docs/architecture.md) | See how the programs, the data, pages, access, Ask AI and the ML job fit together, with diagrams |
 | [Configuration](docs/configuration.md) | Change a setting: each environment variable, the report cards, access, AI, the sync and how often reports update, the look, build, deploy and CI |
 | [Adding report cards](docs/adding-report-cards.md) | Add or change a report's card, or turn a Splunk dashboard's tiles into cards |
@@ -128,7 +128,7 @@ A report's groups default to the email lists it was sent to (`secops@example.com
 | `npm run sync` | Sync once, then exit (exit code 1 if any report failed) |
 | `npm run sync:watch` | Sync every `SYNC_INTERVAL_MINUTES` (default 15; `60` is hourly). It picks up changes to the cards file at the next sync ([how often reports update](docs/configuration.md#how-often-reports-update)) |
 | `npm run seed` | Create the demo users and their access (safe to run again) |
-| `npm test` | Unit tests, plus the full sync pipeline against the fixtures |
+| `npm test` | Unit tests, plus the sync against the fixtures, from listing the reports to the fields it saves (without MongoDB) |
 | `npm run lint` | ESLint, with typescript-eslint's strictest type-aware rules |
 | `npm run typecheck` | TypeScript, with its strictest checks |
 | `npm run check` | The type check, ESLint and the tests, in that order. Run it before every pull request |

@@ -4,11 +4,11 @@ Where to start as an engineer on SplunkEvents, and what to know before you chang
 
 ## Reading order
 
-1. **[report-catalog.md](report-catalog.md):** what each report shows and where its numbers come from, without any code.
-2. **[architecture.md](architecture.md):** the programs, where data lives and how it moves, how a page is built, who sees what, Ask AI, the ML job, and where it all runs.
-3. **[configuration.md](configuration.md):** every setting. That's each environment variable (with the file that reads it), the report cards (`config/report-cards.yaml`), access, AI, the sync and how often reports update, statistics, caching, the look, build, deploy and CI. Adding a report's card has its own guide: [adding-report-cards.md](adding-report-cards.md).
-4. **[The file reference](reference/README.md):** what each file does, in detail, folder by folder: [src/app/](reference/app.md), [src/reports/](reference/reports.md), [src/ai/](reference/ai.md), [src/splunk/](reference/splunk.md), [src/people/](reference/people.md), [src/shared/](reference/shared.md), [src/database/](reference/database.md), and [the rest](reference/tooling.md). Each `src/` folder also has a short `README.md`.
-5. **This page:** the rules that are easy to break, and the words the code uses.
+1. **Run it first.** `docker compose up --build` needs nothing else installed ([docker.md](docker.md)); or follow "Running locally" in the [README](../README.md#running-locally). Sign in as `admin@example.com`, then as `finance.analyst@example.com`, and compare: that's the access rules at work.
+2. **[report-catalog.md](report-catalog.md):** what each report shows and where its numbers come from, without any code.
+3. **[architecture.md](architecture.md):** the programs, where data lives and how it moves, how a page is built, who sees what, Ask AI, the ML job, and where it all runs.
+4. **This page:** where to change what, the rules that are easy to break, and the words the code uses.
+5. **When you need the detail:** [configuration.md](configuration.md) for every setting (each environment variable with the file that reads it, the report cards, access, AI, the sync, caching, the look, build, deploy and CI), and [the file reference](reference/README.md) for what each file does, folder by folder. Each `src/` folder also has a short `README.md`.
 
 The topic guides go deeper on one area each: [all the docs](README.md).
 
@@ -20,6 +20,22 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
   - a Next.js 16 web app that reads them through `src/reports/dal.ts`;
   - an optional Python ML job.
 - **AI is optional.** Without a `GEMINI_API_KEY`, everything except AI answers works.
+
+## Where to change what
+
+| To | Change | Then |
+|---|---|---|
+| Add or change a report's card: its category, who sees it, its chart, headline numbers, when it warns | `config/report-cards.yaml` only ([adding-report-cards.md](adding-report-cards.md)) | `npm run card:preview "<report>"`, `npm run check`, `npm run sync` |
+| Change who sees a report | the card's `groups`. A person's groups are in the `user_access` collection; the demo accounts' come from `src/people/demo-users.ts` | `npm run seed` for the demo accounts ([report-access.md](report-access.md)) |
+| Change the dummy reports | `src/splunk/fixtures/reports.ts` | `npm run sync` |
+| Change what the sync copies, or how Splunk's answers become reports | `src/splunk/sync.ts`, `src/splunk/map.ts` | `npm test` ([reference/splunk.md](reference/splunk.md)) |
+| Change a page | `src/app/<address>/page.tsx`. The report page's pieces are in `src/reports/components/`, the home page's charts in `src/reports/overview/` | [reference/app.md](reference/app.md) |
+| Read report data in a new page or API route | only through `src/reports/dal.ts`, which checks who is asking | signed out gets 401 and a hidden report 404, as `e2e/access.spec.ts` checks |
+| Change what the AI sees or says | `src/ai/context.ts` (the report data it gets), `src/ai/prompts.ts` (its instructions: bump `PROMPT_VERSION`) | try it with `AI_PROVIDER=fake`, no key needed ([ai.md](ai.md)) |
+| Change which sign-in endpoints exist | the list in `src/app/api/auth/[...all]/route.ts` | `e2e/access.spec.ts` |
+| Change how fresh report data is | `src/reports/dal.ts` (`'use cache'`, `cacheTag('reports')`) | [caching-and-loading.md](caching-and-loading.md) |
+| Add a setting | read it where it's used | a row in [configuration.md](configuration.md), and in `.env.example` for an environment variable |
+| Change colors or the layout | the tokens at the top of `src/app/globals.css`; chart chrome in `src/shared/chart-theme.ts` | [configuration.md](configuration.md#look-and-feel) |
 
 ## Before you change things
 
@@ -106,11 +122,11 @@ SplunkEvents shows Splunk scheduled reports, the ones teams used to receive by e
 
 The code already follows most of what helps: a plain-English header on almost every file, one job per file, shared pure functions with tests next to them, and a guide per area in `docs/`. In order of value for the effort, the next steps would be:
 
-1. **Add header comments to the files that lack one.** These are `src/shared/components/Navbar.tsx`, `src/reports/components/StatusBadge.tsx`, `src/reports/components/RunHistory.tsx`, `src/shared/components/LightRays.tsx`, `src/app/ai/reports/page.tsx`, `src/app/ai/spl/page.tsx` and `src/shared/utils.ts`. A few minutes of work.
-2. **Split `src/app/globals.css`** (about 1,600 lines) into one file per area, imported from `globals.css`: base, reports, charts, briefing, Ask AI.
+1. **Add header comments to the files that lack one.** These are `src/shared/components/Navbar.tsx`, `src/reports/components/StatusBadge.tsx`, `src/shared/components/LightRays.tsx`, `src/app/ai/reports/page.tsx`, `src/app/ai/spl/page.tsx` and `src/shared/utils.ts`. A few minutes of work.
+2. **Split `src/app/globals.css`** (about 1,800 lines) into one file per area, imported from `globals.css`: base, reports, charts, briefing, Ask AI.
 3. **Split the longest modules by concern:**
-   - `src/splunk/map.ts` (about 450 lines) into schedule, status, charts and highlights;
-   - `src/ai/components/ChatView.tsx` (about 420 lines) into the message list and the box to type in.
+   - `src/splunk/map.ts` (about 540 lines) into schedule, status, charts and highlights;
+   - `src/ai/components/ChatView.tsx` (about 430 lines) into the message list and the box to type in.
 4. **Record the "why" decisions** as short notes in `docs/decisions/`, one per decision:
    - the REST API rather than Splunk's SDKs;
    - Gemini behind one file;

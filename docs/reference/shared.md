@@ -94,7 +94,8 @@ shadcn's Recharts wrapper: `ChartContainer`, tooltips and legends themed from CS
 ### `format.ts` (pure)
 
 Dates and numbers, always in UTC with fixed English month names, so the server and the browser print the same text.
-- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `formatCell`, `columnLabel`, `timeAxisLabels`, `plural`, `firstLine`.
+- **Exports:** `formatDateTime`, `formatDay`, `formatTime`, `formatClock`, `formatDuration`, `formatNumber`, `formatCompact`, `formatList`, `parseNumber`, `formatCell`, `columnLabel`, `toCsv`, `timeAxisLabels`, `plural`, `firstLine`.
+- **`toCsv(columns, rows)`** writes the results for Download CSV. Text that starts like a spreadsheet formula (`=`, `+`, `-`, `@`) gets a `'` in front, because results come from logs anyone can write to; numbers stay as they are.
 - **`formatClock(minutes)`** writes minutes after midnight as a time of day: 480 is "08:00".
 - **`formatList(items)`** joins names as "a, b, and c" (`Intl.ListFormat`), for the report page's chart headings and the scheduler chart.
 - **`parseNumber`** reads Splunk's text numbers ("$1,234", "1.84%", "12G"). A missing cell (a short row) is `null`.

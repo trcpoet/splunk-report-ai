@@ -63,6 +63,19 @@ export const formatCell = (cell: Cell | undefined) => {
 // A results column's name as it's shown.
 export const columnLabel = (name: string) => (name === '_time' ? 'Time' : name);
 
+// A results table as CSV, for Download CSV. Results come from logs, which
+// anyone can write to, so text starting like a formula (=, +, -, @) gets a '
+// in front: a spreadsheet then shows it instead of running it.
+export const toCsv = (columns: string[], rows: Cell[][]) =>
+    [columns, ...rows]
+        .map((row) => row
+            .map((cell) => {
+                const text = typeof cell === 'string' && /^[=+\-@\t\r]/.test(cell) ? `'${cell}` : String(cell);
+                return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+            })
+            .join(','))
+        .join('\n');
+
 // For axis ticks: 1,284 → 1.3K, 2,500,000 → 2.5M.
 export const formatCompact = (value: number) => {
     const units: [number, string][] = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];

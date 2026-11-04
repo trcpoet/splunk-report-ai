@@ -4,7 +4,7 @@
 
 | Guide | Read it to |
 |---|---|
-| [codebase-guide.md](codebase-guide.md) | Start here: the reading order, the rules that are easy to break, and the glossary |
+| [codebase-guide.md](codebase-guide.md) | Start here: the reading order, where to change what, the rules that are easy to break, and the glossary |
 | [architecture.md](architecture.md) | See how it's put together. It covers the programs and the data model, how report data moves, and how a page is built. It also covers access, Ask AI, the ML job, deployment and security, with diagrams. |
 | [configuration.md](configuration.md) | Change a setting: each environment variable and the file that reads it, the report cards, access, AI, the sync and how often reports update, statistics, caching, the look, build, deploy and CI |
 | [reference/](reference/README.md) | Look up what a file does, folder by folder: [src/app/](reference/app.md), [src/reports/](reference/reports.md), [src/ai/](reference/ai.md), [src/splunk/](reference/splunk.md), [src/people/](reference/people.md), [src/shared/](reference/shared.md), [src/database/](reference/database.md), [the rest](reference/tooling.md) |

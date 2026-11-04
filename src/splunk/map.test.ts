@@ -28,6 +28,7 @@ describe('toCell', () => {
         assert.equal(toCell('-4'), -4);
         assert.equal(toCell('007'), '007');
         assert.equal(toCell('192.0.2.1'), '192.0.2.1');
+        assert.equal(toCell('12345678901234567890'), '12345678901234567890');
         assert.equal(toCell('2026-10-02 05:41'), '2026-10-02 05:41');
         assert.equal(toCell(['dmz', 'corp']), 'dmz, corp');
         assert.equal(toCell(null), '');

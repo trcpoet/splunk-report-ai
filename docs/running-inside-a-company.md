@@ -28,7 +28,7 @@ The app can send data to these services. Inside a company, turn off every one th
 
 | Service | When it's on | What leaves the network | How to keep it off |
 |---|---|---|---|
-| **PostHog** (usage analytics, US cloud) | `NEXT_PUBLIC_POSTHOG_KEY` is set | Page views, clicks (including the text of what was clicked), browser errors, and the app's own events, such as `report_csv_downloaded` with the report's slug | Leave the key empty. Also delete the `rewrites()` block and `skipTrailingSlashRedirect` in `next.config.ts` ([below](#posthog-in-plain-words)). |
+| **PostHog** (usage analytics, US cloud) | `NEXT_PUBLIC_POSTHOG_KEY` is set | Page views, clicks (including the text of what was clicked), browser errors, and the app's own events, such as `report_csv_downloaded` with the report's slug | Leave the key empty. Also delete the two `/ingest` rewrites and `skipTrailingSlashRedirect` in `next.config.ts` ([below](#posthog-in-plain-words)). |
 | **Next.js telemetry** | By default, when you run `next dev` or `next build` | Anonymous facts about the build, such as the Next version and which features are used, sent to `telemetry.nextjs.org`. No report data. | `NEXT_TELEMETRY_DISABLED=1` wherever you run or build. The `Dockerfile` already sets it. |
 | **Google Gemini** (Ask AI, Write SPL, Explain, the briefing) | `GEMINI_API_KEY` is set | Questions, and up to 20 result rows of each report the viewer can see | `AI_ENABLED=false`, and no `GEMINI_API_KEY`. Never set `AI_ALLOW_LIVE_DATA` until the company approves the AI service. |
 | **AntV charts MCP** (`.mcp.json`) | Only inside Claude Code | Whatever you ask it to chart | Leave `.mcp.json` out of the company copy. |
@@ -41,7 +41,7 @@ Fonts and icons are in the repo, so the app fetches nothing from Google Fonts or
 - **PostHog** is a usage-tracking service, like Google Analytics. With a key, each person's browser reports what they open and click to PostHog's servers in the US.
 - **The `/ingest` rewrite** in `next.config.ts` is a forwarding rule. When the browser calls `<your site>/ingest/…`, the app's server passes the call on to `us.i.posthog.com`. Sites do this so ad blockers don't stop the tracking.
 - **Without a key nothing is tracked**, because the browser never loads PostHog. But the forwarding rule is still there, so the server would still pass on anything sent to `/ingest`. Deleting the rule means nothing can reach PostHog through the app, even by mistake.
-- **To delete it:** remove the `rewrites()` block and `skipTrailingSlashRedirect: true` from `next.config.ts`. Optionally take `ingest` out of the `matcher` in `src/proxy.ts`. `track()` in `src/shared/analytics.ts` already does nothing without PostHog, so no other code changes.
+- **To delete it:** remove the two `/ingest` rewrites and `skipTrailingSlashRedirect: true` from `next.config.ts`. Keep the `/favicon.ico` one. Optionally take `ingest` out of the `matcher` in `src/proxy.ts`. `track()` in `src/shared/analytics.ts` already does nothing without PostHog, so no other code changes.
 
 ## 4. Build
 
@@ -159,4 +159,4 @@ SYNC_MAX_ROWS=5000
 RUN_RETENTION_DAYS=<the company's retention, in days>   # before the first sync
 ```
 
-Plus the code change from section 3: delete the PostHog `rewrites()` block in `next.config.ts`.
+Plus the code change from section 3: delete the two PostHog `/ingest` rewrites in `next.config.ts`.

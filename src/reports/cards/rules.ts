@@ -91,7 +91,9 @@ export function fill(template: string, table: Table, row: Cell[] | undefined, ex
         const raw: Cell | undefined = name === 'count' ? extra.count : name === 'list' ? extra.list : row?.[columnOf(table, name)];
         if (raw === undefined) return '';
         if (!filter) return String(raw);
-        const number = Number(raw);
+        // Splunk can send numbers as formatted text, such as "1,500" or "1.84%".
+        const number = parseNumber(raw);
+        if (number === null) return String(raw);
         if (filter === 'number') return formatNumber(number);
         if (filter === 'hours') return hours(number);
         if (/^\d$/.test(filter)) return number.toFixed(Number(filter));
