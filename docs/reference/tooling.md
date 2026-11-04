@@ -86,7 +86,7 @@ What `score.py` does:
 
 | File | What it does |
 |---|---|
-| `next.config.ts` | Turns on `cacheComponents` and `partialPrefetching`. Sets `output: 'standalone'` when `NEXT_OUTPUT=standalone`, as Docker does. Adds the PostHog `/ingest` rewrites and `skipTrailingSlashRedirect`. |
+| `next.config.ts` | Turns on `cacheComponents` and `partialPrefetching`. Sets `output: 'standalone'` when `NEXT_OUTPUT=standalone`, as Docker does. Serves `/favicon.ico` from `src/app/icon.svg`, since browsers still ask for it during client-side navigations (a 404 there failed the e2e console check). Adds the PostHog `/ingest` rewrites and `skipTrailingSlashRedirect`. |
 | `src/proxy.ts` | Next 16's name for middleware. It sends visitors without a session cookie to `/login?next=…`. Its `matcher` skips `/login`, API routes, `_next`, the PostHog proxy and static files. It's a quick redirect, not the security check. |
 | `src/instrumentation-client.ts` | Starts PostHog in the browser when `NEXT_PUBLIC_POSTHOG_KEY` is set, with exception capture and debug logging in development. |
 | `tsconfig.json` | TypeScript settings. `@/*` maps to `src/`, so imports read `@/reports/dal`. On top of `strict`, it treats every `list[i]` and `record[key]` as possibly missing (`noUncheckedIndexedAccess`) and fails on unused code. `npm run typecheck` runs it. |

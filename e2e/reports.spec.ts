@@ -12,7 +12,8 @@ const MAX_CARDS = 20;
 function watchForErrors(page: Page) {
     const errors: string[] = [];
     page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text());
+        // With the address, so a failure says which request it was.
+        if (message.type() === 'error') errors.push(`${message.text()} @ ${message.location().url}`);
     });
     page.on('pageerror', (error) => errors.push(error.message));
     return errors;

@@ -252,7 +252,7 @@ The layout choices for Ask AI (ChatGPT-style) are recorded there as a constraint
 
 | File | What to change there |
 |---|---|
-| `next.config.ts` | `cacheComponents` and `partialPrefetching` (on); `output: 'standalone'` when `NEXT_OUTPUT=standalone`; the PostHog `/ingest` rewrites. |
+| `next.config.ts` | `cacheComponents` and `partialPrefetching` (on); `output: 'standalone'` when `NEXT_OUTPUT=standalone`; `/favicon.ico` served from `src/app/icon.svg`; the PostHog `/ingest` rewrites. |
 | `src/proxy.ts` | Which paths need a session cookie (`matcher`). API routes answer 401 themselves, so they're left out. |
 | `vercel.json` | `git.deploymentEnabled`: only `main` deploys. Don't gate deploys on `VERCEL_ENV`: it's empty in the ignore step. |
 | `Dockerfile` | Stages:<br>• `tools`: seed and sync, as root, for docker compose;<br>• `build`;<br>• `worker`: the same scripts as user 1000, for Kubernetes;<br>• `app`: the standalone server as user 1000, its files writable by group 0 for OpenShift, with a health check.<br>A plain `docker build` builds `app`. |
