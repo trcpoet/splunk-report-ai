@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { columnLabel, formatCell, formatClock, formatList, parseNumber, timeAxisLabels } from '@/shared/format';
+import { columnLabel, formatCell, formatClock, formatList, parseNumber, timeAxisLabels, toCsv } from '@/shared/format';
+
+describe('toCsv', () => {
+    test('quotes commas, quotes and line breaks', () => {
+        assert.equal(toCsv(['Host', 'Note'], [['web-01', 'a, "b"\nc'], ['web-02', 4]]), 'Host,Note\nweb-01,"a, ""b""\nc"\nweb-02,4');
+    });
+
+    test('keeps formulas from logs from running in a spreadsheet, but not negative numbers', () => {
+        assert.equal(toCsv(['User'], [['=HYPERLINK("https://evil.example")'], ['@SUM(A1)'], ['+1'], ['-1+1'], [-4]]),
+            `User\n"'=HYPERLINK(""https://evil.example"")"\n'@SUM(A1)\n'+1\n'-1+1\n-4`);
+    });
+});
 
 describe('parseNumber', () => {
     test('reads numbers that Splunk sent as formatted text', () => {

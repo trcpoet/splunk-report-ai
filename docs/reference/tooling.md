@@ -119,7 +119,8 @@ What `score.py` does:
 |---|---|
 | `playwright.config.ts` | `npm run e2e`: Playwright against an app that's already running (`E2E_BASE_URL`, default `http://localhost:3000`), in the Chrome installed on the machine (`channel: 'chrome'`), so nothing is downloaded. One worker, because Better Auth limits sign-ins. It reads `.env.local` for `DEMO_PASSWORD`. |
 | `e2e/auth.setup.ts` | Signs in as the admin through the login form once, and saves the session in `e2e/.auth/` (git ignores it) for the other tests. |
-| `e2e/reports.spec.ts` | The home page lists at most 20 reports, newest run first, and each one that has run shows its headline number; a report page shows its chart and its results table; no console errors. It works against the demo data and a real Splunk. `E2E_SCREENSHOTS=<folder>` saves screenshots. |
+| `e2e/reports.spec.ts` | The home page lists at most 20 reports, newest run first, and each one that has run shows its headline number; the filters are in the address, and Back brings them back (after a report, and after a link cleared them); a report page shows its chart and its results table; no console errors. It works against the demo data and a real Splunk. `E2E_SCREENSHOTS=<folder>` saves screenshots. |
+| `e2e/access.spec.ts` | Who may read what, over HTTP: signed out gets 401, the finance analyst gets 404 for every report the admin sees and they don't, and an auth endpoint the app doesn't use (change password) answers 404. It signs in once more, as the finance analyst. |
 
 ## Settings and git
 

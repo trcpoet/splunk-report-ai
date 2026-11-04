@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import cronstrue from 'cronstrue';
 import { formatCell, formatDuration, formatNumber, parseNumber } from '@/shared/format';
+import { topRow } from '@/reports/cards/rules';
 import type { IconName } from '@/reports/icons';
 import type { ReportConfig, ResultSet, StatusRule } from '@/reports/report-config';
 import { MAX_CHART_BARS, MAX_CHART_SERIES, type Cell, type ChartPanel, type ChartScatter, type ChartThreshold, type ChartType, type ReportCategory, type ReportChart, type ReportHighlight, type ReportStatus } from '@/reports/reports';
@@ -17,13 +18,14 @@ export const toBool = (value: SplunkBool | undefined) => value === true || value
 const NUMBER = /^-?(0|[1-9]\d*)(\.\d+)?$/;
 
 // Splunk sends every value as a string, and multivalue fields as arrays.
-// Strings like "007" or "192.0.2.1" stay strings.
+// Strings like "007" or "192.0.2.1" stay strings, and so do numbers too long
+// to keep exactly, such as a 19-digit transaction ID.
 export function toCell(value: unknown): Cell {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.map(String).join(', ');
 
     const text = typeof value === 'string' ? value : JSON.stringify(value);
-    return NUMBER.test(text) ? Number(text) : text;
+    return NUMBER.test(text) && Math.abs(Number(text)) <= Number.MAX_SAFE_INTEGER ? Number(text) : text;
 }
 
 export type ResultTable = { columns: string[]; rows: Cell[][] };
@@ -489,8 +491,7 @@ function defaultHighlights({ columns, rows, resultCount, previousResultCount, re
     if (chart && chart.x !== '_time') {
         const x = columns.indexOf(chart.x);
         const y = columns.indexOf(chart.y);
-        const value = (row: Cell[]) => parseNumber(row[y]) ?? Number.NEGATIVE_INFINITY;
-        const top = rows.reduce<Cell[] | undefined>((max, row) => (!max || value(row) > value(max) ? row : max), undefined);
+        const top = topRow({ columns, rows }, chart.y);
 
         if (top) highlights.push({ label: `Top ${lowerFirst(chart.x)}`, value: String(top[x] ?? ''), note: `${chart.y}: ${formatCell(top[y])}` });
     }

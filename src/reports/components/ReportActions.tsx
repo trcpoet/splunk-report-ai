@@ -3,8 +3,8 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Download } from "lucide-react";
 import { track } from "@/shared/analytics";
-
-type Cell = string | number;
+import { toCsv } from "@/shared/format";
+import type { Cell } from "@/reports/reports";
 
 type Props = {
     slug: string;
@@ -17,16 +17,6 @@ type Props = {
 };
 
 type Feedback = 'idle' | 'done' | 'failed';
-
-const toCsv = (columns: string[], rows: Cell[][]) =>
-    [columns, ...rows]
-        .map((row) => row
-            .map((cell) => {
-                const text = String(cell);
-                return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-            })
-            .join(','))
-        .join('\n');
 
 const ReportActions = ({ slug, lastRun, spl, columns, rows, explain }: Props) => {
     const [download, setDownload] = useState<Feedback>('idle');

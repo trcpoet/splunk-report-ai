@@ -30,8 +30,8 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
     const list = useRef<HTMLUListElement>(null);
     const pendingWrite = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-    // When something else changes the address (a link to /#reports, say),
-    // the list follows it. What the list wrote itself (`written`) isn't
+    // When something else changes the address (a link to /#reports, or Back),
+    // the list follows it. What the list just wrote itself (`written`) isn't
     // followed, so an address update arriving late can't undo a keystroke.
     // Only on the list's own page: Next keeps this page, hidden, while a
     // report is open, and its address (with no filters) mustn't clear the
@@ -41,9 +41,12 @@ const ReportBrowser = ({ reports, categories }: { reports: ReportSummary[]; cate
     const fromAddress = parseFilters(searchParams, categories);
     const addressKey = keyOf(fromAddress);
     const [seen, setSeen] = useState(addressKey);
-    const [written, setWritten] = useState(addressKey);
+    const [written, setWritten] = useState<string | null>(addressKey);
     if (pathname === ownPath && addressKey !== seen) {
         setSeen(addressKey);
+        // A write of its own is ignored once, when the address shows it, so
+        // Back to that address later still brings its filters back.
+        setWritten(null);
         if (addressKey !== written && addressKey !== keyOf(filters)) setFilters(fromAddress);
     }
 
